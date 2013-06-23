@@ -119,13 +119,7 @@ PTW_tableentry keytable[KEYHSBYTES][n];
 static int compare(const void * ina, const void * inb) {
 	PTW_tableentry * a = (PTW_tableentry * )ina;
 	PTW_tableentry * b = (PTW_tableentry * )inb;
-	if (a->votes > b->votes) {
-		return -1;
-	} else if (a->votes == b->votes) {
-		return 0;
-	} else {
-		return 1;
-	}
+	return b->votes - a->votes;
 }
 
 // For sorting
@@ -182,13 +176,7 @@ static uint8_t rc4update(rc4state * state) {
 static int comparesorthelper(const void * ina, const void * inb) {
 	sorthelper * a = (sorthelper * ) ina;
 	sorthelper * b = (sorthelper * ) inb;
-	if (a->distance > b->distance) {
-		return 1;
-	} else if (a->distance == b->distance) {
-		return 0;
-	} else {
-		return -1;
-	}
+	return a->distance - b->distance;
 }
 
 /*
