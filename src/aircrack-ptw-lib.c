@@ -141,6 +141,7 @@ static void rc4init ( uint8_t * key, int keylen, rc4state * state) {
 	int i;
 	unsigned char j;
 	uint8_t tmp;
+	int idx = 0;
 	memcpy(state->s, &rc4initial, n);
 	j = 0;
 	for (i = 0; i < n; i++) {
@@ -149,7 +150,9 @@ static void rc4init ( uint8_t * key, int keylen, rc4state * state) {
 		    but as "j" is declared as unsigned char and n equals 256,
 		    we can "optimize" it
 		*/
-		j = (j + state->s[i] + key[i % keylen]);
+		j = (j + state->s[i] + key[idx]);
+		if (++idx == keylen)
+			idx = 0;
 		tmp = state->s[i];
 		state->s[i] = state->s[j];
 		state->s[j] = tmp;
