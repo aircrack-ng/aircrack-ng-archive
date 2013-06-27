@@ -1,5 +1,6 @@
 /*
  *  Copyright (c) 2007, 2008, 2009 Erik Tews, Andrei Pychkine and Ralf-Philipp Weinmann.
+ *                2013 Ramiro Polla
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -136,6 +137,137 @@ static int comparedoublesorthelper(const void * ina, const void * inb) {
 }
 
 
+#if defined(__amd64) && defined(__SSE2__)
+static const uint32_t __attribute__((used)) __attribute__((aligned (16))) x0123 [4] = { 0, 1, 2, 3 };
+static const uint32_t __attribute__((used)) __attribute__((aligned (16))) x4444 [4] = { 4, 4, 4, 4 };
+static int rc4test_amd64_sse2(uint8_t *key, int keylen, uint8_t *iv, uint8_t *keystream)
+{
+	int idx, i, j;
+	int scratch1, scratch2;
+
+	__asm__ volatile(
+#define state      "%%rsp"
+#define keybuf     "0x400(%%rsp)"
+#define keystream_ "0x428(%%rsp)"
+		// setup stack
+		"movq  %%rsp, %q0             \n\t"
+		"subq $0x430, %%rsp           \n\t"
+		"andq   $-16, %%rsp           \n\t"
+		"movq    %q0, -8(%%rsp)       \n\t"
+
+		// save keystream variable
+		"movq %q6, "keystream_"       \n\t"
+
+		// keylen += IVBYTES
+		"addl    $3, %k4              \n\t"
+
+		// memcpy(keybuf, iv, IVBYTES);
+		"movl  (%q5), %k1             \n\t"
+		"movl   %k1 , "keybuf"        \n\t"
+		// memcpy(&keybuf[IVBYTES], key, keylen);
+		"movdqa   (%q3), %%xmm0       \n\t"
+		"cmpl    $16, %k4             \n\t"
+		"movdqu %%xmm0, 3+"keybuf"    \n\t"
+		"jng     .0                   \n\t"
+		"movdqa 16(%q3), %%xmm1       \n\t"
+		"movdqu %%xmm1,19+"keybuf"    \n\t"
+		".0:                          \n\t"
+
+		// key = keybuf
+		"lea  "keybuf", %q3           \n\t"
+		// load xmm registers
+		"movdqa (x0123), %%xmm0       \n\t"
+		"movdqa (x4444), %%xmm1       \n\t"
+		// clear some registers
+		"xorq      %q0, %q0           \n\t" // idx
+		"xorq      %q1, %q1           \n\t" // i
+		"xorq      %q2, %q2           \n\t" // j
+
+		// build identity array
+		".p2align 4                   \n\t"
+		".identity_loop:              \n\t"
+		"movdqa %%xmm0, ("state",%q1,4)\n\t"
+		"addb   $4, %b1               \n\t"
+		"paddd  %%xmm1, %%xmm0        \n\t"
+		"jnc  .identity_loop          \n\t"
+
+		// load state into register
+		"movq "state", %q1            \n\t"
+
+		// %q4 = and mask for idx
+		"movq %q4, %q8                \n\t"
+		"cmpq $16, %q8                \n\t"
+		"movq $15, %q4                \n\t"
+		"je    .7                     \n\t"
+		"shrq  $1, %q4                \n\t"
+		".7:                          \n\t"
+
+		// init array with key
+		".p2align 4                   \n\t"
+		".init_loop:                  \n\t"
+		"movl    %k0, %k8             \n\t" /* scratch2        = idx             */
+		"movl   (%q1), %k5            \n\t" /* s1              = state[i]        */
+		"leal  1(%q0,1), %k0          \n\t" /* idx++                             */
+		"movzbl (%q3,%q8,1), %k6      \n\t" /* key_n           = key[scratch2]   */
+		"leal   (%q5,%q6,1), %k8      \n\t" /* scratch2        = s1 + key_n      */
+		"addl    %k8, %k2             \n\t" /* j              += scratch2        */
+		"andl    %k4, %k0             \n\t" /* idx            &= mask            */
+		"movzbl  %b2, %k8             \n\t" /* scratch2        = j               */
+		"movl ("state",%q8,4), %k7    \n\t" /* s2              = state[scratch2] */
+		"movl    %k7, (%q1)           \n\t" /* state[i]        = s2              */
+		"addq     $4, %q1             \n\t" /* i++                               */
+		"movl    %k5, ("state",%q8,4) \n\t" /* state[scratch2] = s1              */
+		"cmpq    %q1, %q3             \n\t" /* state          == &state[0x100]   */
+		"jne .init_loop               \n\t"
+
+		// restore keystream variable
+		"movq "keystream_", %q6       \n\t"
+
+		// clear some registers
+		"xorq  %q2, %q2               \n\t" // j = 0
+		"xorq  %q0, %q0               \n\t" // result
+
+#define RC4TEST_LOOP(offset) \
+		"movl 4*"offset"("state"), %k5\n\t" /* s1 = state[i]         */ \
+		"leal (%q5,%q2,1), %k4        \n\t" /*                       */ \
+		"movzbl %b4, %k2              \n\t" /* j += s1               */ \
+		"movl ("state",%q2,4), %k1    \n\t" /* s2 = state[j]         */ \
+		"movl %k1, 4*"offset"("state")\n\t" /* state[i] = s2         */ \
+		"movl %k5, ("state",%q2,4)    \n\t" /* state[j] = s1         */ \
+		"addb %b1, %b5                \n\t" /* s1 += s2;             */ \
+		"movb ("state",%q5,4), %b3    \n\t" /* ret = state[s1]       */ \
+		"cmpb %b3, "offset"-1(%q6)    \n\t" /* ret == keystream[i-1] */ \
+		"jne .ret                     \n\t"
+
+		RC4TEST_LOOP("1")
+		RC4TEST_LOOP("2")
+		RC4TEST_LOOP("3")
+		RC4TEST_LOOP("4")
+		RC4TEST_LOOP("5")
+		RC4TEST_LOOP("6")
+
+#undef RC4TEST_LOOP
+
+		"addb $1, %b0                 \n\t"
+		".ret:                        \n\t"
+
+		// restore stack
+		"movq -8(%%rsp), %%rsp        \n\t"
+
+	: "=&r"(idx), "=&r"(i), "=&r"(j),
+	  "+r"(key), "+r"(keylen), "+r"(iv), "+r"(keystream),
+	  "=&r"(scratch1), "=&r"(scratch2)
+	:
+	: "xmm0", "xmm1"
+	);
+#undef state
+#undef keybuf
+#undef keystream_
+
+	return idx;
+}
+#endif
+
 // RC4 key setup
 static void rc4init ( uint8_t * key, int keylen, rc4state * state) {
 	int i;
@@ -251,7 +383,7 @@ static int correct(PTW_attackstate * state, uint8_t * key, int keylen) {
 
 	k = rand()%(state->sessions_collected-10);
 	for ( i=k; i < k+10; i++) {
-		if (!rc4test(key, keylen, state->sessions[i].iv, state->sessions[i].keystream))
+		if (!state->rc4test(key, keylen, state->sessions[i].iv, state->sessions[i].keystream))
 			return 0;
 	}
 	return 1;
@@ -435,10 +567,30 @@ int PTW_computeKey(PTW_attackstate * state, uint8_t * keybuf, int keylen, int te
 	doublesorthelper helper[KEYHSBYTES];
 	int simple, onestrong, twostrong;
 	int i,j;
+#if defined(__amd64) && defined(__SSE2__)
+	/*
+	 * The 64-bit SSE2-optimized rc4test() requires this buffer to be
+	 * aligned at 3 bytes.
+	 */
+	uint8_t fullkeybuf_unaligned[PTW_KSBYTES+13];
+	uint8_t *fullkeybuf = &fullkeybuf_unaligned[13];
+#else
 	uint8_t fullkeybuf[PTW_KSBYTES];
+#endif
 	uint8_t guessbuf[PTW_KSBYTES];
 	sorthelper(*sh)[n-1];
 	PTW_tableentry (*table)[n] = alloca(sizeof(PTW_tableentry) * n * keylen);
+
+#if defined(__amd64) && defined(__SSE2__)
+	/*
+	 * sse2-optimized rc4test() function for amd64 only works
+	 * for keylen == 5 or keylen == 13
+	 */
+	if (keylen == 5 || keylen == 13)
+		state->rc4test = rc4test_amd64_sse2;
+	else
+#endif
+		state->rc4test = rc4test;
 
 	tried=0;
 	sh = NULL;
