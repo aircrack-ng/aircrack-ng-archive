@@ -47,9 +47,9 @@
 
 // Internal state of rc4
 typedef struct {
+	uint32_t s[n];
 	uint8_t i;
 	uint8_t j;
-	uint8_t s[n];
 } rc4state;
 
 
@@ -66,7 +66,7 @@ typedef struct {
 } doublesorthelper;
 
 // The rc4 initial state, the idendity permutation
-static const uint8_t rc4initial[] =
+static const uint32_t rc4initial[] =
 {0,1,2,3,4,5,6,7,8,9,10,
 11,12,13,14,15,16,17,18,19,20,
 21,22,23,24,25,26,27,28,29,30,
@@ -142,7 +142,7 @@ static void rc4init ( uint8_t * key, int keylen, rc4state * state) {
 	unsigned char j;
 	uint8_t tmp;
 	int idx = 0;
-	memcpy(state->s, &rc4initial, n);
+	memcpy(state->s, &rc4initial, sizeof(rc4initial));
 	j = 0;
 	for (i = 0; i < n; i++) {
 		/*  this should be:
@@ -191,14 +191,14 @@ static int comparesorthelper(const void * ina, const void * inb) {
  * kb - how many keybytes should be guessed
  */
 static void guesskeybytes(int ivlen, uint8_t * iv, uint8_t * keystream, uint8_t * result, int kb) {
-	uint8_t state[n];
+	uint32_t state[n];
 	uint8_t j = 0;
 	uint8_t tmp;
 	int i;
 	int jj = ivlen;
 	uint8_t ii;
 	uint8_t s = 0;
-	memcpy(state, rc4initial, n);
+	memcpy(state, &rc4initial, sizeof(rc4initial));
 	for (i = 0; i < ivlen; i++) {
 		j += state[i] + iv[i];
 		tmp = state[i];
