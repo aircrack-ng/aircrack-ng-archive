@@ -175,6 +175,22 @@ static uint8_t rc4update(rc4state * state) {
 	return state->s[k];
 }
 
+static int rc4test(uint8_t *key, int keylen, uint8_t *iv, uint8_t *keystream)
+{
+	uint8_t keybuf[PTW_KSBYTES];
+	rc4state rc4state;
+	int j;
+	memcpy(&keybuf[IVBYTES], key, keylen);
+	memcpy(keybuf, iv, IVBYTES);
+	rc4init(keybuf, keylen+IVBYTES, &rc4state);
+	for (j = 0; j < TESTBYTES; j++) {
+		if  ((rc4update(&rc4state) ^ keystream[j]) != 0) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
 // For sorting
 static int comparesorthelper(const void * ina, const void * inb) {
 	sorthelper * a = (sorthelper * ) ina;
@@ -224,10 +240,7 @@ static void guesskeybytes(int ivlen, uint8_t * iv, uint8_t * keystream, uint8_t 
  */
 static int correct(PTW_attackstate * state, uint8_t * key, int keylen) {
 	int i;
-	int j;
 	int k;
-	uint8_t keybuf[PTW_KSBYTES];
-	rc4state rc4state;
 
 	// We need at least 3 sessions to be somehow certain
 	if (state->sessions_collected < 3) {
@@ -238,14 +251,8 @@ static int correct(PTW_attackstate * state, uint8_t * key, int keylen) {
 
 	k = rand()%(state->sessions_collected-10);
 	for ( i=k; i < k+10; i++) {
-		memcpy(&keybuf[IVBYTES], key, keylen);
-		memcpy(keybuf, state->sessions[i].iv, IVBYTES);
-		rc4init(keybuf, keylen+IVBYTES, &rc4state);
-		for (j = 0; j < TESTBYTES; j++) {
-			if  ((rc4update(&rc4state) ^ state->sessions[i].keystream[j]) != 0) {
-				return 0;
-			}
-		}
+		if (!rc4test(key, keylen, state->sessions[i].iv, state->sessions[i].keystream))
+			return 0;
 	}
 	return 1;
 }
