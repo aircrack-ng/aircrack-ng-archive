@@ -3,7 +3,7 @@ include $(AC_ROOT)/common.mak
 
 TEST_DIR	= $(AC_ROOT)/test
 
-CFLAGS		+= -Iinclude
+CFLAGS		+= -Iinclude -g
 
 iCC             = $(shell find /opt/intel/cc/*/bin/icc)
 iCFLAGS         = -w -mcpu=pentiumpro -march=pentiumpro $(COMMON_CFLAGS)
@@ -165,7 +165,7 @@ buddy-ng$(EXE): $(OBJS_BUDDY)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_BUDDY) -o $(@) $(LDFLAGS)
 
 besside-ng$(EXE): $(OBJS_BS) $(LIBOSD)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_BS) -o $(@) $(LIBS) $(LIBSSL) -lz
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_BS) -o $(@) $(LIBS) $(LIBSSL) -lz $(LIBPCRE)
 
 besside-ng-crawler$(EXE): $(OBJS_BC)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_BC) -o $(@) -lpcap

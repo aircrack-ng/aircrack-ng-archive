@@ -609,6 +609,12 @@ enum {
 	(sizeof(struct ieee80211_frame_min) + IEEE80211_CRC_LEN)
 
 /*
+ * Maximum ESSID name as defined by latest kernel headers
+ */
+
+#define IEEE80211_MAX_SSID_LEN     32
+
+/*
  * The 802.11 spec says at most 2007 stations may be
  * associated at once.  For most AP's this is way more
  * than is feasible so we use a default of 128.  This
