@@ -31,7 +31,7 @@ COMMON_CFLAGS	=
 
 
 ifeq ($(subst TRUE,true,$(filter TRUE true,$(sqlite) $(SQLITE))),true)
-	COMMON_CFLAGS	+= -I/usr/local/include -DHAVE_SQLITE
+	COMMON_CFLAGS	+= -DHAVE_SQLITE
 endif
 
 ifeq ($(pcre), true)
