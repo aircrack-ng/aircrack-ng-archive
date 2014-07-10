@@ -62,6 +62,7 @@ ifeq ($(OSNAME), Linux)
 
 		ifeq ($(NL1FOUND),Y)
 			NLLIBNAME = libnl-1
+			COMMON_CFLAGS += -DCONFIG_LIBNL
 		endif
 
 		ifeq ($(NL3xFOUND),Y)
