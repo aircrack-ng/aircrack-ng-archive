@@ -73,8 +73,6 @@ static int chan;
 #endif //CONFIG_LIBNL
 
 
-#define uchar unsigned char
-
 typedef enum {
         DT_NULL = 0,
         DT_WLANNG,
@@ -888,7 +886,7 @@ static int linux_write(struct wif *wi, unsigned char *buf, int count,
         }
         /* fall thru */
     case DT_HOSTAP:
-        if( ( ((uchar *) buf)[1] & 3 ) == 2 )
+        if( ( ((unsigned char *) buf)[1] & 3 ) == 2 )
         {
             /* Prism2 firmware swaps the dmac and smac in FromDS packets */
 
@@ -1414,7 +1412,7 @@ int set_monitor( struct priv_linux *dev, char *iface, int fd )
 
 
 static int openraw(struct priv_linux *dev, char *iface, int fd, int *arptype,
-		   uchar *mac)
+		   unsigned char *mac)
 {
     struct ifreq ifr;
     struct ifreq ifr2;
