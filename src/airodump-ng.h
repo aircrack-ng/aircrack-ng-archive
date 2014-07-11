@@ -148,6 +148,9 @@ static uchar ZERO[32] =
 #define OUI_PATH3 "/usr/share/misc/oui.txt"
 #define MIN_RAM_SIZE_LOAD_OUI_RAM 32768
 
+#define MAC_LEN 17
+/* only for the name or description of a MAC address */
+
 int read_pkts=0;
 
 int abg_chans [] =
@@ -189,6 +192,13 @@ struct oui {
 	char manuf[128]; /* TODO: Switch to a char * later to improve memory usage */
 	struct oui *next;
 };
+
+struct ethers_names {
+    unsigned char bssid[6];
+    char name[MAC_LEN]; /* Name for the MAC address or device. */
+    struct ethers_names *next;
+};
+
 
 /* linked list of detected access points */
 struct AP_info
@@ -314,6 +324,7 @@ struct globals
     struct ST_info *st_1st, *st_end;
     struct NA_info *na_1st, *na_end;
     struct oui *manufList;
+    struct ethers_names *ethersList;
 
     unsigned char prev_bssid[6];
     unsigned char f_bssid[6];
@@ -410,6 +421,8 @@ struct globals
 
     int hopfreq;
 
+    char*   s_ethers;       /* source file to define mappings from MAC to name
+                             * like /etc/ethers */
     char*   s_file;         /* source file to read packets */
     char*   s_iface;        /* source interface to read from */
     FILE *f_cap_in;
@@ -451,6 +464,7 @@ struct globals
     int ignore_negative_one;
     u_int maxsize_essid_seen;
     int show_manufacturer;
+    int show_ethers_name;
     int show_uptime;
 }
 G;
