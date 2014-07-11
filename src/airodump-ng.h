@@ -194,7 +194,7 @@ struct oui {
 };
 
 struct ethers_names {
-    unsigned char bssid[6];
+    unsigned char mac[6];
     char name[MAC_LEN]; /* Name for the MAC address or device. */
     struct ethers_names *next;
 };
