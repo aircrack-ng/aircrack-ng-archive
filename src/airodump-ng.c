@@ -461,21 +461,21 @@ struct oui * load_oui_file(void) {
 }
 
 int get_string_for_hex_bssid(char * bssid_string, size_t buflen, unsigned char * bssid) {
-	return (snprintf(
-			bssid_string, buflen,
-			"%02X:%02X:%02X:%02X:%02X:%02X",
-			bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]
-		) == 17) ? 1 : 0;
+    return (snprintf(
+            bssid_string, buflen,
+            "%02X:%02X:%02X:%02X:%02X:%02X",
+            bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]
+        ) == MAC_LEN - 1) ? 1 : 0;
 }
 
 void print_ethers_file(struct ethers_names * ether_ptr) {
-	char bssid_string[18];
+    char bssid_string[18];
 
     while (ether_ptr != NULL) {
-		get_string_for_hex_bssid(bssid_string, sizeof(bssid_string), ether_ptr->bssid);
-		printf("MAC: %s -> Name: %s\n", bssid_string, ether_ptr->name);
+        get_string_for_hex_bssid(bssid_string, sizeof(bssid_string), ether_ptr->bssid);
+        printf("MAC: %s -> Name: %s\n", bssid_string, ether_ptr->name);
 
-		ether_ptr = ether_ptr->next;
+        ether_ptr = ether_ptr->next;
     }
 }
 
@@ -492,20 +492,20 @@ char * find_name_for_bssid(unsigned char * bssid, struct ethers_names * ether_pt
 }
 
 void get_name_or_essid_string(char * bssid_string, size_t buflen, unsigned char * bssid, struct ethers_names * ether_head) {
-	char * name;
+    char * name;
 
-	name = find_name_for_bssid(bssid, ether_head);
-	if (name != NULL) {
-		memcpy( bssid_string, name, buflen);
-	} else {
-		get_string_for_hex_bssid(bssid_string, buflen, bssid);
-	}
+    name = find_name_for_bssid(bssid, ether_head);
+    if (name != NULL) {
+        memcpy( bssid_string, name, buflen);
+    } else {
+        get_string_for_hex_bssid(bssid_string, buflen, bssid);
+    }
 }
 
 unsigned char hex_to_char(char * hex_string) {
-	char *endptr;
+    char *endptr;
 
-	return (unsigned char)strtol(hex_string, &endptr, 16);
+    return (unsigned char)strtol(hex_string, &endptr, 16);
 }
 
 struct ethers_names * load_ethers_file(void) {
@@ -518,10 +518,10 @@ struct ethers_names * load_ethers_file(void) {
     char d[2];
     char e[2];
     char f[2];
-	unsigned char x;
-	char bssid_string[18];
+    unsigned char x;
+    char bssid_string[18];
     struct ethers_names *ether_ptr  = NULL,
-						*ether_head = NULL;
+                        *ether_head = NULL;
 
     if ( ( fp = fopen( G.s_ethers, "r" ) ) != NULL ) {
         while (fgets(line, sizeof(line), fp) != NULL) {
@@ -531,25 +531,25 @@ struct ethers_names * load_ethers_file(void) {
             line_pos = line;
 
             if (sscanf(line, "%2c:%2c:%2c:%2c:%2c:%2c", a, b, c, d, e, f) == 6) {
-				if (ether_ptr == NULL) {
-					if (!(ether_ptr = (struct ethers_names *)calloc(1, sizeof(struct ethers_names)))) {
-						fclose(fp);
-						perror("malloc failed");
-						return NULL;
-					}
-				} else if (ether_ptr->name[0] != '\0') {
-					if (!(ether_ptr->next = (struct ethers_names *)calloc(1, sizeof(struct ethers_names)))) {
-						fclose(fp);
-						perror("malloc failed");
-						return NULL;
-					}
-					ether_ptr = ether_ptr->next;
-				}
+                if (ether_ptr == NULL) {
+                    if (!(ether_ptr = (struct ethers_names *)calloc(1, sizeof(struct ethers_names)))) {
+                        fclose(fp);
+                        perror("malloc failed");
+                        return NULL;
+                    }
+                } else if (ether_ptr->name[0] != '\0') {
+                    if (!(ether_ptr->next = (struct ethers_names *)calloc(1, sizeof(struct ethers_names)))) {
+                        fclose(fp);
+                        perror("malloc failed");
+                        return NULL;
+                    }
+                    ether_ptr = ether_ptr->next;
+                }
                 if (ether_head == NULL) {
                     ether_head = ether_ptr;
-				}
+                }
 
-                line_pos += 17; // Jump to last character of BSSID
+                line_pos += MAC_LEN - 1; // Jump to last character of BSSID
                 while (*line_pos == '\t' || *line_pos == ' ') {
                     line_pos++;
                 }
@@ -557,31 +557,30 @@ struct ethers_names * load_ethers_file(void) {
                 if (line_pos == NULL)
                     continue;
 
-				x = hex_to_char(a); memcpy(&ether_ptr->bssid[0], &x, 1);
-				x = hex_to_char(b); memcpy(&ether_ptr->bssid[1], &x, 1);
-				x = hex_to_char(c); memcpy(&ether_ptr->bssid[2], &x, 1);
-				x = hex_to_char(d); memcpy(&ether_ptr->bssid[3], &x, 1);
-				x = hex_to_char(e); memcpy(&ether_ptr->bssid[4], &x, 1);
-				x = hex_to_char(f); memcpy(&ether_ptr->bssid[5], &x, 1);
+                x = hex_to_char(a); memcpy(&ether_ptr->bssid[0], &x, 1);
+                x = hex_to_char(b); memcpy(&ether_ptr->bssid[1], &x, 1);
+                x = hex_to_char(c); memcpy(&ether_ptr->bssid[2], &x, 1);
+                x = hex_to_char(d); memcpy(&ether_ptr->bssid[3], &x, 1);
+                x = hex_to_char(e); memcpy(&ether_ptr->bssid[4], &x, 1);
+                x = hex_to_char(f); memcpy(&ether_ptr->bssid[5], &x, 1);
 
-				if (find_name_for_bssid(ether_ptr->bssid, ether_head) != NULL
-						&& strlen(find_name_for_bssid(ether_ptr->bssid, ether_head)) > 0) {
+                if (find_name_for_bssid(ether_ptr->bssid, ether_head) != NULL
+                        && strlen(find_name_for_bssid(ether_ptr->bssid, ether_head)) > 0) {
 
-					get_string_for_hex_bssid(bssid_string, sizeof(bssid_string), ether_ptr->bssid);
+                    get_string_for_hex_bssid(bssid_string, sizeof(bssid_string), ether_ptr->bssid);
 
-					fprintf( stderr, "Found duplicate entry for the same BSSID: %s = %s (old name %s).\n",
-							bssid_string, line_pos, find_name_for_bssid(ether_ptr->bssid, ether_head)
-						   );
-						fclose(fp);
+                    fprintf( stderr, "Found duplicate entry for the same BSSID: %s = %s (old name %s).\n",
+                        bssid_string, line_pos, find_name_for_bssid(ether_ptr->bssid, ether_head)
+                    );
+                    fclose(fp);
                     exit(1);
-					return NULL;
-				}
+                    return NULL;
+                }
 
-				memcpy(ether_ptr->name, line_pos, sizeof(ether_ptr->name));
-
+                memcpy(ether_ptr->name, line_pos, sizeof(ether_ptr->name) - 1);
             }
         }
-		/* print_ethers_file(ether_head); */
+        /* print_ethers_file(ether_head); */
 
         fclose(fp);
     } else {
@@ -674,7 +673,7 @@ int check_shared_key(unsigned char *h80211, int caplen)
     if(textlen+4 != G.sk_len2)
     {
 		get_name_or_essid_string(bssid_string, sizeof(bssid_string), G.sharedkey[0], G.ethersList);
-        snprintf(G.message, sizeof(G.message), "][ Broken SKA: %-17s ", bssid_string);
+        snprintf(G.message, sizeof(G.message), "][ Broken SKA: %-*s ", MAC_LEN - 1, bssid_string);
         return 1;
     }
 
@@ -716,8 +715,8 @@ int check_shared_key(unsigned char *h80211, int caplen)
         G.f_xor = NULL;
     }
 
-	get_name_or_essid_string(bssid_string, sizeof(bssid_string), G.sharedkey[0], G.ethersList);
-    snprintf( ofn, sizeof( ofn ) - 1, "%s-%02d-%-17s.%s", G.prefix, G.f_index, bssid_string, "xor" );
+    get_name_or_essid_string(bssid_string, sizeof(bssid_string), G.sharedkey[0], G.ethersList);
+    snprintf( ofn, sizeof( ofn ) - 1, "%s-%02d-%-*s.%s", G.prefix, G.f_index, MAC_LEN - 1, bssid_string, "xor" );
 
     G.f_xor = fopen( ofn, "w");
     if(G.f_xor == NULL)
@@ -734,8 +733,8 @@ int check_shared_key(unsigned char *h80211, int caplen)
         G.f_xor = NULL;
     }
 
-	get_name_or_essid_string(bssid_string, sizeof(bssid_string), G.sharedkey[0], G.ethersList);
-    snprintf(G.message, sizeof(G.message), "][ %d bytes keystream: %-17s ", textlen+4, bssid_string);
+    get_name_or_essid_string(bssid_string, sizeof(bssid_string), G.sharedkey[0], G.ethersList);
+    snprintf(G.message, sizeof(G.message), "][ %d bytes keystream: %-*s ", textlen+4, MAC_LEN - 1, bssid_string);
 
     memset(G.sharedkey, '\x00', 512*3);
     /* ok, keystream saved */
@@ -2103,9 +2102,9 @@ skip_probe:
                 ap_cur->decloak_detect = 0;
                 list_tail_free(&(ap_cur->packets));
                 memset(G.message, '\x00', sizeof(G.message));
-				get_name_or_essid_string(bssid_string, sizeof(bssid_string), ap_cur->bssid, G.ethersList);
+                get_name_or_essid_string(bssid_string, sizeof(bssid_string), ap_cur->bssid, G.ethersList);
                     snprintf( G.message, sizeof( G.message ) - 1,
-                        "][ Decloak: %-17s ", bssid_string);
+                        "][ Decloak: %-*s ", MAC_LEN - 1, bssid_string);
             }
         }
 
@@ -2269,8 +2268,8 @@ skip_probe:
 
 					//If no EAP/EAP was detected, indicate WEP cloaking
                     memset(G.message, '\x00', sizeof(G.message));
-					get_name_or_essid_string(bssid_string, sizeof(bssid_string), ap_cur->bssid, G.ethersList);
-                    snprintf( G.message, sizeof( G.message ) - 1, "][ WEP Cloaking: %-17s ", bssid_string);
+                    get_name_or_essid_string(bssid_string, sizeof(bssid_string), ap_cur->bssid, G.ethersList);
+                    snprintf( G.message, sizeof( G.message ) - 1, "][ WEP Cloaking: %-*s ", MAC_LEN - 1, bssid_string);
 
 				}
 			}
@@ -2391,7 +2390,7 @@ skip_probe:
                 memcpy( G.wpa_bssid, ap_cur->bssid, 6 );
                 memset(G.message, '\x00', sizeof(G.message));
                 get_name_or_essid_string(bssid_string, sizeof(bssid_string), G.wpa_bssid, G.ethersList);
-                snprintf( G.message, sizeof( G.message ) - 1, "][ asdWPA handshake: %-17s ", bssid_string);
+                snprintf( G.message, sizeof( G.message ) - 1, "][ asdWPA handshake: %-*s ", MAC_LEN - 1, bssid_string);
 
 
                 if( G.f_ivs != NULL )
@@ -3287,8 +3286,8 @@ void dump_print( int ws_row, int ws_col, int if_num )
 
 	    memset(strbuf, '\0', sizeof(strbuf));
 
-		get_name_or_essid_string(bssid_string, sizeof(bssid_string), ap_cur->bssid, G.ethersList);
-	    snprintf( strbuf, sizeof(strbuf), " %-17s", bssid_string);
+        get_name_or_essid_string(bssid_string, sizeof(bssid_string), ap_cur->bssid, G.ethersList);
+	    snprintf( strbuf, sizeof(strbuf), " %-*s", MAC_LEN - 1, bssid_string);
 	    len = strlen(strbuf);
 
 	    if(G.singlechan)
@@ -3517,11 +3516,11 @@ void dump_print( int ws_row, int ws_col, int if_num )
 		    fprintf( stderr, " (not associated) " );
 		} else {
 			get_name_or_essid_string(bssid_string, sizeof(bssid_string), ap_cur->bssid, G.ethersList);
-		    fprintf( stderr, " %-17s", bssid_string);
+		    fprintf( stderr, " %-*s", MAC_LEN - 1, bssid_string);
 		}
 
 		get_name_or_essid_string(bssid_string, sizeof(bssid_string), st_cur->stmac, G.ethersList);
-		fprintf( stderr, " %-17s", bssid_string);
+		fprintf( stderr, " %-*s", MAC_LEN - 1, bssid_string);
 
 		fprintf( stderr, "  %3d ", st_cur->power    );
 		fprintf( stderr, "  %2d", st_cur->rate_to/1000000  );
@@ -3611,7 +3610,7 @@ void dump_print( int ws_row, int ws_col, int if_num )
                 return;
 
 			get_name_or_essid_string(bssid_string, sizeof(bssid_string), na_cur->namac, G.ethersList);
-			fprintf( stderr, " %-17s", bssid_string);
+			fprintf( stderr, " %-*s", MAC_LEN - 1, bssid_string);
 
             fprintf( stderr, "  %3d", na_cur->channel  );
             fprintf( stderr, " %3d", na_cur->power  );
@@ -6465,7 +6464,7 @@ usage:
     if (get_ram_size()  > MIN_RAM_SIZE_LOAD_OUI_RAM) {
         G.manufList  = load_oui_file();
         G.ethersList = load_ethers_file();
-	}
+    }
 
     /* start the GPS tracker */
 

@@ -148,8 +148,8 @@ static uchar ZERO[32] =
 #define OUI_PATH3 "/usr/share/misc/oui.txt"
 #define MIN_RAM_SIZE_LOAD_OUI_RAM 32768
 
-#define MAC_LEN 17
-/* only for the name or description of a MAC address */
+#define MAC_LEN 18
+// MAC address in hex colon representation and the additional \0.
 
 int read_pkts=0;
 
