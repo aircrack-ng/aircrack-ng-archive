@@ -57,7 +57,7 @@ Active Scanning Simulation (send probe requests and parse the probe responses).
 Display a manufacturer column with the information obtained from the IEEE OUI list. See airodump-ng-oui-update(8)
 .TP
 .I -n, --ethers
-Map ESSIDs to names using the given ethers file. See ethers(5) for the file format.
+Map ESSIDs to names using the given ethers file. See ethers(5) for the file format. Note that the only the first 17 characters of the name are shown (which is the size of a MAC address).
 .TP
 .I -U, --uptime
 Display APs uptime obtained from its beacon timestamp.

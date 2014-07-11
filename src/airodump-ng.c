@@ -491,7 +491,7 @@ char * find_name_for_bssid(unsigned char * bssid, struct ethers_names * ether_pt
     return NULL;
 }
 
-void get_name_or_essid(char * bssid_string, size_t buflen, unsigned char * bssid, struct ethers_names * ether_head) {
+void get_name_or_essid_string(char * bssid_string, size_t buflen, unsigned char * bssid, struct ethers_names * ether_head) {
 	char * name;
 
 	name = find_name_for_bssid(bssid, ether_head);
@@ -572,6 +572,8 @@ struct ethers_names * load_ethers_file(void) {
 					fprintf( stderr, "Found duplicate entry for the same BSSID: %s = %s (old name %s).\n",
 							bssid_string, line_pos, find_name_for_bssid(ether_ptr->bssid, ether_head)
 						   );
+						fclose(fp);
+                    exit(1);
 					return NULL;
 				}
 
@@ -579,7 +581,7 @@ struct ethers_names * load_ethers_file(void) {
 
             }
         }
-		print_ethers_file(ether_head);
+		/* print_ethers_file(ether_head); */
 
         fclose(fp);
     } else {
@@ -596,6 +598,7 @@ int check_shared_key(unsigned char *h80211, int caplen)
     char ofn[1024];
     char text[4096];
     char prga[4096];
+	char bssid_string[18];
     unsigned int long crc;
 
     if((unsigned)caplen > sizeof(G.sharedkey[0])) return 1;
@@ -670,9 +673,8 @@ int check_shared_key(unsigned char *h80211, int caplen)
 
     if(textlen+4 != G.sk_len2)
     {
-        snprintf(G.message, sizeof(G.message), "][ Broken SKA: %02X:%02X:%02X:%02X:%02X:%02X ",
-                    *(G.sharedkey[0]+m_bmac), *(G.sharedkey[0]+m_bmac+1), *(G.sharedkey[0]+m_bmac+2),
-                *(G.sharedkey[0]+m_bmac+3), *(G.sharedkey[0]+m_bmac+4), *(G.sharedkey[0]+m_bmac+5));
+		get_name_or_essid_string(bssid_string, sizeof(bssid_string), G.sharedkey[0], G.ethersList);
+        snprintf(G.message, sizeof(G.message), "][ Broken SKA: %-17s ", bssid_string);
         return 1;
     }
 
@@ -714,9 +716,8 @@ int check_shared_key(unsigned char *h80211, int caplen)
         G.f_xor = NULL;
     }
 
-    snprintf( ofn, sizeof( ofn ) - 1, "%s-%02d-%02X-%02X-%02X-%02X-%02X-%02X.%s", G.prefix, G.f_index,
-              *(G.sharedkey[0]+m_bmac), *(G.sharedkey[0]+m_bmac+1), *(G.sharedkey[0]+m_bmac+2),
-              *(G.sharedkey[0]+m_bmac+3), *(G.sharedkey[0]+m_bmac+4), *(G.sharedkey[0]+m_bmac+5), "xor" );
+	get_name_or_essid_string(bssid_string, sizeof(bssid_string), G.sharedkey[0], G.ethersList);
+    snprintf( ofn, sizeof( ofn ) - 1, "%s-%02d-%-17s.%s", G.prefix, G.f_index, bssid_string, "xor" );
 
     G.f_xor = fopen( ofn, "w");
     if(G.f_xor == NULL)
@@ -733,9 +734,8 @@ int check_shared_key(unsigned char *h80211, int caplen)
         G.f_xor = NULL;
     }
 
-    snprintf(G.message, sizeof(G.message), "][ %d bytes keystream: %02X:%02X:%02X:%02X:%02X:%02X ",
-                textlen+4, *(G.sharedkey[0]+m_bmac), *(G.sharedkey[0]+m_bmac+1), *(G.sharedkey[0]+m_bmac+2),
-              *(G.sharedkey[0]+m_bmac+3), *(G.sharedkey[0]+m_bmac+4), *(G.sharedkey[0]+m_bmac+5));
+	get_name_or_essid_string(bssid_string, sizeof(bssid_string), G.sharedkey[0], G.ethersList);
+    snprintf(G.message, sizeof(G.message), "][ %d bytes keystream: %-17s ", textlen+4, bssid_string);
 
     memset(G.sharedkey, '\x00', 512*3);
     /* ok, keystream saved */
@@ -1326,6 +1326,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
     unsigned char clear[2048];
     int weight[16];
     int num_xor=0;
+	char bssid_string[18];
 
     struct AP_info *ap_cur = NULL;
     struct ST_info *st_cur = NULL;
@@ -2102,10 +2103,9 @@ skip_probe:
                 ap_cur->decloak_detect = 0;
                 list_tail_free(&(ap_cur->packets));
                 memset(G.message, '\x00', sizeof(G.message));
+				get_name_or_essid_string(bssid_string, sizeof(bssid_string), ap_cur->bssid, G.ethersList);
                     snprintf( G.message, sizeof( G.message ) - 1,
-                        "][ Decloak: %02X:%02X:%02X:%02X:%02X:%02X ",
-                        ap_cur->bssid[0], ap_cur->bssid[1], ap_cur->bssid[2],
-                        ap_cur->bssid[3], ap_cur->bssid[4], ap_cur->bssid[5]);
+                        "][ Decloak: %-17s ", bssid_string);
             }
         }
 
@@ -2269,10 +2269,8 @@ skip_probe:
 
 					//If no EAP/EAP was detected, indicate WEP cloaking
                     memset(G.message, '\x00', sizeof(G.message));
-                    snprintf( G.message, sizeof( G.message ) - 1,
-                        "][ WEP Cloaking: %02X:%02X:%02X:%02X:%02X:%02X ",
-                        ap_cur->bssid[0], ap_cur->bssid[1], ap_cur->bssid[2],
-                        ap_cur->bssid[3], ap_cur->bssid[4], ap_cur->bssid[5]);
+					get_name_or_essid_string(bssid_string, sizeof(bssid_string), ap_cur->bssid, G.ethersList);
+                    snprintf( G.message, sizeof( G.message ) - 1, "][ WEP Cloaking: %-17s ", bssid_string);
 
 				}
 			}
@@ -2392,10 +2390,8 @@ skip_probe:
                 memcpy( st_cur->wpa.stmac, st_cur->stmac, 6 );
                 memcpy( G.wpa_bssid, ap_cur->bssid, 6 );
                 memset(G.message, '\x00', sizeof(G.message));
-                snprintf( G.message, sizeof( G.message ) - 1,
-                    "][ WPA handshake: %02X:%02X:%02X:%02X:%02X:%02X ",
-                    G.wpa_bssid[0], G.wpa_bssid[1], G.wpa_bssid[2],
-                    G.wpa_bssid[3], G.wpa_bssid[4], G.wpa_bssid[5]);
+                get_name_or_essid_string(bssid_string, sizeof(bssid_string), G.wpa_bssid, G.ethersList);
+                snprintf( G.message, sizeof( G.message ) - 1, "][ asdWPA handshake: %-17s ", bssid_string);
 
 
                 if( G.f_ivs != NULL )
@@ -3291,11 +3287,8 @@ void dump_print( int ws_row, int ws_col, int if_num )
 
 	    memset(strbuf, '\0', sizeof(strbuf));
 
-		get_name_or_essid(bssid_string, sizeof(bssid_string), ap_cur->bssid, G.ethersList);
-	    snprintf( strbuf, sizeof(strbuf), " %s",
-			bssid_string
-			);
-
+		get_name_or_essid_string(bssid_string, sizeof(bssid_string), ap_cur->bssid, G.ethersList);
+	    snprintf( strbuf, sizeof(strbuf), " %-17s", bssid_string);
 	    len = strlen(strbuf);
 
 	    if(G.singlechan)
@@ -3520,18 +3513,15 @@ void dump_print( int ws_row, int ws_col, int if_num )
 		if( ws_row != 0 && nlines >= ws_row )
 		    return;
 
-		if( ! memcmp( ap_cur->bssid, BROADCAST, 6 ) )
+		if( ! memcmp( ap_cur->bssid, BROADCAST, 6 ) ) {
 		    fprintf( stderr, " (not associated) " );
-		else
-		    fprintf( stderr, " %02X:%02X:%02X:%02X:%02X:%02X",
-			    ap_cur->bssid[0], ap_cur->bssid[1],
-			    ap_cur->bssid[2], ap_cur->bssid[3],
-			    ap_cur->bssid[4], ap_cur->bssid[5] );
+		} else {
+			get_name_or_essid_string(bssid_string, sizeof(bssid_string), ap_cur->bssid, G.ethersList);
+		    fprintf( stderr, " %-17s", bssid_string);
+		}
 
-		fprintf( stderr, "  %02X:%02X:%02X:%02X:%02X:%02X",
-			st_cur->stmac[0], st_cur->stmac[1],
-			st_cur->stmac[2], st_cur->stmac[3],
-			st_cur->stmac[4], st_cur->stmac[5] );
+		get_name_or_essid_string(bssid_string, sizeof(bssid_string), st_cur->stmac, G.ethersList);
+		fprintf( stderr, " %-17s", bssid_string);
 
 		fprintf( stderr, "  %3d ", st_cur->power    );
 		fprintf( stderr, "  %2d", st_cur->rate_to/1000000  );
@@ -3620,10 +3610,8 @@ void dump_print( int ws_row, int ws_col, int if_num )
             if( ws_row != 0 && nlines >= ws_row )
                 return;
 
-            fprintf( stderr, " %02X:%02X:%02X:%02X:%02X:%02X",
-                    na_cur->namac[0], na_cur->namac[1],
-                    na_cur->namac[2], na_cur->namac[3],
-                    na_cur->namac[4], na_cur->namac[5] );
+			get_name_or_essid_string(bssid_string, sizeof(bssid_string), na_cur->namac, G.ethersList);
+			fprintf( stderr, " %-17s", bssid_string);
 
             fprintf( stderr, "  %3d", na_cur->channel  );
             fprintf( stderr, " %3d", na_cur->power  );
