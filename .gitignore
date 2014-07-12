@@ -5,3 +5,5 @@ src/kstats
 src/wpaclean
 src/osdep/.os.Linux
 src/osdep/libosdep.a
+
+*.o
