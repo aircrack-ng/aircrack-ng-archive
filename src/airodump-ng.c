@@ -647,6 +647,7 @@ char usage[] =
 "      --encrypt   <suite>   : Filter APs by cipher suite\n"
 "      --netmask <netmask>   : Filter APs by mask\n"
 "      --bssid     <bssid>   : Filter APs by BSSID\n"
+"      --skipbssid <bssid>   : Skip APs by BSSID\n"
 "      --essid     <essid>   : Filter APs by ESSID\n"
 #ifdef HAVE_PCRE
 "      --essid-regex <regex> : Filter APs by ESSID using a regular\n"
@@ -1236,6 +1237,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
         case  3: memcpy( bssid, h80211 + 10, 6 ); break;  //WDS -> Transmitter taken as BSSID
     }
 
+	/* filter by BSSID */
     if( memcmp(G.f_bssid, NULL_MAC, 6) != 0 )
     {
         if( memcmp(G.f_netmask, NULL_MAC, 6) != 0 )
@@ -1247,6 +1249,12 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
             if( memcmp(G.f_bssid, bssid, 6) != 0 ) return(1);
         }
     }
+
+	/* filter by skipped BSSID */
+	if (memcmp(G.f_skipbssid, NULL_MAC, 6) != 0)
+	{
+		if (memcmp(G.f_skipbssid, bssid, 6) == 0) return(1);
+	}
 
     /* update our chained list of access points */
 
@@ -5544,7 +5552,8 @@ int main( int argc, char *argv[] )
         {"cswitch",  1, 0, 's'},
         {"netmask",  1, 0, 'm'},
         {"bssid",    1, 0, 'd'},
-        {"essid",    1, 0, 'N'},
+		{"skipbssid", 1, 0, 'X' },
+		{"essid",    1, 0, 'N' },
         {"essid-regex", 1, 0, 'R'},
         {"channel",  1, 0, 'c'},
         {"gpsd",     0, 0, 'g'},
@@ -5675,6 +5684,7 @@ int main( int argc, char *argv[] )
     }
 
     memset(G.f_bssid, '\x00', 6);
+	memset(G.f_skipbssid, '\x00', 6);
     memset(G.f_netmask, '\x00', 6);
     memset(G.wpa_bssid, '\x00', 6);
 
@@ -5989,6 +5999,22 @@ int main( int argc, char *argv[] )
                     return( 1 );
                 }
                 break;
+
+			case 'X':
+
+				if (memcmp(G.f_skipbssid, NULL_MAC, 6) != 0)
+				{
+					printf("Notice: skipped bssid already given\n");
+					break;
+				}
+				if (getmac(optarg, 1, G.f_skipbssid) != 0)
+				{
+					printf("Notice: invalid skipped bssid\n");
+					printf("\"%s --help\" for help.\n", argv[0]);
+
+					return(1);
+				}
+				break;
 
             case 'N':
 
