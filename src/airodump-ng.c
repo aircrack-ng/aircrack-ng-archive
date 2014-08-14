@@ -647,7 +647,7 @@ char usage[] =
 "      --encrypt   <suite>   : Filter APs by cipher suite\n"
 "      --netmask <netmask>   : Filter APs by mask\n"
 "      --bssid     <bssid>   : Filter APs by BSSID\n"
-"      --skipbssid <bssid>   : Skip APs by BSSID\n"
+"      --skipbssid <bssid>   : Skip APs by BSSID (short option: -X)\n"
 "      --essid     <essid>   : Filter APs by ESSID\n"
 #ifdef HAVE_PCRE
 "      --essid-regex <regex> : Filter APs by ESSID using a regular\n"
@@ -719,23 +719,23 @@ int is_filtered_essid(unsigned char *essid)
 
 int is_skipped_bssid(unsigned char *bssid)
 {
-	int ret = 0;
-	int i;
+    int ret = 0;
+    int i;
 
-	if (G.f_skipbssid)
-	{
-		for (i = 0; i<G.f_skipbssid_count; i++)
-		{
-			if (memcmp(bssid, (unsigned char *)(G.f_skipbssid + i * 6), 6) == 0)
-			{
-				return 1;
-			}
-		}
+    if (G.f_skipbssid)
+    {
+        for (i = 0; i<G.f_skipbssid_count; i++)
+        {
+            if (memcmp(bssid, (unsigned char *)(G.f_skipbssid + i * 6), 6) == 0)
+            {
+                return 1;
+            }
+        }
 
-		ret = 0;
-	}
+        ret = 0;
+    }
 
-	return ret;
+    return ret;
 }
 
 void update_rx_quality( )
@@ -1258,7 +1258,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
         case  3: memcpy( bssid, h80211 + 10, 6 ); break;  //WDS -> Transmitter taken as BSSID
     }
 
-	/* filter by BSSID */
+    /* filter by BSSID */
     if( memcmp(G.f_bssid, NULL_MAC, 6) != 0 )
     {
         if( memcmp(G.f_netmask, NULL_MAC, 6) != 0 )
@@ -1271,11 +1271,11 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
         }
     }
 
-	/* filter by skipped BSSID */
-	if (is_skipped_bssid(bssid))
-	{
-		return(1);
-	}
+    /* filter by skipped BSSID */
+    if (is_skipped_bssid(bssid))
+    {
+        return(1);
+    }
 
     /* update our chained list of access points */
 
@@ -5573,8 +5573,8 @@ int main( int argc, char *argv[] )
         {"cswitch",  1, 0, 's'},
         {"netmask",  1, 0, 'm'},
         {"bssid",    1, 0, 'd'},
-		{"skipbssid", 1, 0, 'X' },
-		{"essid",    1, 0, 'N' },
+        {"skipbssid", 1, 0, 'X' },
+        {"essid",    1, 0, 'N' },
         {"essid-regex", 1, 0, 'R'},
         {"channel",  1, 0, 'c'},
         {"gpsd",     0, 0, 'g'},
@@ -6025,22 +6025,22 @@ int main( int argc, char *argv[] )
                 }
                 break;
 
-			case 'X':
+            case 'X':
 
-				if (getmac(optarg, 1, bssid) != 0)
-				{
-					printf("Notice: invalid skipped bssid\n");
-					printf("\"%s --help\" for help.\n", argv[0]);
+                if (getmac(optarg, 1, bssid) != 0)
+                {
+                    printf("Notice: invalid skipped bssid\n");
+                    printf("\"%s --help\" for help.\n", argv[0]);
 
-					return(1);
-				}
+                    return(1);
+                }
 
-				G.f_skipbssid_count++;
-				G.f_skipbssid = (unsigned char*)realloc(G.f_skipbssid, G.f_skipbssid_count * 6);
-				for (i = 0; i < 6; i++)
-					G.f_skipbssid[(G.f_skipbssid_count - 1) * 6 + i] = bssid[i];
+                G.f_skipbssid_count++;
+                G.f_skipbssid = (unsigned char*)realloc(G.f_skipbssid, G.f_skipbssid_count * 6);
+                for (i = 0; i < 6; i++)
+                    G.f_skipbssid[(G.f_skipbssid_count - 1) * 6 + i] = bssid[i];
 
-				break;
+                break;
 
             case 'N':
 
