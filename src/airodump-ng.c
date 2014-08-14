@@ -717,6 +717,27 @@ int is_filtered_essid(unsigned char *essid)
     return ret;
 }
 
+int is_skipped_bssid(unsigned char *bssid)
+{
+	int ret = 0;
+	int i;
+
+	if (G.f_skipbssid)
+	{
+		for (i = 0; i<G.f_skipbssid_count; i++)
+		{
+			if (memcmp(bssid, (unsigned char *)(G.f_skipbssid + i * 6), 6) == 0)
+			{
+				return 1;
+			}
+		}
+
+		ret = 0;
+	}
+
+	return ret;
+}
+
 void update_rx_quality( )
 {
     unsigned int time_diff, capt_time, miss_time;
@@ -1251,9 +1272,9 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
     }
 
 	/* filter by skipped BSSID */
-	if (memcmp(G.f_skipbssid, NULL_MAC, 6) != 0)
+	if (is_skipped_bssid(bssid))
 	{
-		if (memcmp(G.f_skipbssid, bssid, 6) == 0) return(1);
+		return(1);
 	}
 
     /* update our chained list of access points */
@@ -5627,7 +5648,9 @@ int main( int argc, char *argv[] )
     G.asso_client  =  0;
     G.f_essid      =  NULL;
     G.f_essid_count = 0;
-    G.active_scan_sim  =  0;
+	G.f_skipbssid  = NULL;
+	G.f_skipbssid_count = 0;
+	G.active_scan_sim = 0;
     G.update_s     =  0;
     G.decloak      =  1;
     G.is_berlin    =  0;
@@ -5684,7 +5707,6 @@ int main( int argc, char *argv[] )
     }
 
     memset(G.f_bssid, '\x00', 6);
-	memset(G.f_skipbssid, '\x00', 6);
     memset(G.f_netmask, '\x00', 6);
     memset(G.wpa_bssid, '\x00', 6);
 
@@ -5736,10 +5758,13 @@ int main( int argc, char *argv[] )
         option_index = 0;
 
         option = getopt_long( argc, argv,
-                        "b:c:egiw:s:t:u:m:d:N:R:aHDB:Ahf:r:EC:o:x:MU",
+                        "b:c:egiw:s:t:u:m:d:X:N:R:aHDB:Ahf:r:EC:o:x:MU",
                         long_options, &option_index );
 
         if( option < 0 ) break;
+
+		unsigned char bssid[6];
+		int i;
 
         switch( option )
         {
@@ -6002,18 +6027,19 @@ int main( int argc, char *argv[] )
 
 			case 'X':
 
-				if (memcmp(G.f_skipbssid, NULL_MAC, 6) != 0)
-				{
-					printf("Notice: skipped bssid already given\n");
-					break;
-				}
-				if (getmac(optarg, 1, G.f_skipbssid) != 0)
+				if (getmac(optarg, 1, bssid) != 0)
 				{
 					printf("Notice: invalid skipped bssid\n");
 					printf("\"%s --help\" for help.\n", argv[0]);
 
 					return(1);
 				}
+
+				G.f_skipbssid_count++;
+				G.f_skipbssid = (unsigned char*)realloc(G.f_skipbssid, G.f_skipbssid_count * 6);
+				for (i = 0; i < 6; i++)
+					G.f_skipbssid[(G.f_skipbssid_count - 1) * 6 + i] = bssid[i];
+
 				break;
 
             case 'N':
