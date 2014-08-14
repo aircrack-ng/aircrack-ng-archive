@@ -5648,9 +5648,9 @@ int main( int argc, char *argv[] )
     G.asso_client  =  0;
     G.f_essid      =  NULL;
     G.f_essid_count = 0;
-	G.f_skipbssid  = NULL;
-	G.f_skipbssid_count = 0;
-	G.active_scan_sim = 0;
+    G.f_skipbssid  = NULL;
+    G.f_skipbssid_count = 0;
+    G.active_scan_sim = 0;
     G.update_s     =  0;
     G.decloak      =  1;
     G.is_berlin    =  0;
@@ -5763,8 +5763,8 @@ int main( int argc, char *argv[] )
 
         if( option < 0 ) break;
 
-		unsigned char bssid[6];
-		int i;
+        unsigned char bssid[6];
+        int i;
 
         switch( option )
         {
