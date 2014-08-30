@@ -259,6 +259,8 @@ struct AP_info
 					  
     int marked;
     int marked_color;
+
+    int wps_supported;         /* wps is supported? */
 };
 
 /* linked list of detected clients */
@@ -406,6 +408,7 @@ struct globals
     int show_ap;
     int show_sta;
     int show_ack;
+    int show_wps;
     int hide_known;
 
     int hopfreq;
