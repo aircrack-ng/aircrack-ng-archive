@@ -250,7 +250,7 @@ static int darwin_get_channel(struct wif *wi)
   char buf[32];
   FILE *fp = NULL;
 
-  fp = popen("/System/Library/PrivateFrameworks/Apple80211.framework/Resources/airport -c", "r");
+  fp = popen("/System/Library/PrivateFrameworks/Apple80211.framework/Resources/airport -zc", "r");
 
   if (fread(buf, sizeof(char), sizeof(buf), fp) <= 9)
     return -1;
@@ -572,20 +572,33 @@ static struct wif *darwin_open(char *iface)
 
 struct wif *wi_open_osdep(char *iface)
 {
-  prinrf("wi_open_osdep\n");
   return darwin_open(iface);
 }
 
 
 int get_battery_state(void)
 {
-  pid_t pid = fork();
-  if (!pid) {
-    char* argv[] = {"pmset", "-g", "batt", NULL};
-    execve("pmset", argv, NULL);
-  }
-  int status;
-  waitpid(pid,&status,0);
+  char buf[128];
+  int hours = 0, minutes = 0;
+  FILE *fp = NULL;
+
+  fp = popen("pmset -g batt", "r");
+  if (fread(buf, sizeof(char), sizeof(buf), fp) <= 30)
+      return 0;
+  pclose(fp);
+  fp = NULL;
+
+  if (strstr(buf, "'AC Power'") || strstr(buf, "estimate"))
+    return 0;
+
+  // buf[strlen(buf) - 1] = '\0';
+  char *ptr = buf;
+  strsep(&ptr, ";");
+  strsep(&ptr, ";");
+  hours = atoi(strsep(&ptr, ":"));
+  minutes = atoi(strsep(&ptr, " "));
+
+  return hours * 3600 + minutes * 60;
 
 	// errno = EOPNOTSUPP;
 	// return -1;
