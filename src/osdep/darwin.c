@@ -1,6 +1,7 @@
  /*
   *  Copyright (c) 2009, Kyle Fuller <inbox@kylefuller.co.uk>, based upon 
   *  freebsd.c by Andrea Bittau <a.bittau@cs.ucl.ac.uk>
+  *  2014, Douniwan5788 <douniwan5788@gmail.com>
   *
   *  OS dependent API for Darwin.
   *
@@ -19,23 +20,25 @@
   *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
   */
 #include <sys/types.h>
+// #include <sys/endian.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/sysctl.h>
 #include <net/bpf.h>
 #include <sys/socket.h>
 #include <net/if.h>
 #include <net/if_media.h>
-   #define IFM_IEEE80211_HOSTAP    0x00000200      /* Operate in Host AP mode */
-   #define IFM_IEEE80211_IBSS      0x00000400      /* Operate in IBSS mode */
-   #define IFM_IEEE80211_WDS       0x00000800      /* Operate in WDS mode */
-   #define IFM_IEEE80211_TURBO     0x00001000      /* Operate in turbo mode */
-   #define IFM_IEEE80211_MONITOR   0x00002000      /* Operate in monitor mode */
-   #define IFM_IEEE80211_MBSS      0x00004000      /* Operate in MBSS mode */
+     // #define IFM_IEEE80211_MONITOR   0x00002000      /* Operate in monitor mode */
 #include <sys/ioctl.h>
 #include <net/if_dl.h>
+#include "ieee802_11_radio.h"
+#define IEEE80211_CRC_LEN               4
+// #include <net80211/ieee80211.h>
+// #include <net80211/ieee80211_crypto.h>
 // #include <net80211/ieee80211_ioctl.h>
+// #include <net80211/ieee80211_radiotap.h>
+// #include <net80211/ieee80211_proto.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -44,11 +47,22 @@
 #include <assert.h>
 #include <ifaddrs.h>
 
-#include "ieee802_11_radio.h"
-#include "ieee802_11.h"
-#define IEEE80211_CRC_LEN               4
-
 #include "osdep.h"
+
+#ifndef IEEE80211_RADIOTAP_F_FCS
+#define IEEE80211_RADIOTAP_F_FCS  0x10  /* Frame includes FCS */
+#endif
+
+#ifndef IEEE80211_IOC_CHANNEL
+#define IEEE80211_IOC_CHANNEL 0
+#endif
+
+#ifndef le32toh
+#define le32toh(x)  htole32(x)
+#endif
+
+#define DEFAULT_BUFSIZE 524288
+
 
 struct priv_darwin {
   /* iface */
@@ -61,12 +75,11 @@ struct priv_darwin {
   unsigned char     pd_buf[4096];
   unsigned char     *pd_next;
   int       pd_totlen;
-        // struct ieee80211_bpf_params pf_txparams;
 
   /* setchan */
   int       pd_s;
   struct ifreq      pd_ifr;
-  // struct ieee80211req   pf_ireq;
+  // struct ieee80211chanreq   pd_ireq;
         int                             pd_chan;
 };
 
@@ -250,7 +263,7 @@ static int darwin_get_channel(struct wif *wi)
   char buf[32];
   FILE *fp = NULL;
 
-  fp = popen("/System/Library/PrivateFrameworks/Apple80211.framework/Resources/airport -zc", "r");
+  fp = popen("/System/Library/PrivateFrameworks/Apple80211.framework/Resources/airport -c", "r");
 
   if (fread(buf, sizeof(char), sizeof(buf), fp) <= 9)
     return -1;
@@ -259,6 +272,28 @@ static int darwin_get_channel(struct wif *wi)
   pclose(fp);
   fp = NULL;
   return pd->pd_chan;
+}
+
+static int darwin_set_channel(struct wif *wi, int chan)
+{
+  // There is an API to change the channel since OS X 10.7,Unfortunately I don't want to use it.
+  pid_t pid = fork();
+  if (!pid) {
+    char chan_arg[32];
+    sprintf(chan_arg, "-zc%d", chan);
+    char* argv[] = {"/System/Library/PrivateFrameworks/Apple80211.framework/Resources/airport", chan_arg, NULL};
+    execve("/System/Library/PrivateFrameworks/Apple80211.framework/Resources/airport", argv, NULL);
+  }
+  int status;
+  waitpid(pid,&status,0);
+
+  struct priv_darwin *pd = wi_priv(wi);
+
+  if( status != 0 /*|| darwin_get_channel(wi) != chan*/)
+    return -1;
+
+  pd->pd_chan = chan;
+  return 0;
 }
 
 static int darwin_read(struct wif *wi, unsigned char *h80211, int len,
@@ -271,7 +306,7 @@ static int darwin_read(struct wif *wi, unsigned char *h80211, int len,
   assert(len > 0);
 
   /* need to read more */
-  if (pd->pd_totlen == 0) {
+  while (pd->pd_totlen == 0) {
     pd->pd_totlen = read(pd->pd_fd, pd->pd_buf, sizeof(pd->pd_buf));
     if (pd->pd_totlen == -1) {
       pd->pd_totlen = 0;
@@ -293,41 +328,91 @@ static int darwin_read(struct wif *wi, unsigned char *h80211, int len,
   return plen;
 }
 
+const void *build_radio_tap_header(size_t *len)
+{
+  struct ieee80211_radiotap_header *rt_header = NULL;
+  const void *buf = NULL;
+
+  buf = malloc(sizeof(struct ieee80211_radiotap_header));
+  if(buf)
+  {
+    memset((void *) buf, 0, sizeof(struct ieee80211_radiotap_header));
+    rt_header = (struct ieee80211_radiotap_header *) buf;
+
+    rt_header->it_len = sizeof(struct ieee80211_radiotap_header);
+  
+    *len = rt_header->it_len;
+  }
+  
+  return buf;
+}
+
 static int darwin_write(struct wif *wi, unsigned char *h80211, int len,
           struct tx_info *ti)
 {
   struct priv_darwin *pd = wi_priv(wi);
   int rc;
+  const void *radio_tap = NULL, *packet = NULL;
+  size_t radio_tap_len = 0, packet_len = 0;
+  
+  radio_tap = build_radio_tap_header(&radio_tap_len);
+  packet_len = radio_tap_len + len;
 
   /* XXX make use of ti */
   if (ti) {}
 
-  rc = write(pd->pd_fd, h80211, len);
+  packet = malloc(packet_len);
+  memset((void *) packet, 0, packet_len);
+  memcpy((void *) packet, radio_tap, radio_tap_len);
+  memcpy((void *) packet+radio_tap_len, h80211, len);
+
+  rc = write(pd->pd_fd, packet, packet_len);
+#if 0
+//__APPLE__    // this bug is fixed at least in 10.9.5
+  if (rc == -1 && errno == EAFNOSUPPORT) {
+    /*
+     * In Mac OS X, there's a bug wherein setting the
+     * BIOCSHDRCMPLT flag causes writes to fail; see,
+     * for example:
+     *
+     *  http://cerberus.sourcefire.com/~jeff/archives/patches/macosx/BIOCSHDRCMPLT-10.3.3.patch
+     *
+     * So, if, on OS X, we get EAFNOSUPPORT from the write, we
+     * assume it's due to that bug, and turn off that flag
+     * and try again.  If we succeed, it either means that
+     * somebody applied the fix from that URL, or other patches
+     * for that bug from
+     *
+     *  http://cerberus.sourcefire.com/~jeff/archives/patches/macosx/
+     *
+     * and are running a Darwin kernel with those fixes, or
+     * that Apple fixed the problem in some OS X release.
+     */
+    u_int spoof_eth_src = 0;
+
+    if (ioctl(pd->pd_fd, BIOCSHDRCMPLT, &spoof_eth_src) == -1) {
+      // (void)snprintf(p->errbuf, PCAP_ERRBUF_SIZE,
+      //     "send: can't turn off BIOCSHDRCMPLT: %s",
+      //     pcap_strerror(errno));
+        perror( "BIOCSHDRCMPLT:" );
+
+      // return (PCAP_ERROR);
+      if(radio_tap) free((void *) radio_tap);
+      free((void *) packet);
+      return -1;
+    }
+    perror("here");
+    /*
+     * Now try the write again.
+     */
+    rc = write(pd->pd_fd, packet, packet_len);
+  }
+  if(radio_tap) free((void *) radio_tap);
+  free((void *) packet);
+#endif /* __APPLE__ */
   if (rc == -1)
     return rc;
 
-  return 0;
-}
-
-static int darwin_set_channel(struct wif *wi, int chan)
-{
-  // There is an API to change the channel since OS X 10.7,Unfortunately I don't want to use it.
-  pid_t pid = fork();
-  if (!pid) {
-    char chan_arg[32];
-    sprintf(chan_arg, "-c%d", chan);
-    char* argv[] = {"/System/Library/PrivateFrameworks/Apple80211.framework/Resources/airport", chan_arg, NULL};
-    execve("/System/Library/PrivateFrameworks/Apple80211.framework/Resources/airport", argv, NULL);
-  }
-  int status;
-  waitpid(pid,&status,0);
-
-  struct priv_darwin *pd = wi_priv(wi);
-
-  if( status != 0 /*|| darwin_get_channel(wi) != chan*/)
-    return -1;
-
-  pd->pd_chan = chan;
   return 0;
 }
 
@@ -357,69 +442,70 @@ static int do_darwin_open(struct wif *wi, char *iface)
         unsigned int dlt = DLT_IEEE802_11_RADIO;
         int s;
         unsigned int flags;
-        struct ifmediareq ifmr;
-        int *mwords;
+        // struct ifmediareq ifmr;
+        // int *mwords;
   struct priv_darwin *pd = wi_priv(wi);
+  unsigned int size=sizeof(pd->pd_buf);
+  u_int v;
 
   /* basic sanity check */
   if (strlen(iface) >= sizeof(ifr.ifr_name))
     return -1;
 
         /* open wifi */
-        s = socket(PF_INET, SOCK_DGRAM, 0);
+        s = socket(AF_INET, SOCK_DGRAM, 0);
         if (s == -1)
     return -1;
   pd->pd_s = s;
 
         /* set iface up and promisc */
         memset(&ifr, 0, sizeof(ifr));
-        strcpy(ifr.ifr_name, iface);
+        strncpy(ifr.ifr_name, iface, IFNAMSIZ);
         if (ioctl(s, SIOCGIFFLAGS, &ifr) == -1)
     goto close_sock;
 
-        flags = (ifr.ifr_flags & 0xffff);
+        flags = ifr.ifr_flags;
         flags |= IFF_UP | IFF_PROMISC;
         memset(&ifr, 0, sizeof(ifr));
-        strcpy(ifr.ifr_name, iface);
+        strncpy(ifr.ifr_name, iface, IFNAMSIZ);
         ifr.ifr_flags = flags & 0xffff;
-        // ifr.ifr_flagshigh = flags >> 16;
         if (ioctl(s, SIOCSIFFLAGS, &ifr) == -1)
     goto close_sock;
 
-  /* monitor mode */
-        memset(&ifmr, 0, sizeof(ifmr));
-        strcpy(ifmr.ifm_name, iface);
-        if (ioctl(s, SIOCGIFMEDIA, &ifmr) == -1)
-    goto close_sock;
+// Doesn't need for OS X, DLT_IEEE802_11_RADIO means monitor mode. and these code seems fixed the channel somehow...
+  // /* monitor mode */
+  //       memset(&ifmr, 0, sizeof(ifmr));
+  //       strncpy(ifmr.ifm_name, iface, IFNAMSIZ);
+  //       if (ioctl(s, SIOCGIFMEDIA, &ifmr) == -1)
+  //   goto close_sock;
 
-        assert(ifmr.ifm_count != 0);
+  //       assert(ifmr.ifm_count != 0);
 
-        mwords = (int *)malloc(ifmr.ifm_count * sizeof(int));
-        if (!mwords)
-    goto close_sock;
-        ifmr.ifm_ulist = mwords;
-        if (ioctl(s, SIOCGIFMEDIA, &ifmr) == -1) {
-    free(mwords);
-    goto close_sock;
-  }
-        free(mwords);
+  //       mwords = (int *)malloc(ifmr.ifm_count * sizeof(int));
+  //       if (!mwords)
+  //   goto close_sock;
+  //       ifmr.ifm_ulist = mwords;
+  //       if (ioctl(s, SIOCGIFMEDIA, &ifmr) == -1) {
+  //   free(mwords);
+  //   goto close_sock;
+  // }
+  //       free(mwords);
 
-        memset(&ifr, 0, sizeof(ifr));
-        strcpy(ifr.ifr_name, iface);
-        ifr.ifr_media = ifmr.ifm_current | IFM_IEEE80211_MONITOR;
-        if (ioctl(s, SIOCSIFMEDIA, &ifr) == -1)
-    goto close_sock;
+  //       memset(&ifr, 0, sizeof(ifr));
+  //       strncpy(ifr.ifr_name, iface, IFNAMSIZ);
+  //       ifr.ifr_media = ifmr.ifm_current | IFM_IEEE80211_MONITOR;
+  //       if (ioctl(s, SIOCSIFMEDIA, &ifr) == -1)
+  //   goto close_sock;
 
   // /* setup ifreq for chan that may be used in future */
-  // strcpy(pd->pf_ireq.i_name, iface);
-  // pd->pf_ireq.i_type = IEEE80211_IOC_CHANNEL;
+  // strncpy(pd->pd_ireq.i_name, iface, IFNAMSIZ);
 
   // /* same for ifreq [mac addr] */
-  // strcpy(pd->pd_ifr.ifr_name, iface);
+  // strncpy(pd->pd_ifr.ifr_name, iface, IFNAMSIZ);
 
         /* open bpf */
         for(i = 0; i < 256; i++) {
-                sprintf(buf, "/dev/bpf%d", i);
+                snprintf(buf, sizeof(buf), "/dev/bpf%d", i);
 
                 fd = open(buf, O_RDWR);
                 if(fd < 0) {
@@ -434,17 +520,77 @@ static int do_darwin_open(struct wif *wi, char *iface)
         if(fd < 0)
     goto close_sock;
 
-  strcpy(ifr.ifr_name, iface);
-
-        if(ioctl(fd, BIOCSETIF, &ifr) < 0)
+  if (ioctl(fd, BIOCSBLEN, &size) < 0)
     goto close_bpf;
 
+  strncpy(ifr.ifr_name, iface, IFNAMSIZ);
+
+        if (ioctl(fd, BIOCSETIF, &ifr) < 0)
+    goto close_bpf;
+
+    /*
+     * No buffer size was explicitly specified.
+     *
+     * Try finding a good size for the buffer;
+     * DEFAULT_BUFSIZE may be too big, so keep
+     * cutting it in half until we find a size
+     * that works, or run out of sizes to try.
+     * If the default is larger, don't make it smaller.
+     */
+    if ((ioctl(fd, BIOCGBLEN, (caddr_t)&v) < 0) ||
+        v < DEFAULT_BUFSIZE)
+      v = DEFAULT_BUFSIZE;
+    for ( ; v != 0; v >>= 1) {
+      /*
+       * Ignore the return value - this is because the
+       * call fails on BPF systems that don't have
+       * kernel malloc.  And if the call fails, it's
+       * no big deal, we just continue to use the
+       * standard buffer size.
+       */
+      (void) ioctl(fd, BIOCSBLEN, (caddr_t)&v);
+
+      if (ioctl(fd, BIOCSETIF, (caddr_t)&ifr) >= 0)
+        break;  /* that size worked; we're done */
+    }
+
+    if (v == 0) {
+      // snprintf(p->errbuf, PCAP_ERRBUF_SIZE,
+      //     "BIOCSBLEN: %s: No buffer size worked",
+      //     p->opt.source);
+      // status = PCAP_ERROR;
+      goto close_bpf;
+    }
+
+
         if (ioctl(fd, BIOCSDLT, &dlt) < 0)
+    goto close_bpf;
+
+  if(ioctl(fd, BIOCPROMISC, NULL) < 0)
     goto close_bpf;
 
         dlt = 1;
         if (ioctl(fd, BIOCIMMEDIATE, &dlt) == -1)
     goto close_bpf;
+
+  #if defined(BIOCGHDRCMPLT) && defined(BIOCSHDRCMPLT)
+  /*
+   * Do a BIOCSHDRCMPLT, if defined, to turn that flag on, so
+   * the link-layer source address isn't forcibly overwritten.
+   * (Should we ignore errors?  Should we do this only if
+   * we're open for writing?)
+   *
+   * XXX - I seem to remember some packet-sending bug in some
+   * BSDs - check CVS log for "bpf.c"?
+   */
+  u_int spoof_eth_src = 1;
+  if (ioctl(fd, BIOCSHDRCMPLT, &spoof_eth_src) == -1) {
+    // (void)snprintf(p->errbuf, PCAP_ERRBUF_SIZE,
+    //     "BIOCSHDRCMPLT: %s", pcap_strerror(errno));
+    // status = PCAP_ERROR;
+    goto close_bpf;
+  }
+#endif
 
   return fd;
 
@@ -517,14 +663,14 @@ static int darwin_set_rate(struct wif *wi, int rate)
 
 static int darwin_set_mac(struct wif *wi, unsigned char *mac)
 {
-  struct priv_darwin *priv = wi_priv(wi);
-  struct ifreq *ifr = &priv->pd_ifr;
+  struct priv_darwin *pd = wi_priv(wi);
+  struct ifreq *ifr = &pd->pd_ifr;
 
   ifr->ifr_addr.sa_family = AF_LINK;
   ifr->ifr_addr.sa_len = 6;
   memcpy(ifr->ifr_addr.sa_data, mac, 6);
 
-  return ioctl(priv->pd_s, SIOCSIFLLADDR, ifr);
+  return ioctl(pd->pd_s, SIOCSIFLLADDR, ifr);
 }
 
 static struct wif *darwin_open(char *iface)
