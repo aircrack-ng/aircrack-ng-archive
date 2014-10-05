@@ -3833,6 +3833,7 @@ char *get_manufacturer(unsigned char mac0, unsigned char mac1, unsigned char mac
 				memset(a, 0x00, sizeof(a));
 				memset(b, 0x00, sizeof(b));
 				memset(c, 0x00, sizeof(c));
+				trim(buffer);
 				if (sscanf(buffer, "%2c-%2c-%2c", a, b, c) == 3) {
 					snprintf(temp, sizeof(temp), "%c%c:%c%c:%c%c", a[0], a[1], b[0], b[1], c[0], c[1] );
 					found = !memcmp(temp, oui, strlen(oui));
