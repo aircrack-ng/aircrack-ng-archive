@@ -135,7 +135,7 @@ static void get_radiotap_info(struct priv_darwin *pd,
         uint32_t present;
   uint8_t rflags = 0;
   int i;
-  unsigned char *body = (unsigned char*) (rth+1);
+  char *body = (unsigned char*) (rth+1);
   int dbm_power = 0, db_power = 0;
 
   /* reset control info */
