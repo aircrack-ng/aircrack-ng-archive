@@ -1,13 +1,16 @@
 language: c
 compiler:
-  - gcc
-  - clang
+- gcc
+- clang
 install:
-  - sudo apt-get update
-  - sudo apt-get install libnl-3-dev libgcrypt11-dev zlib1g-dev libpcap-dev libssl-dev libnl-genl-3-dev
+- sudo apt-get update
+- sudo apt-get install libnl-3-dev libgcrypt11-dev zlib1g-dev libpcap-dev libssl-dev
+  libnl-genl-3-dev
 script: make
-deploy:
-  provider: s3
-  access_key_id: "AKIAI5OL7FACQZIGVNHA"
-  secret_access_key: "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"
-  bucket: "aircrack"
+addons:
+  artifacts:
+    key:
+      secure: clJbAJkDHl0M1t2MQTTl1n6aNGNVxVku/bckrqCTnqYV3/m207YNV44rbHKuwcDz3ERN6VQAElV+UrcIEiqh28ixV5JmxMEHH7m+vk/tkTDhlfKyYSgco5CRqFNPTl2vPAhtImF/ywvUOMv/dqWO/EhW7bTrEVjP9AyVv7F7yeM=
+    secret:
+      secure: dkCJGVj2kn2szrOoRBiWb+OpU5Faa/wP/LTV07IEmdeR8/St9TdvH8fEB57yKd9SnIjpfRp3zPbPCcFuketLGsWcCbfcGV54KGZ9T+rbR05F7CJE2dhoSMy/R3iX1qZ3xzno5V4Aqctd3JX69aLPplz3zjOZdu54S+zSkzcbxxk=
+    bucket: aircrack
