@@ -10,7 +10,7 @@ It can also fully use a multiprocessor system to its full power in order
 to speed up the cracking process.
 
 
-[![Build Status](https://api.travis-ci.org/aircrack-ng/aircrack-ng.png)](https://travis-ci.org/aircrack-ng/aircrack-ng)
+[![Build Status](https://api.travis-ci.org/JoeGilkey/aircrack-ng.png)](https://travis-ci.org/JoeGilkey/aircrack-ng)
 
 
 # Building
