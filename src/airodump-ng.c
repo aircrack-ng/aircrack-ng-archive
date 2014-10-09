@@ -2939,7 +2939,7 @@ void dump_print( int ws_row, int ws_col, int if_num )
     struct ST_info *st_cur;
     struct NA_info *na_cur;
     int columns_ap = 83;
-    int columns_sta = 74;
+    int columns_sta = 67;
     int columns_na = 68;
 
     int num_ap;
@@ -3316,7 +3316,15 @@ void dump_print( int ws_row, int ws_col, int if_num )
 
     if(G.show_sta) {
 	memcpy( strbuf, " BSSID              STATION "
-		"           PWR   Rate    Lost    Frames  Probes", columns_sta );
+		"           PWR   Rate    Lost    Frames", columns_sta );
+	if ( G.show_manufacturer && ( ws_col > (columns_sta - 25) ) ) {
+		// memset(strbuf+columns_sta, '\x20', 35 );
+		snprintf(strbuf+columns_sta, 25," %-25.14s"," MANUFACTURER");
+		columns_sta += 25;
+	}
+	strcat( strbuf, "  Probes" );
+	columns_sta += 8; // 8 is the len of "  Probes"
+
 	strbuf[ws_col - 1] = '\0';
 	fprintf( stderr, "%s\n", strbuf );
 
@@ -3408,6 +3416,13 @@ void dump_print( int ws_row, int ws_col, int if_num )
 		fprintf( stderr,  "%c", (st_cur->qos_to_ds) ? 'e' : ' ');
 		fprintf( stderr, "  %4d", st_cur->missed   );
 		fprintf( stderr, " %8ld", st_cur->nb_pkt   );
+
+		if (G.show_manufacturer) {
+			if (st_cur->manuf == NULL)
+				st_cur->manuf = get_manufacturer(st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2]);
+
+			fprintf( stderr , "  %-23.23s", st_cur->manuf );
+		}
 
 		if( ws_col > (columns_sta - 6) )
 		{
