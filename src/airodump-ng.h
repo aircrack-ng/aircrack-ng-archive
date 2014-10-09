@@ -127,11 +127,12 @@ char *get_manufacturer(unsigned char mac0, unsigned char mac1, unsigned char mac
 #define KISMET_NETXML_EXT "kismet.netxml"
 #define AIRODUMP_NG_GPS_EXT "gps"
 #define AIRODUMP_NG_CAP_EXT "cap"
+#define AIRODUMP_NG_PCAP_EXT "pcap"
 
-#define NB_EXTENSIONS 6
+#define NB_EXTENSIONS 7
 
 const unsigned char llcnull[4] = {0, 0, 0, 0};
-char *f_ext[NB_EXTENSIONS] = { AIRODUMP_NG_CSV_EXT, AIRODUMP_NG_GPS_EXT, AIRODUMP_NG_CAP_EXT, IVS2_EXTENSION, KISMET_CSV_EXT, KISMET_NETXML_EXT };
+char *f_ext[NB_EXTENSIONS] = { AIRODUMP_NG_CSV_EXT, AIRODUMP_NG_GPS_EXT, AIRODUMP_NG_CAP_EXT, IVS2_EXTENSION, KISMET_CSV_EXT, KISMET_NETXML_EXT, AIRODUMP_NG_PCAP_EXT };
 
 extern const unsigned long int crc_tbl[256];
 extern const unsigned char crc_chop_tbl[256][4];
@@ -423,6 +424,8 @@ struct globals
 
     /* Airodump-ng start time: for kismet netxml file */
     char * airodump_start_time;
+
+    time_t dump_cap_start;
 
     int output_format_pcap;
     int output_format_csv;

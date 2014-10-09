@@ -789,6 +789,31 @@ void update_rx_quality( )
 
 }
 
+void dump_rollover( char *prefix, int ivs_only )
+{
+	int i, ofn_len;
+    char * ofn = NULL;
+
+	if (G.output_format_pcap && G.f_cap != NULL)
+	{
+		ofn_len = strlen(prefix) + 1 + 2 + 1 + 13 + 1;
+		ofn = (char *)calloc(1, ofn_len);
+
+		memset(ofn, 0, ofn_len);
+        snprintf( ofn,  ofn_len, "%s-%02d.%s", prefix, G.f_index, AIRODUMP_NG_PCAP_EXT );
+
+        fflush( G.f_cap );
+        fclose( G.f_cap );
+        G.f_cap = NULL;
+
+        rename( G.f_cap_name, ofn );
+
+        free( ofn );
+
+        dump_initialize( prefix, ivs_only );
+	}
+}
+
 /* setup the output files */
 
 int dump_initialize( char *prefix, int ivs_only )
@@ -797,6 +822,7 @@ int dump_initialize( char *prefix, int ivs_only )
     FILE *f;
     char * ofn = NULL;
 
+    G.dump_cap_start = time(NULL);
 
     /* If you only want to see what happening, send all data to /dev/null */
 
@@ -809,7 +835,11 @@ int dump_initialize( char *prefix, int ivs_only )
 	ofn_len = strlen(prefix) + 1 + 2 + 1 + 13 + 1;
 	ofn = (char *)calloc(1, ofn_len);
 
-    G.f_index = 1;
+    if ( G.f_index == 0) {
+        G.f_index = 1;
+    } else {
+    	G.f_index++;
+    }
 
 
 	/* Make sure no file with the same name & all possible file extensions. */
@@ -5602,6 +5632,7 @@ int main( int argc, char *argv[] )
     G.singlefreq   =  0;
     G.dump_prefix  =  NULL;
     G.record_data  =  0;
+    G.f_index      =  0; //JG 2014/10/09 - Added for log rolling support.
     G.f_cap        =  NULL;
     G.f_ivs        =  NULL;
     G.f_txt        =  NULL;
@@ -5640,6 +5671,7 @@ int main( int argc, char *argv[] )
     G.airodump_start_time = NULL;
 	G.manufList = NULL;
 
+    G.dump_cap_start   = 0;
 	G.output_format_pcap = 1;
     G.output_format_csv = 1;
     G.output_format_kismet_csv = 1;
@@ -6381,6 +6413,12 @@ usage:
         if( G.do_exit )
         {
             break;
+        }
+
+        if( time( NULL ) - G.dump_cap_start >= (5 * 60) )
+        {
+        	/* rollover cap file */
+        	dump_rollover( G.dump_prefix, ivs_only );
         }
 
         if( time( NULL ) - tt1 >= 5 )
