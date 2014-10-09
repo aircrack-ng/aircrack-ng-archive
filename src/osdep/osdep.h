@@ -57,6 +57,7 @@ struct rx_info {
         uint32_t ri_freq;
         uint32_t ri_rate;
         uint32_t ri_antenna;
+        uint32_t ri_fcs;
 } __packed;
 
 /* Normal code should not access this directly.  Only osdep.

@@ -1180,6 +1180,28 @@ int remove_namac(unsigned char* mac)
     return( 0 );
 }
 
+/* Validates a packet's reported FCS value */
+int check_fcs(const u_char *packet, size_t len, uint32_t fcs)
+{
+	int match = 0;
+	uint32_t fcs_calc = 0;
+	
+	if(len > 4)
+	{
+		/* FCS is the inverse of the CRC32 checksum of the data packet minus the frame's FCS and radio tap header (if any) */
+		fcs_calc = calc_crc_buf((u_char *) packet, len);
+		// printf("fcs_calc: %08x fcs: %08x\n", fcs_calc, fcs);
+
+		if(fcs_calc == fcs)
+		{
+			match = 1;
+		}
+	}
+
+	return match;
+	
+}
+
 int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int cardnum )
 {
     int i, n, seq, msd, dlen, offset, clen, o;
@@ -1222,7 +1244,10 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
     if ( caplen > 28)
         if ( memcmp(h80211 + 24, llcnull, 4) == 0)
             return ( 0 );
-
+#ifdef __APPLE__
+    if ( !check_fcs(h80211, caplen, ri->ri_fcs) )
+    	return 0;
+#endif
     /* grab the sequence number */
     seq = ((h80211[22]>>4)+(h80211[23]<<4));
 

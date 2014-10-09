@@ -208,6 +208,8 @@ static void get_radiotap_info(struct priv_darwin *pd,
         /* check if FCS/CRC is included in packet */
         if (pd->pd_nocrc || (rflags & IEEE80211_RADIOTAP_F_FCS)) {
                 *plen -= IEEE80211_CRC_LEN;
+                /* Get the packet's reported FCS (last 4 bytes of the packet) */
+                memcpy(&(ri->ri_fcs), (char*)rth + *plen, IEEE80211_CRC_LEN);
                 pd->pd_nocrc = 1;
         }
 }
