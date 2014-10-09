@@ -5,7 +5,7 @@ compiler:
 install:
   - sudo apt-get update
   - sudo apt-get install libnl-3-dev libgcrypt11-dev zlib1g-dev libpcap-dev libssl-dev libnl-genl-3-dev
-script: make && make install
+script: make
 deploy:
   provider: s3
   access_key_id: "AKIAI5OL7FACQZIGVNHA"
