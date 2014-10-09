@@ -122,6 +122,8 @@ extern unsigned char * getmac(char * macAddress, int strict, unsigned char * mac
 extern int get_ram_size(void);
 char *get_manufacturer(unsigned char mac0, unsigned char mac1, unsigned char mac2);
 
+#define PCAP_ROLLOVER_TIME 5 * 60
+
 #define AIRODUMP_NG_CSV_EXT "csv"
 #define KISMET_CSV_EXT "kismet.csv"
 #define KISMET_NETXML_EXT "kismet.netxml"
@@ -426,6 +428,8 @@ struct globals
     char * airodump_start_time;
 
     time_t dump_cap_start;
+    int roll_cap_files;
+    int roll_cap_files_time;
 
     int output_format_pcap;
     int output_format_csv;

@@ -642,6 +642,7 @@ char usage[] =
 "                              pcap, ivs, csv, gps, kismet, netxml\n"
 "      --ignore-negative-one : Removes the message that says\n"
 "                              fixed channel <interface>: -1\n"
+"      --roll          <secs> : Rollover PCap output files in seconds\n"
 "\n"
 "  Filter options:\n"
 "      --encrypt   <suite>   : Filter APs by cipher suite\n"
@@ -794,7 +795,7 @@ void dump_rollover( char *prefix, int ivs_only )
 	int i, ofn_len;
     char * ofn = NULL;
 
-	if (G.output_format_pcap && G.f_cap != NULL)
+	if (G.roll_cap_files && G.output_format_pcap && G.f_cap != NULL)
 	{
 		ofn_len = strlen(prefix) + 1 + 2 + 1 + 13 + 1;
 		ofn = (char *)calloc(1, ofn_len);
@@ -809,6 +810,7 @@ void dump_rollover( char *prefix, int ivs_only )
         rename( G.f_cap_name, ofn );
 
         free( ofn );
+        free(G.f_cap_name);
 
         dump_initialize( prefix, ivs_only );
 	}
@@ -5583,6 +5585,7 @@ int main( int argc, char *argv[] )
         {"encrypt",  1, 0, 't'},
         {"update",   1, 0, 'u'},
         {"berlin",   1, 0, 'B'},
+        {"roll",     1, 0, 'X'},
         {"help",     0, 0, 'H'},
         {"nodecloak",0, 0, 'D'},
         {"showack",  0, 0, 'A'},
@@ -5672,6 +5675,8 @@ int main( int argc, char *argv[] )
 	G.manufList = NULL;
 
     G.dump_cap_start   = 0;
+    G.roll_cap_files = 0;
+    G.roll_cap_files_time = PCAP_ROLLOVER_TIME; // rollover after 5 minutes
 	G.output_format_pcap = 1;
     G.output_format_csv = 1;
     G.output_format_kismet_csv = 1;
@@ -5758,7 +5763,7 @@ int main( int argc, char *argv[] )
         option_index = 0;
 
         option = getopt_long( argc, argv,
-                        "b:c:egiw:s:t:u:m:d:N:R:aHDB:Ahf:r:EC:o:x:MU",
+                        "b:c:egiw:s:t:u:m:d:N:R:aHDB:Ahf:r:EC:o:x:MU:X",
                         long_options, &option_index );
 
         if( option < 0 ) break;
@@ -5891,6 +5896,16 @@ int main( int argc, char *argv[] )
                     else
                         G.channels = bg_chans;
                 }
+
+                break;
+
+            case 'X':
+                G.roll_cap_files = 1;
+                G.roll_cap_files_time = atoi(optarg);
+
+                /* If failed to parse or value <= 0, use default, 100ms */
+                if (G.roll_cap_files_time <= 0)
+                	G.roll_cap_files_time = PCAP_ROLLOVER_TIME;
 
                 break;
 
@@ -6415,7 +6430,7 @@ usage:
             break;
         }
 
-        if( time( NULL ) - G.dump_cap_start >= (5 * 60) )
+        if(G.roll_cap_files && time( NULL ) - G.dump_cap_start >= G.roll_cap_files_time )
         {
         	/* rollover cap file */
         	dump_rollover( G.dump_prefix, ivs_only );
