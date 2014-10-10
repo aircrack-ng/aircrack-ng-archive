@@ -32,7 +32,7 @@ endif
 
 
 SBINFILES       = aireplay-ng$(EXE) airodump-ng$(EXE) airserv-ng$(EXE) \
-		  airtun-ng$(EXE) airbase-ng$(EXE) besside-ng$(EXE)
+		  airtun-ng$(EXE) airbase-ng$(EXE) besside-ng$(EXE) jairodump-ng$(EXE)
 		  
 OPTFILES	= aircrack-ng-opt-prof_gen aircrack-ng-opt \
 		  aircrack-ng-opt-prof prof/*
@@ -54,8 +54,10 @@ OBJS_AD		= airdecap-ng.o crypto.o common.o
 OBJS_PF		= packetforge-ng.o common.o crypto.o
 OBJS_AR		= aireplay-ng.o common.o crypto.o osdep/radiotap/radiotap.o
 OBJS_ADU	= airodump-ng.o common.o crypto.o uniqueiv.o osdep/radiotap/radiotap.o
+OBJS_JDU	= jairodump-ng.o common.o crypto.o uniqueiv.o osdep/radiotap/radiotap.o
 ifneq ($(OSNAME), Linux)
 	OBJS_ADU	+= osdep/common.o
+	OBJS_JDU    += osdep/common.o
 endif
 OBJS_AT		= airtun-ng.o common.o crypto.o osdep/radiotap/radiotap.o
 OBJS_IV		= ivstools.o common.o crypto.o uniqueiv.o
@@ -89,6 +91,7 @@ ifeq ($(subst TRUE,true,$(filter TRUE true,$(gcrypt) $(GCRYPT))),true)
 	OBJS_IV		+= sha1-git.o
 	OBJS_AR		+= sha1-git.o
 	OBJS_ADU	+= sha1-git.o
+	OBJS_JDU	+= sha1-git.o
 	OBJS_AT		+= sha1-git.o
 	OBJS_AB		+= sha1-git.o
 	OBJS_AL		+= sha1-git.o
@@ -142,6 +145,9 @@ aireplay-ng$(EXE): $(OBJS_AR) $(LIBOSD)
 
 airodump-ng$(EXE): $(OBJS_ADU) $(LIBOSD)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_ADU) -o $(@) $(LIBS) $(LIBSSL) -lpthread $(LIBPCRE)
+
+jairodump-ng$(EXE): $(OBJS_JDU) $(LIBOSD)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_JDU) -o $(@) $(LIBS) $(LIBSSL) -lpthread $(LIBPCRE)
 
 airserv-ng$(EXE): $(OBJS_AS) $(LIBOSD)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_AS) -o $(@) $(LIBS)
@@ -214,6 +220,7 @@ uninstall:
 	-rm -f $(DESTDIR)$(bindir)/kstats$(EXE)
 	-rm -f $(DESTDIR)$(bindir)/buddy-ng$(EXE)
 	-rm -f $(DESTDIR)$(sbindir)/airodump-ng$(EXE)
+	-rm -f $(DESTDIR)$(sbindir)/jairodump-ng$(EXE)
 	-rm -f $(DESTDIR)$(sbindir)/airserv-ng$(EXE)
 	-rm -f $(DESTDIR)$(sbindir)/airtun-ng$(EXE)
 	-rm -f $(DESTDIR)$(sbindir)/aireplay-ng$(EXE)
