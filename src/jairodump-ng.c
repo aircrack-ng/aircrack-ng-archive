@@ -618,7 +618,7 @@ char usage[] =
 "  %s - (C) 2006-2013 Thomas d\'Otreppe\n"
 "  http://www.aircrack-ng.org\n"
 "\n"
-"  usage: airodump-ng <options> <interface>[,<interface>,...]\n"
+"  usage: jairodump-ng <options> <interface>[,<interface>,...]\n"
 "\n"
 "  Options:\n"
 "      --ivs                 : Save only captured IVs\n"
@@ -655,10 +655,10 @@ char usage[] =
 #endif
 "      -a                    : Filter unassociated clients\n"
 "\n"
-"  By default, airodump-ng hop on 2.4GHz channels.\n"
+"  By default, jairodump-ng hop on 2.4GHz channels.\n"
 "  You can make it capture on other/specific channel(s) by using:\n"
 "      --channel <channels>  : Capture on specific channels\n"
-"      --band <abg>          : Band on which airodump-ng should hop\n"
+"      --band <abg>          : Band on which jairodump-ng should hop\n"
 "      -C    <frequencies>   : Uses these frequencies in MHz to hop\n"
 "      --cswitch  <method>   : Set channel switching method\n"
 "                    0       : FIFO (default)\n"
@@ -3899,7 +3899,7 @@ char *get_manufacturer(unsigned char mac0, unsigned char mac1, unsigned char mac
 #undef MANUF_SIZE
 
 
-#define KISMET_NETXML_HEADER_BEGIN "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n<!DOCTYPE detection-run SYSTEM \"http://kismetwireless.net/kismet-3.1.0.dtd\">\n\n<detection-run kismet-version=\"airodump-ng-1.0\" start-time=\""
+#define KISMET_NETXML_HEADER_BEGIN "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n<!DOCTYPE detection-run SYSTEM \"http://kismetwireless.net/kismet-3.1.0.dtd\">\n\n<detection-run kismet-version=\"jairodump-ng-1.0\" start-time=\""
 #define KISMET_NETXML_HEADER_END "\">\n\n"
 
 #define KISMET_NETXML_TRAILER "</detection-run>"
@@ -3921,7 +3921,7 @@ int dump_write_kismet_netxml( void )
 
     fseek( G.f_kis_xml, 0, SEEK_SET );
 
-	/* Header and airodump-ng start time */
+	/* Header and jairodump-ng start time */
     fprintf( G.f_kis_xml, "%s%s%s",
     		KISMET_NETXML_HEADER_BEGIN,
 			G.airodump_start_time,
@@ -5922,7 +5922,7 @@ int main( int argc, char *argv[] )
 				}
 
  				if (G.output_format_pcap) {
-					printf( usage, getVersion("Airodump-ng", _MAJ, _MIN, _SUB_MIN, _REVISION, _BETA, _RC)  );
+					printf( usage, getVersion("jAirodump-ng", _MAJ, _MIN, _SUB_MIN, _REVISION, _BETA, _RC)  );
 					fprintf(stderr, "Invalid output format: IVS and PCAP format cannot be used together.\n");
 					return( 1 );
 				}
@@ -6061,7 +6061,7 @@ int main( int argc, char *argv[] )
 			exit(1);
 		}
 #else
-                printf("Error: Airodump-ng wasn't compiled with pcre support; aborting\n");
+                printf("Error: jAirodump-ng wasn't compiled with pcre support; aborting\n");
 #endif
 
                 break;
@@ -6093,14 +6093,14 @@ int main( int argc, char *argv[] )
 						} else if (strncasecmp(output_format_string, "pcap", 4) == 0
 							|| strncasecmp(output_format_string, "cap", 3) == 0) {
                             if (ivs_only) {
-                                printf( usage, getVersion("Airodump-ng", _MAJ, _MIN, _SUB_MIN, _REVISION, _BETA, _RC)  );
+                                printf( usage, getVersion("jAirodump-ng", _MAJ, _MIN, _SUB_MIN, _REVISION, _BETA, _RC)  );
                                 fprintf(stderr, "Invalid output format: IVS and PCAP format cannot be used together.\n");
                                 return( 1 );
                             }
 							G.output_format_pcap = 1;
 						} else if (strncasecmp(output_format_string, "ivs", 3) == 0) {
                             if (G.output_format_pcap) {
-                                printf( usage, getVersion("Airodump-ng", _MAJ, _MIN, _SUB_MIN, _REVISION, _BETA, _RC)  );
+                                printf( usage, getVersion("jAirodump-ng", _MAJ, _MIN, _SUB_MIN, _REVISION, _BETA, _RC)  );
                                 fprintf(stderr, "Invalid output format: IVS and PCAP format cannot be used together.\n");
                                 return( 1 );
                             }
@@ -6142,7 +6142,7 @@ int main( int argc, char *argv[] )
 
             case 'H':
 
-                printf( usage, getVersion("Airodump-ng", _MAJ, _MIN, _SUB_MIN, _REVISION, _BETA, _RC)  );
+                printf( usage, getVersion("jAirodump-ng", _MAJ, _MIN, _SUB_MIN, _REVISION, _BETA, _RC)  );
                 return( 1 );
 
             case 'x':
@@ -6162,7 +6162,7 @@ int main( int argc, char *argv[] )
         if(argc == 1)
         {
 usage:
-            printf( usage, getVersion("Airodump-ng", _MAJ, _MIN, _SUB_MIN, _REVISION, _BETA, _RC)  );
+            printf( usage, getVersion("jAirodump-ng", _MAJ, _MIN, _SUB_MIN, _REVISION, _BETA, _RC)  );
         }
         if( argc - optind == 0)
         {
