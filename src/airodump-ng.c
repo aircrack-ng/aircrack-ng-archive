@@ -5675,7 +5675,7 @@ int main( int argc, char *argv[] )
 	G.manufList = NULL;
 
     G.dump_cap_start   = 0;
-    G.roll_cap_files = 0;
+    G.roll_cap_files = 1;
     G.roll_cap_files_time = PCAP_ROLLOVER_TIME; // rollover after 5 minutes
 	G.output_format_pcap = 1;
     G.output_format_csv = 1;
