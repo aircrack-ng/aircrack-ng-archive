@@ -79,7 +79,7 @@
 
 void dump_sort( void );
 void dump_print( int ws_row, int ws_col, int if_num );
-int dump_initialize( char *prefix );
+int dump_initialize( char *prefix, struct wif *wi[], int cards );
 
 char * get_manufacturer_from_string(char * buffer) {
 	char * manuf = NULL;
@@ -789,12 +789,12 @@ void update_rx_quality( )
 
 }
 
-void dump_rollover( char *prefix )
+void dump_cleanup()
 {
 	int ofn_len;
     char * ofn = NULL;
 
-	if (G.roll_cap_files && G.output_format_pcap && G.f_cap != NULL)
+	if (G.output_format_pcap && G.f_cap != NULL)
 	{
 		ofn_len = strlen(prefix) + 1 + 4 + 1 + 13 + 1;
 		ofn = (char *)calloc(1, ofn_len);
@@ -810,14 +810,39 @@ void dump_rollover( char *prefix )
 
         free( ofn );
         free(G.f_cap_name);
+    }
+    if (G.output_format_jblf && G.f_jblf != NULL)
+    {
+    	ofn_len = strlen(prefix) + 1 + 4 + 13 + 1;
+    	ofn = (char *)calloc(1, ofn_len);
 
-        dump_initialize( prefix );
+    	memset(ofn, 0, ofn_len);
+    	snprintf( ofn, ofn_len, "%s-%04d.%s", prefix, G.f_index, JAIRODUMP_NG_JBLF_EXT );
+
+    	fflush( G.f_jblf );
+    	fclose( G.f_jblf );
+    	G.f_jblf = NULL;
+
+    	rename( G.f_jblf_name, ofn);
+
+    	free( ofn );
+    	free( G.f_jblf_name );
+    }
+}
+
+void dump_rollover( char *prefix, struct wif *wi[], int cards )
+{
+	if (G.roll_cap_files)
+	{
+		dump_cleanup();
+
+        dump_initialize( prefix, wi, cards );
 	}
 }
 
 /* setup the output files */
 
-int dump_initialize( char *prefix )
+int dump_initialize( char *prefix, struct wif *wi[], int cards )
 {
     int i, ofn_len;
     FILE *f;
@@ -966,6 +991,48 @@ int dump_initialize( char *prefix )
             perror( "fwrite(pcap file header) failed" );
             return( 1 );
         }
+    }
+
+    /* create the JBLF output capture file */
+    if( G.output_format_jblf )
+    {
+    	struct jblf_file_header jfh;
+    	struct jblf_mac_addr jfh_mac;
+    	memset(ofn, 0, ofn_len);
+    	snprintf( ofn,  ofn_len, "%s-%04d.%s",
+                  prefix, G.f_index, JAIRODUMP_NG_TJBLF_EXT );
+    	if( ( G.f_jblf = fopen( ofn, "wb+" ) ) == NULL)
+    	{
+    		perror( "fopen failed" );
+    		fprintf( stderr, "Could not create \"%s\".\n", ofn );
+    		free( ofn );
+    		return( 1 );
+    	}
+
+    	G.f_jblf_name = (char *) malloc( strlen( ofn) + 1);
+    	memcpy( G.f_jblf_name, ofn, strlen( ofn ) + 1);
+    	free( ofn );
+
+    	jfh.magic = TCPDUMP_MAGIC;
+    	jfh.version_major = JBLF_VERSION_MAJOR;
+    	jfh.version_minor = JBLF_VERSION_MINOR;
+    	jfh.num_mac_addresses = cards;
+
+    	if( fwrite( &jfh, 1, sizeof( jfh ), G.f_jblf ) != (size_t) sizeof( jfh ) )
+    	{
+    		perror("fwrite(jblf file header) failed");
+    		return ( 1 );
+    	}
+
+    	for( i=0; i < cards; i++ )
+    	{
+    		wi_get_mac( wi[i], jfh_mac.macAddress );
+    		if ( fwrite( &jfh_mac, 1, sizeof (jfh_mac), G.f_jblf ) != (size_t) sizeof( jfh_mac ) )
+    		{
+    			perror("fwrite(jblf file header mac) failed");
+    			return ( 1 );
+    		}
+    	}
     }
 
     return( 0 );
@@ -2316,6 +2383,8 @@ write_packet:
 
         fflush( stdout );
     }
+
+    //jblf PROCESS PACKET HERE!!!
 
     return( 0 );
 }
@@ -5416,7 +5485,6 @@ int main( int argc, char *argv[] )
     G.show_uptime  = 0;
     G.hopfreq      =  DEFAULT_HOPFREQ;
     G.s_iface      =  NULL;
-    G.f_cap_in     =  NULL;
     G.detect_anomaly = 0;
     G.airodump_start_time = NULL;
 	G.manufList = NULL;
@@ -5425,6 +5493,7 @@ int main( int argc, char *argv[] )
     G.roll_cap_files = 1;
     G.roll_cap_files_time = PCAP_ROLLOVER_TIME; // rollover after 5 minutes
 	G.output_format_pcap = 1;
+	G.output_format_jblf = 1;
     G.output_format_csv = 1;
     G.output_format_kismet_csv = 1;
     G.output_format_kismet_netxml = 1;
@@ -5793,6 +5862,7 @@ int main( int argc, char *argv[] )
 					output_format_first_time = 0;
 
 					G.output_format_pcap = 0;
+					G.output_format_jblf = 0;
 					G.output_format_csv = 0;
 					G.output_format_kismet_csv = 0;
     				G.output_format_kismet_netxml = 0;
@@ -5808,6 +5878,7 @@ int main( int argc, char *argv[] )
 						} else if (strncasecmp(output_format_string, "pcap", 4) == 0
 							|| strncasecmp(output_format_string, "cap", 3) == 0) {
 							G.output_format_pcap = 1;
+							G.output_format_jblf = 1;
 						} else if (strncasecmp(output_format_string, "kismet", 6) == 0) {
 							G.output_format_kismet_csv = 1;
 						} else if (strncasecmp(output_format_string, "gps", 3) == 0) {
@@ -5821,11 +5892,13 @@ int main( int argc, char *argv[] )
 							G.output_format_kismet_netxml = 1;
 						} else if (strncasecmp(output_format_string, "default", 6) == 0) {
 							G.output_format_pcap = 1;
+							G.output_format_jblf = 1;
 							G.output_format_csv = 1;
 							G.output_format_kismet_csv = 1;
 							G.output_format_kismet_netxml = 1;
 						} else if (strncasecmp(output_format_string, "none", 6) == 0) {
 							G.output_format_pcap = 0;
+							G.output_format_jblf = 0;
 							G.output_format_csv = 0;
 							G.output_format_kismet_csv = 0;
     						G.output_format_kismet_netxml = 0;
@@ -6025,7 +6098,7 @@ usage:
     /* open or create the output files */
 
     if (G.record_data)
-    	if( dump_initialize( G.dump_prefix ) )
+    	if( dump_initialize( G.dump_prefix, wi, G.num_cards ) )
     	    return( 1 );
 
     signal( SIGINT,   sighandler );
@@ -6094,7 +6167,7 @@ usage:
         if(G.roll_cap_files && time( NULL ) - G.dump_cap_start >= G.roll_cap_files_time )
         {
         	/* rollover cap file */
-        	dump_rollover( G.dump_prefix );
+        	dump_rollover( G.dump_prefix, wi, G.num_cards );
         }
 
         if( time( NULL ) - tt1 >= 5 )
@@ -6135,6 +6208,7 @@ usage:
             /* flush the output files */
 
             if( G.f_cap != NULL ) fflush( G.f_cap );
+            if( G.f_jblf != NULL ) fflush( G.f_jblf );
         }
 
         gettimeofday( &tv1, NULL );
@@ -6310,9 +6384,6 @@ usage:
     if(G.prefix)
         free(G.prefix);
 
-    if(G.f_cap_name)
-        free(G.f_cap_name);
-
     if(G.keyout)
         free(G.keyout);
 
@@ -6323,6 +6394,8 @@ usage:
 
     for(i=0; i<G.num_cards; i++)
         wi_close(wi[i]);
+
+    dump_cleanup();
 
     if (G.record_data) {
         if ( G. output_format_csv)  dump_write_csv();
@@ -6337,7 +6410,6 @@ usage:
 			free(G.airodump_start_time);
 		}
         if ( G.f_gps != NULL ) fclose( G.f_gps );
-        if ( G.output_format_pcap ||  G.f_cap != NULL ) fclose( G.f_cap );
     }
 
     if( ! G.save_gps )

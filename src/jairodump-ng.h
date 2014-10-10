@@ -130,11 +130,13 @@ char *get_manufacturer(unsigned char mac0, unsigned char mac1, unsigned char mac
 #define AIRODUMP_NG_GPS_EXT "gps"
 #define AIRODUMP_NG_CAP_EXT "cap"
 #define AIRODUMP_NG_PCAP_EXT "pcap"
+#define JAIRODUMP_NG_JBLF_EXT "jblf"
+#define JAIRODUMP_NG_TJBLF_EXT "tjblf" //temporary JBLF file, used while writing the output. Extension is changed to JAIRODUMP_NG_JBLF_EXT on log rollover
 
-#define NB_EXTENSIONS 6
+#define NB_EXTENSIONS 8
 
 const unsigned char llcnull[4] = {0, 0, 0, 0};
-char *f_ext[NB_EXTENSIONS] = { AIRODUMP_NG_CSV_EXT, AIRODUMP_NG_GPS_EXT, AIRODUMP_NG_CAP_EXT, KISMET_CSV_EXT, KISMET_NETXML_EXT, AIRODUMP_NG_PCAP_EXT };
+char *f_ext[NB_EXTENSIONS] = { AIRODUMP_NG_CSV_EXT, AIRODUMP_NG_GPS_EXT, AIRODUMP_NG_CAP_EXT, KISMET_CSV_EXT, KISMET_NETXML_EXT, AIRODUMP_NG_PCAP_EXT, JAIRODUMP_NG_JBLF_EXT, JAIRODUMP_NG_TJBLF_EXT };
 
 extern const unsigned long int crc_tbl[256];
 extern const unsigned char crc_chop_tbl[256][4];
@@ -328,6 +330,7 @@ struct globals
     char *dump_prefix;
     char *keyout;
     char *f_cap_name;
+    char *f_jblf_name;
 
     int f_index;            /* outfiles index       */
     FILE *f_txt;            /* output csv file      */
@@ -335,6 +338,7 @@ struct globals
     FILE *f_kis_xml;        /* output kismet netxml file */
     FILE *f_gps;            /* output gps file      */
     FILE *f_cap;            /* output cap file      */
+    FILE *f_jblf;           /* output jblf file     */
     FILE *f_xor;            /* output prga file     */
 
     char * batt;            /* Battery string       */
@@ -412,7 +416,6 @@ struct globals
     int hopfreq;
 
     char*   s_iface;        /* source interface to read from */
-    FILE *f_cap_in;
     struct pcap_file_header pfh_in;
     int detect_anomaly;     /* Detect WIPS protecting WEP in action */
 
@@ -429,6 +432,7 @@ struct globals
     int roll_cap_files_time;
 
     int output_format_pcap;
+    int output_format_jblf;
     int output_format_csv;
     int output_format_kismet_csv;
     int output_format_kismet_netxml;
@@ -458,5 +462,53 @@ struct globals
     int show_uptime;
 }
 G;
+
+/* JBLF (Joe's Binary Log File) defines */
+#define JBLF_VERSION_MAJOR      2
+#define JBLF_VERSION_MINOR      4
+
+#define JBLF_PKT_TYPE_IP        0
+#define JBLF_PKT_TYPE_GPS       1
+
+#define JBLF_TAG_EMPTY          0
+#define JBLF_TAG_RX_POWER       1
+#define JBLF_TAG_LATITUDE       5
+#define JBLF_TAG_LONGITUDE      6
+
+#define JBLF_TAG_SSID_NAME      10
+#define JBLF_TAG_ARP_NAME       11
+#define JBLF_TAG_URL            12
+#define JBLF_TAG_USER_AGENT     13
+
+/* JBLF (Joe's Binary Log File) structures */
+struct jblf_file_header
+{
+    uint32_t magic;
+    uint16_t version_major;
+    uint16_t version_minor;
+    uint8_t num_mac_addresses;
+};
+
+struct jblf_mac_addr
+{
+    uint8_t macAddress[6];
+};
+
+struct jblf_pkthdr
+{
+    int32_t tv_sec;
+    int32_t tv_usec;
+    uint8_t pkt_type;
+};
+
+struct jblf_ip_pkthdr
+{
+    uint8_t macAddress[6];
+};
+
+struct jblf_gps_pkthdr
+{
+    float gps_loc[5];
+};
 
 #endif
