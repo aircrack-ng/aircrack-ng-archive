@@ -789,7 +789,7 @@ void update_rx_quality( )
 
 }
 
-void dump_cleanup()
+void dump_cleanup( char *prefix )
 {
 	int ofn_len;
     char * ofn = NULL;
@@ -834,7 +834,7 @@ void dump_rollover( char *prefix, struct wif *wi[], int cards )
 {
 	if (G.roll_cap_files)
 	{
-		dump_cleanup();
+		dump_cleanup( prefix );
 
         dump_initialize( prefix, wi, cards );
 	}
@@ -6369,6 +6369,8 @@ usage:
         }
     }
 
+    dump_cleanup( G.dump_prefix );
+
     if(G.batt)
         free(G.batt);
 
@@ -6394,8 +6396,6 @@ usage:
 
     for(i=0; i<G.num_cards; i++)
         wi_close(wi[i]);
-
-    dump_cleanup();
 
     if (G.record_data) {
         if ( G. output_format_csv)  dump_write_csv();
