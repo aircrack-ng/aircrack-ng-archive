@@ -622,7 +622,6 @@ char usage[] =
 "  usage: jairodump-ng <options> <interface>[,<interface>,...]\n"
 "\n"
 "  Options:\n"
-"      --ivs                 : Save only captured IVs\n"
 "      --gpsd                : Use GPSd\n"
 "      --write      <prefix> : Dump file prefix\n"
 "      -w                    : same as --write \n"
@@ -797,11 +796,11 @@ void dump_rollover( char *prefix, int ivs_only )
 
 	if (G.roll_cap_files && G.output_format_pcap && G.f_cap != NULL)
 	{
-		ofn_len = strlen(prefix) + 1 + 2 + 1 + 13 + 1;
+		ofn_len = strlen(prefix) + 1 + 4 + 1 + 13 + 1;
 		ofn = (char *)calloc(1, ofn_len);
 
 		memset(ofn, 0, ofn_len);
-        snprintf( ofn,  ofn_len, "%s-%02d.%s", prefix, G.f_index, AIRODUMP_NG_PCAP_EXT );
+        snprintf( ofn,  ofn_len, "%s-%04d.%s", prefix, G.f_index, AIRODUMP_NG_PCAP_EXT );
 
         fflush( G.f_cap );
         fclose( G.f_cap );
@@ -832,9 +831,9 @@ int dump_initialize( char *prefix, int ivs_only )
 	    return( 0 );
     }
 
-	/* Create a buffer of the length of the prefix + '-' + 2 numbers + '.'
+	/* Create a buffer of the length of the prefix + '-' + 4 numbers + '.'
 	   + longest extension ("kismet.netxml") + terminating 0. */
-	ofn_len = strlen(prefix) + 1 + 2 + 1 + 13 + 1;
+	ofn_len = strlen(prefix) + 1 + 4 + 1 + 13 + 1;
 	ofn = (char *)calloc(1, ofn_len);
 
     if ( G.f_index == 0) {
@@ -850,7 +849,7 @@ int dump_initialize( char *prefix, int ivs_only )
         for( i = 0; i < NB_EXTENSIONS; i++ )
         {
 			memset(ofn, 0, ofn_len);
-            snprintf( ofn,  ofn_len, "%s-%02d.%s",
+            snprintf( ofn,  ofn_len, "%s-%04d.%s",
                       prefix, G.f_index, f_ext[i] );
 
             if( ( f = fopen( ofn, "rb+" ) ) != NULL )
@@ -872,7 +871,7 @@ int dump_initialize( char *prefix, int ivs_only )
 
 	if (G.output_format_csv) {
 		memset(ofn, 0, ofn_len);
-		snprintf( ofn,  ofn_len, "%s-%02d.%s",
+		snprintf( ofn,  ofn_len, "%s-%04d.%s",
 				  prefix, G.f_index, AIRODUMP_NG_CSV_EXT );
 
 		if( ( G.f_txt = fopen( ofn, "wb+" ) ) == NULL )
@@ -887,7 +886,7 @@ int dump_initialize( char *prefix, int ivs_only )
     /* create the output Kismet CSV file */
 	if (G.output_format_kismet_csv) {
 		memset(ofn, 0, ofn_len);
-		snprintf( ofn,  ofn_len, "%s-%02d.%s",
+		snprintf( ofn,  ofn_len, "%s-%04d.%s",
 				  prefix, G.f_index, KISMET_CSV_EXT );
 
 		if( ( G.f_kis = fopen( ofn, "wb+" ) ) == NULL )
@@ -904,7 +903,7 @@ int dump_initialize( char *prefix, int ivs_only )
     if (G.usegpsd)
     {
         memset(ofn, 0, ofn_len);
-        snprintf( ofn,  ofn_len, "%s-%02d.%s",
+        snprintf( ofn,  ofn_len, "%s-%04d.%s",
                   prefix, G.f_index, AIRODUMP_NG_GPS_EXT );
 
         if( ( G.f_gps = fopen( ofn, "wb+" ) ) == NULL )
@@ -920,7 +919,7 @@ int dump_initialize( char *prefix, int ivs_only )
 
 	if (G.output_format_kismet_netxml) {
 		memset(ofn, 0, ofn_len);
-		snprintf( ofn,  ofn_len, "%s-%02d.%s",
+		snprintf( ofn,  ofn_len, "%s-%04d.%s",
 				  prefix, G.f_index, KISMET_NETXML_EXT );
 
 		if( ( G.f_kis_xml = fopen( ofn, "wb+" ) ) == NULL )
@@ -938,7 +937,7 @@ int dump_initialize( char *prefix, int ivs_only )
         struct pcap_file_header pfh;
 
         memset(ofn, 0, ofn_len);
-        snprintf( ofn,  ofn_len, "%s-%02d.%s",
+        snprintf( ofn,  ofn_len, "%s-%04d.%s",
                   prefix, G.f_index, AIRODUMP_NG_CAP_EXT );
 
         if( ( G.f_cap = fopen( ofn, "wb+" ) ) == NULL )
@@ -973,7 +972,7 @@ int dump_initialize( char *prefix, int ivs_only )
         fivs2.version = IVS2_VERSION;
 
         memset(ofn, 0, ofn_len);
-        snprintf( ofn,  ofn_len, "%s-%02d.%s",
+        snprintf( ofn,  ofn_len, "%s-%04d.%s",
                   prefix, G.f_index, IVS2_EXTENSION );
 
         if( ( G.f_ivs = fopen( ofn, "wb+" ) ) == NULL )
@@ -5533,7 +5532,6 @@ int main( int argc, char *argv[] )
     int option_index = 0;
     char ifnam[64];
     int wi_read_failed=0;
-    int n = 0;
     int output_format_first_time = 1;
 #ifdef HAVE_PCRE
     const char *pcreerror;
@@ -5545,13 +5543,10 @@ int main( int argc, char *argv[] )
     struct NA_info *na_cur, *na_next;
     struct oui *oui_cur, *oui_next;
 
-    struct pcap_pkthdr pkh;
-
     time_t tt1, tt2, tt3, start_time;
 
     struct wif	       *wi[MAX_CARDS];
     struct rx_info     ri;
-    unsigned char      tmpbuf[4096];
     unsigned char      buffer[4096];
     unsigned char      *h80211;
     char               *iface[MAX_CARDS];
@@ -6630,7 +6625,7 @@ usage:
 
     if( ! G.save_gps )
     {
-        snprintf( (char *) buffer, 4096, "%s-%02d.gps", argv[2], G.f_index );
+        snprintf( (char *) buffer, 4096, "%s-%04d.gps", argv[2], G.f_index );
         unlink(  (char *) buffer );
     }
 
