@@ -131,10 +131,10 @@ char *get_manufacturer(unsigned char mac0, unsigned char mac1, unsigned char mac
 #define AIRODUMP_NG_CAP_EXT "cap"
 #define AIRODUMP_NG_PCAP_EXT "pcap"
 
-#define NB_EXTENSIONS 7
+#define NB_EXTENSIONS 6
 
 const unsigned char llcnull[4] = {0, 0, 0, 0};
-char *f_ext[NB_EXTENSIONS] = { AIRODUMP_NG_CSV_EXT, AIRODUMP_NG_GPS_EXT, AIRODUMP_NG_CAP_EXT, IVS2_EXTENSION, KISMET_CSV_EXT, KISMET_NETXML_EXT, AIRODUMP_NG_PCAP_EXT };
+char *f_ext[NB_EXTENSIONS] = { AIRODUMP_NG_CSV_EXT, AIRODUMP_NG_GPS_EXT, AIRODUMP_NG_CAP_EXT, KISMET_CSV_EXT, KISMET_NETXML_EXT, AIRODUMP_NG_PCAP_EXT };
 
 extern const unsigned long int crc_tbl[256];
 extern const unsigned char crc_chop_tbl[256][4];
@@ -246,7 +246,6 @@ struct AP_info
     struct timeval ftimer;    /* time of restart             */
 
     char *key;		      /* if wep-key found by dict */
-    int essid_stored;         /* essid stored in ivs file? */
 
     char decloak_detect;      /* run decloak detection? */
     struct pkt_buf *packets;  /* list of captured packets (last few seconds) */
@@ -336,7 +335,6 @@ struct globals
     FILE *f_kis_xml;        /* output kismet netxml file */
     FILE *f_gps;            /* output gps file      */
     FILE *f_cap;            /* output cap file      */
-    FILE *f_ivs;            /* output ivs file      */
     FILE *f_xor;            /* output prga file     */
 
     char * batt;            /* Battery string       */
