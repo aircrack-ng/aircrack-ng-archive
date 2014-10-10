@@ -79,6 +79,7 @@
 
 void dump_sort( void );
 void dump_print( int ws_row, int ws_col, int if_num );
+int dump_initialize( char *prefix, int ivs_only );
 
 char * get_manufacturer_from_string(char * buffer) {
 	char * manuf = NULL;
@@ -792,7 +793,7 @@ void update_rx_quality( )
 
 void dump_rollover( char *prefix, int ivs_only )
 {
-	int i, ofn_len;
+	int ofn_len;
     char * ofn = NULL;
 
 	if (G.roll_cap_files && G.output_format_pcap && G.f_cap != NULL)
