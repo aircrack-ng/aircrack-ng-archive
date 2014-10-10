@@ -413,7 +413,6 @@ struct globals
 
     int hopfreq;
 
-    char*   s_file;         /* source file to read packets */
     char*   s_iface;        /* source interface to read from */
     FILE *f_cap_in;
     struct pcap_file_header pfh_in;

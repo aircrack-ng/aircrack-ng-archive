@@ -634,7 +634,6 @@ char usage[] =
 "      --berlin       <secs> : Time before removing the AP/client\n"
 "                              from the screen when no more packets\n"
 "                              are received (Default: 120 seconds)\n"
-"      -r             <file> : Read packets from that file\n"
 "      -x            <msecs> : Active Scanning Simulation\n"
 "      --manufacturer        : Display manufacturer from IEEE OUI list\n"
 "      --uptime              : Display AP Uptime from Beacon Timestamp\n"
@@ -5668,7 +5667,6 @@ int main( int argc, char *argv[] )
     G.show_manufacturer = 0;
     G.show_uptime  = 0;
     G.hopfreq      =  DEFAULT_HOPFREQ;
-    G.s_file       =  NULL;
     G.s_iface      =  NULL;
     G.f_cap_in     =  NULL;
     G.detect_anomaly = 0;
@@ -5764,7 +5762,7 @@ int main( int argc, char *argv[] )
         option_index = 0;
 
         option = getopt_long( argc, argv,
-                        "b:c:egiw:s:t:u:m:d:N:R:aHDB:Ahf:r:EC:o:x:MU:X",
+                        "b:c:egiw:s:t:u:m:d:N:R:aHDB:Ahf:EC:o:x:MU:X",
                         long_options, &option_index );
 
         if( option < 0 ) break;
@@ -5952,17 +5950,6 @@ int main( int argc, char *argv[] )
                 /* Write prefix */
                 G.dump_prefix   = optarg;
                 G.record_data = 1;
-                break;
-
-            case 'r' :
-
-                if( G.s_file )
-                {
-                    printf( "Packet source already specified.\n" );
-                    printf("\"%s --help\" for help.\n", argv[0]);
-                    return( 1 );
-                }
-                G.s_file = optarg;
                 break;
 
             case 's':
@@ -6158,7 +6145,7 @@ int main( int argc, char *argv[] )
         }
     } while ( 1 );
 
-    if( argc - optind != 1 && G.s_file == NULL)
+    if( argc - optind != 1)
     {
         if(argc == 1)
         {
@@ -6321,47 +6308,6 @@ usage:
 		perror("setuid");
 	}
 
-    /* check if there is an input file */
-    if( G.s_file != NULL )
-    {
-        if( ! ( G.f_cap_in = fopen( G.s_file, "rb" ) ) )
-        {
-            perror( "open failed" );
-            return( 1 );
-        }
-
-        n = sizeof( struct pcap_file_header );
-
-        if( fread( &G.pfh_in, 1, n, G.f_cap_in ) != (size_t) n )
-        {
-            perror( "fread(pcap file header) failed" );
-            return( 1 );
-        }
-
-        if( G.pfh_in.magic != TCPDUMP_MAGIC &&
-            G.pfh_in.magic != TCPDUMP_CIGAM )
-        {
-            fprintf( stderr, "\"%s\" isn't a pcap file (expected "
-                             "TCPDUMP_MAGIC).\n", G.s_file );
-            return( 1 );
-        }
-
-        if( G.pfh_in.magic == TCPDUMP_CIGAM )
-            SWAP32(G.pfh_in.linktype);
-
-        if( G.pfh_in.linktype != LINKTYPE_IEEE802_11 &&
-            G.pfh_in.linktype != LINKTYPE_PRISM_HEADER &&
-            G.pfh_in.linktype != LINKTYPE_RADIOTAP_HDR &&
-            G.pfh_in.linktype != LINKTYPE_PPI_HDR )
-        {
-            fprintf( stderr, "Wrong linktype from pcap file header "
-                             "(expected LINKTYPE_IEEE802_11) -\n"
-                             "this doesn't look like a regular 802.11 "
-                             "capture.\n" );
-            return( 1 );
-        }
-    }
-
     /* open or create the output files */
 
     if (G.record_data)
@@ -6506,101 +6452,7 @@ usage:
             }
         }
 
-        if(G.s_file != NULL)
-        {
-            /* Read one packet */
-            n = sizeof( pkh );
-
-            if( fread( &pkh, n, 1, G.f_cap_in ) != 1 )
-            {
-                memset(G.message, '\x00', sizeof(G.message));
-                snprintf(G.message, sizeof(G.message), "][ Finished reading input file %s.\n", G.s_file);
-                G.s_file = NULL;
-                continue;
-            }
-
-            if( G.pfh_in.magic == TCPDUMP_CIGAM ) {
-                SWAP32( pkh.caplen );
-                SWAP32( pkh.len );
-            }
-
-            n = caplen = pkh.caplen;
-
-            memset(buffer, 0, sizeof(buffer));
-            h80211 = buffer;
-
-            if( n <= 0 || n > (int) sizeof( buffer ) )
-            {
-                memset(G.message, '\x00', sizeof(G.message));
-                snprintf(G.message, sizeof(G.message), "][ Finished reading input file %s.\n", G.s_file);
-                G.s_file = NULL;
-                continue;
-            }
-
-            if( fread( h80211, n, 1, G.f_cap_in ) != 1 )
-            {
-                memset(G.message, '\x00', sizeof(G.message));
-                snprintf(G.message, sizeof(G.message), "][ Finished reading input file %s.\n", G.s_file);
-                G.s_file = NULL;
-                continue;
-            }
-
-            if( G.pfh_in.linktype == LINKTYPE_PRISM_HEADER )
-            {
-                if( h80211[7] == 0x40 )
-                    n = 64;
-                else
-                    n = *(int *)( h80211 + 4 );
-
-                if( n < 8 || n >= (int) caplen )
-                    continue;
-
-                memcpy( tmpbuf, h80211, caplen );
-                caplen -= n;
-                memcpy( h80211, tmpbuf + n, caplen );
-            }
-
-            if( G.pfh_in.linktype == LINKTYPE_RADIOTAP_HDR )
-            {
-                /* remove the radiotap header */
-
-                n = *(unsigned short *)( h80211 + 2 );
-
-                if( n <= 0 || n >= (int) caplen )
-                    continue;
-
-                memcpy( tmpbuf, h80211, caplen );
-                caplen -= n;
-                memcpy( h80211, tmpbuf + n, caplen );
-            }
-
-            if( G.pfh_in.linktype == LINKTYPE_PPI_HDR )
-            {
-                /* remove the PPI header */
-
-                n = le16_to_cpu(*(unsigned short *)( h80211 + 2));
-
-                if( n <= 0 || n>= (int) caplen )
-                    continue;
-
-                /* for a while Kismet logged broken PPI headers */
-                if ( n == 24 && le16_to_cpu(*(unsigned short *)(h80211 + 8)) == 2 )
-                    n = 32;
-
-                if( n <= 0 || n>= (int) caplen )
-                    continue;
-
-                memcpy( tmpbuf, h80211, caplen );
-                caplen -= n;
-                memcpy( h80211, tmpbuf + n, caplen );
-            }
-
-            read_pkts++;
-
-            if(read_pkts%10 == 0)
-                usleep(1);
-        }
-        else if(G.s_iface != NULL)
+        if(G.s_iface != NULL)
         {
             /* capture one packet */
 
@@ -6675,7 +6527,7 @@ usage:
             continue;
         }
 
-        if(G.s_file == NULL && G.s_iface != NULL)
+        if(G.s_iface != NULL)
         {
             fd_is_set = 0;
 
@@ -6727,10 +6579,6 @@ usage:
                     dump_add_packet( h80211, caplen, &ri, i );
                 }
             }
-        }
-        else if (G.s_file != NULL)
-        {
-            dump_add_packet( h80211, caplen, &ri, i );
         }
     }
 
