@@ -1184,7 +1184,7 @@ int remove_namac(unsigned char* mac)
 
 int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int cardnum )
 {
-    int i, n, seq, msd, dlen, offset, clen, o;
+    int i, n, seq, msd, offset;
     unsigned z;
     int type, length, numuni=0, numauth=0;
     struct pcap_pkthdr pkh;
@@ -1193,9 +1193,6 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
     unsigned char bssid[6];
     unsigned char stmac[6];
     unsigned char namac[6];
-    unsigned char clear[2048];
-    int weight[16];
-    int num_xor=0;
 
     struct AP_info *ap_cur = NULL;
     struct ST_info *st_cur = NULL;
