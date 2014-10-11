@@ -475,9 +475,8 @@ G;
 #define JBLF_TAG_FILTER_SIZE    32768
 
 #define JBLF_TAG_EMPTY          0
-#define JBLF_TAG_POWER          (1 | JBLF_TAG_FILTER_SIZE)
-#define JBLF_TAG_CHANNEL        (5 | JBLF_TAG_FILTER_SIZE)
-#define JBLF_TAG_LOCATION       (6 | JBLF_TAG_FILTER_SIZE)
+#define JBLF_TAG_RX_INFO        (1 | JBLF_TAG_FILTER_SIZE)
+#define JBLF_TAG_LOCATION       (5 | JBLF_TAG_FILTER_SIZE)
 
 #define JBLF_TAG_SSID_NAME      10
 #define JBLF_TAG_ARP_NAME       11

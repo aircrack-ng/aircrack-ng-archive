@@ -2524,8 +2524,13 @@ write_packet:
         if( st_cur != NULL )
         {
         	jblf_write_packet_mac_addr((char *)&st_cur->stmac);
-        	jblf_write_int_tag(JBLF_TAG_POWER, st_cur->power);
         }
+        else
+        {
+        	//need to write a MAC address!
+        }
+
+        jblf_write_tag(JBLF_TAG_RX_INFO, sizeof(rx_info), ri);
 
     	//jblf PROCESS PACKET HERE!!!
 
