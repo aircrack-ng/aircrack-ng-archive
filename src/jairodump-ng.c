@@ -86,6 +86,8 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards );
 void jblf_write_current_gps ()
 {
 	struct timeval cur_time;
+	struct jblf_pkthdr recHdr;
+	struct jblf_gps_pkthdr gpsHdr;
 
 	if (G.output_format_jblf && G.f_jblf != NULL && G.gps_loc[0] && G.jblf_gps_data_available)
 	{
@@ -93,13 +95,11 @@ void jblf_write_current_gps ()
 
 		gettimeofday( &cur_time, NULL );
 
-		jblf_pkthdr recHdr;
 		recHdr.tv_sec = cur_time.tv_sec;
 		recHdr.tv_usec = cur_time.tv_usec;
 		recHdr.pkt_type = JBLF_PKT_TYPE_GPS;
 
-		jblf_gps_pkthdr gpsHdr;
-		memset( gpsHdr.gps_loc, G.gps_loc, sizeof( float ) * 5 );
+		memcpy( gpsHdr.gps_loc, G.gps_loc, sizeof( float ) * 5 );
 		if( fwrite( &recHdr, 1, sizeof( recHdr ), G.f_jblf ) != (size_t) sizeof( recHdr ) )
     	{
     		perror("fwrite(jblf gps record header) failed");
@@ -1361,7 +1361,6 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
     unsigned z;
     int type, length, numuni=0, numauth=0;
     struct pcap_pkthdr pkh;
-    struct jblf_tag_hdr jblf_tag;
     struct timeval tv;
     unsigned char *p, *org_p, c;
     unsigned char bssid[6];
@@ -2499,7 +2498,7 @@ write_packet:
         if( st_cur != NULL )
         {
         	jblf_write_packet_mac_addr(&st_cur->stmac);
-        	jblf_write_tag(JBLF_TAG_POWER, sizeof(int), &st_cur->power);
+        	jblf_write_tag(JBLF_TAG_POWER, sizeof(int), st_cur->power);
         }
 
     	//jblf PROCESS PACKET HERE!!!
