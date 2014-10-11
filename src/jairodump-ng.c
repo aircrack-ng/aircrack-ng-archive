@@ -185,6 +185,32 @@ void jblf_write_tag(uint16_t tagType, uint16_t tagLength, char * tagBuffer)
 	}
 }
 
+void jblf_write_int_tag(uint16_t tagType, int tagVal)
+{
+	if(G.output_format_jblf && G.f_jblf != NULL)
+	{
+		if( fwrite(&tagType, 1, sizeof(uint16_t), G.f_jblf) != (size_t) sizeof(uint16_t) )
+		{
+			perror("fwrite(jblf tagType) failed");
+			return;
+		}
+		if( ( tagType & JBLF_TAG_FILTER_SIZE) == JBLF_TAG_FILTER_SIZE )
+		{
+			if( fwrite(sizeof(int), 1, sizeof(int), G.f_jblf) != (size_t) sizeof(int) )
+			{
+				perror("fwrite(jblf tagLength) failed");
+				return;
+			}
+		}
+
+		if( fwrite(&tagVal, 1, sizeof(int), G.f_jblf) != (size_t)sizeof(int))
+		{
+			perror("fwrite(jblf tagVal) failed");
+			return;
+		}
+	}
+}
+
 /* END JBLF FILE ROUTINES */
 
 char * get_manufacturer_from_string(char * buffer) {
@@ -2497,8 +2523,8 @@ write_packet:
         //write the client address...
         if( st_cur != NULL )
         {
-        	jblf_write_packet_mac_addr(&st_cur->stmac);
-        	jblf_write_tag(JBLF_TAG_POWER, sizeof(int), st_cur->power);
+        	jblf_write_packet_mac_addr((char *)&st_cur->stmac);
+        	jblf_write_int_tag(JBLF_TAG_POWER, st_cur->power);
         }
 
     	//jblf PROCESS PACKET HERE!!!
