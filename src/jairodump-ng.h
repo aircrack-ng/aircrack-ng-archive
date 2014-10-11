@@ -450,6 +450,8 @@ struct globals
     int skip_columns;
     int do_pause;
     int do_sort_always;
+
+    int jblf_gps_data_available;
     
     pthread_mutex_t mx_print;			 /* lock write access to ap LL   */
     pthread_mutex_t mx_sort;			 /* lock write access to ap LL   */
@@ -470,15 +472,19 @@ G;
 #define JBLF_PKT_TYPE_IP        0
 #define JBLF_PKT_TYPE_GPS       1
 
+#define JBLF_TAG_FILTER_SIZE    32768
+
 #define JBLF_TAG_EMPTY          0
-#define JBLF_TAG_RX_POWER       1
-#define JBLF_TAG_LATITUDE       5
-#define JBLF_TAG_LONGITUDE      6
+#define JBLF_TAG_POWER          (1 | JBLF_TAG_FILTER_SIZE)
+#define JBLF_TAG_CHANNEL        (5 | JBLF_TAG_FILTER_SIZE)
+#define JBLF_TAG_LOCATION       (6 | JBLF_TAG_FILTER_SIZE)
 
 #define JBLF_TAG_SSID_NAME      10
 #define JBLF_TAG_ARP_NAME       11
 #define JBLF_TAG_URL            12
 #define JBLF_TAG_USER_AGENT     13
+
+#define JBLF_GPS_INTERVAL       60 * 3 /* 3-second max time check */
 
 /* JBLF (Joe's Binary Log File) structures */
 struct jblf_file_header
@@ -509,6 +515,16 @@ struct jblf_ip_pkthdr
 struct jblf_gps_pkthdr
 {
     float gps_loc[5];
+};
+
+struct jblf_tag_hdr
+{
+    uint16_t tag_type;
+};
+
+struct jblf_tag_len
+{
+    uint16_t tag_length;
 };
 
 #endif

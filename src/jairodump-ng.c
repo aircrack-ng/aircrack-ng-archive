@@ -81,6 +81,112 @@ void dump_sort( void );
 void dump_print( int ws_row, int ws_col, int if_num );
 int dump_initialize( char *prefix, struct wif *wi[], int cards );
 
+/* START JBLF FILE ROUTINES */
+
+void jblf_write_current_gps ()
+{
+	struct timeval cur_time;
+
+	if (G.output_format_jblf && G.f_jblf != NULL && G.gps_loc[0] && G.jblf_gps_data_available)
+	{
+		G.jblf_gps_data_available = 0;
+
+		gettimeofday( &cur_time, NULL );
+
+		jblf_pkthdr recHdr;
+		recHdr.tv_sec = cur_time.tv_sec;
+		recHdr.tv_usec = cur_time.tv_usec;
+		recHdr.pkt_type = JBLF_PKT_TYPE_GPS;
+
+		jblf_gps_pkthdr gpsHdr;
+		memset( gpsHdr.gps_loc, G.gps_loc, sizeof( float ) * 5 );
+		if( fwrite( &recHdr, 1, sizeof( recHdr ), G.f_jblf ) != (size_t) sizeof( recHdr ) )
+    	{
+    		perror("fwrite(jblf gps record header) failed");
+    		return;
+    	}
+
+    	if( fwrite( &gpsHdr, 1, sizeof( gpsHdr ), G.f_jblf ) != (size_t) sizeof( gpsHdr ) )
+    	{
+    		perror("fwrite(jblf gps record) failed");
+    		return;
+    	}
+	}
+	else
+	{
+		G.jblf_gps_data_available = 0;
+	}
+}
+
+void jblf_write_packet_header(uint16_t tv_sec, uint16_t tv_usec, uint8_t pkt_type)
+{
+	struct jblf_pkthdr jblf_pkh;
+
+	if(G.output_format_jblf && G.f_gps != NULL)
+	{
+		jblf_pkh.tv_sec  =   tv_sec;
+        jblf_pkh.tv_usec = tv_usec;
+        jblf_pkh.pkt_type = pkt_type;
+        if( fwrite( &jblf_pkh, 1, sizeof(jblf_pkh), G.f_jblf) != (size_t)sizeof(jblf_pkh) )
+        {
+        	perror("fwrite(jblf packet header) failed");
+        	return;
+        }
+	}
+}
+
+void jblf_write_packet_mac_addr(char * tagBuffer)
+{
+	if(G.output_format_jblf && G.f_gps != NULL)
+	{
+		char * tmp;
+		if(tagBuffer)
+		{
+			tmp = tagBuffer;
+		}
+		else
+		{
+			tmp = malloc(6);
+			memset(tmp, 0x00, 6);
+		}
+		fwrite(tmp, 1, 6, G.f_jblf);
+		if(!tagBuffer)
+		{
+			free(tmp);
+		}
+	}
+}
+
+void jblf_write_tag(uint16_t tagType, uint16_t tagLength, char * tagBuffer)
+{
+	if(G.output_format_jblf && G.f_jblf != NULL)
+	{
+		if( fwrite(&tagType, 1, sizeof(uint16_t), G.f_jblf) != (size_t) sizeof(uint16_t) )
+		{
+			perror("fwrite(jblf tagType) failed");
+			return;
+		}
+		if( ( tagType & JBLF_TAG_FILTER_SIZE) == JBLF_TAG_FILTER_SIZE )
+		{
+			if( fwrite(&tagLength, 1, sizeof(uint16_t), G.f_jblf) != (size_t) sizeof(uint16_t) )
+			{
+				perror("fwrite(jblf tagLength) failed");
+				return;
+			}
+		}
+		if(tagLength)
+		{
+			if( fwrite(tagBuffer, 1, tagLength, G.f_jblf) != (size_t)tagLength)
+			{
+				perror("fwrite(jblf tagBuffer) failed");
+				return;
+			}
+		}
+	}
+}
+
+/* END JBLF FILE ROUTINES */
+
 char * get_manufacturer_from_string(char * buffer) {
 	char * manuf = NULL;
 	char * buffer_manuf;
@@ -1255,6 +1361,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
     unsigned z;
     int type, length, numuni=0, numauth=0;
     struct pcap_pkthdr pkh;
+    struct jblf_tag_hdr jblf_tag;
     struct timeval tv;
     unsigned char *p, *org_p, c;
     unsigned char bssid[6];
@@ -2384,7 +2491,21 @@ write_packet:
         fflush( stdout );
     }
 
-    //jblf PROCESS PACKET HERE!!!
+    if(G.f_jblf != NULL && caplen >= 10)
+    {
+    	jblf_write_packet_header(tv.tv_sec, ( tv.tv_usec & ~0x1ff ) + ri->ri_power + 64, JBLF_PKT_TYPE_IP);
+
+        //write the client address...
+        if( st_cur != NULL )
+        {
+        	jblf_write_packet_mac_addr(&st_cur->stmac);
+        	jblf_write_tag(JBLF_TAG_POWER, sizeof(int), &st_cur->power);
+        }
+
+    	//jblf PROCESS PACKET HERE!!!
+
+    	jblf_write_tag(JBLF_TAG_EMPTY, 0, NULL);
+    }
 
     return( 0 );
 }
@@ -4341,6 +4462,7 @@ void gps_tracker( void )
     while( G.do_exit == 0 )
     {
         usleep( 500000 );
+        G.jblf_gps_data_available = 0;
         memset( G.gps_loc, 0, sizeof( float ) * 5 );
 
         /* read position, speed, heading, altitude */
@@ -4454,6 +4576,7 @@ void gps_tracker( void )
 			fputs( line, G.f_gps );
 
 		G.save_gps = 1;
+		G.jblf_gps_data_available = 1;
 
         if (G.do_exit == 0)
 		{
@@ -5368,7 +5491,7 @@ int main( int argc, char *argv[] )
     struct NA_info *na_cur, *na_next;
     struct oui *oui_cur, *oui_next;
 
-    time_t tt1, tt2, tt3, start_time;
+    time_t tt1, tt2, tt3, start_time, jblf_gps_time;
 
     struct wif	       *wi[MAX_CARDS];
     struct rx_info     ri;
@@ -5497,6 +5620,8 @@ int main( int argc, char *argv[] )
     G.output_format_csv = 1;
     G.output_format_kismet_csv = 1;
     G.output_format_kismet_netxml = 1;
+
+    G.jblf_gps_data_available = 0;
 
 #ifdef HAVE_PCRE
     G.f_essid_regex = NULL;
@@ -6138,6 +6263,7 @@ usage:
     tt3        = time( NULL );
     gettimeofday( &tv3, NULL );
     gettimeofday( &tv4, NULL );
+    jblf_gps_time = start_time;
 
     G.batt     = getBatteryString();
 
@@ -6201,14 +6327,19 @@ usage:
 
             free(G.elapsed_time);
             G.elapsed_time=NULL;
-            G.elapsed_time = getStringTimeFromSec(
-            difftime(tt2, start_time) );
+            G.elapsed_time = getStringTimeFromSec( difftime(tt2, start_time) );
 
 
             /* flush the output files */
 
             if( G.f_cap != NULL ) fflush( G.f_cap );
             if( G.f_jblf != NULL ) fflush( G.f_jblf );
+        }
+
+        if( time( NULL ) - jblf_gps_time > JBLF_GPS_INTERVAL )
+        {
+        	jblf_gps_time = time( NULL );
+        	jblf_write_current_gps();
         }
 
         gettimeofday( &tv1, NULL );
