@@ -64,12 +64,18 @@
 #include <pcre.h>
 #endif
 
-#include "version.h"
-#include "pcap.h"
-#include "uniqueiv.h"
-#include "ieee80211.h"
-#include "crypto.h"
+
 #include "osdep/osdep.h"
+#include "pcap.h"
+#include "aircrack-ptw-lib.h"
+#include "ieee80211.h"
+#include "ethernet.h"
+#include "if_arp.h"
+#include "if_llc.h"
+#include "crypto.h"
+#include "version.h"
+#include "osdep/byteorder.h"
+#include "uniqueiv.h"
 #include "jairodump-ng.h"
 #include "osdep/common.h"
 #include "common.h"
