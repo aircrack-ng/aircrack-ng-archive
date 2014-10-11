@@ -187,28 +187,7 @@ void jblf_write_tag(uint16_t tagType, uint16_t tagLength, char * tagBuffer)
 
 void jblf_write_int_tag(uint16_t tagType, int tagVal)
 {
-	if(G.output_format_jblf && G.f_jblf != NULL)
-	{
-		if( fwrite(&tagType, 1, sizeof(uint16_t), G.f_jblf) != (size_t) sizeof(uint16_t) )
-		{
-			perror("fwrite(jblf tagType) failed");
-			return;
-		}
-		if( ( tagType & JBLF_TAG_FILTER_SIZE) == JBLF_TAG_FILTER_SIZE )
-		{
-			if( fwrite(sizeof(int), 1, sizeof(int), G.f_jblf) != (size_t) sizeof(int) )
-			{
-				perror("fwrite(jblf tagLength) failed");
-				return;
-			}
-		}
-
-		if( fwrite(&tagVal, 1, sizeof(int), G.f_jblf) != (size_t)sizeof(int))
-		{
-			perror("fwrite(jblf tagVal) failed");
-			return;
-		}
-	}
+	jblf_write_tag(tagType, sizeof(int), &tagVal);
 }
 
 /* END JBLF FILE ROUTINES */
@@ -2530,7 +2509,7 @@ write_packet:
         	//need to write a MAC address!
         }
 
-        jblf_write_tag(JBLF_TAG_RX_INFO, sizeof(rx_info), ri);
+        jblf_write_tag(JBLF_TAG_RX_INFO, sizeof(struct rx_info), ri);
 
     	//jblf PROCESS PACKET HERE!!!
 
