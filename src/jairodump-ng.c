@@ -2610,7 +2610,7 @@ write_packet:
 
     	//jblf PROCESS PACKET HERE!!!
     	struct ieee80211_frame* wh = (struct ieee80211_frame*) h80211;
-    	if( (wf->i_fc[0] & IEEE80211_FC0_TYPE_MASK) == IEEE80211_FC0_TYPE_DATA )
+    	if( (wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK) == IEEE80211_FC0_TYPE_DATA )
     	{
     		jblf_write_80211_info(wh, caplen);
     	}
