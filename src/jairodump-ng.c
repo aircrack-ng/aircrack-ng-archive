@@ -67,6 +67,7 @@
 #include "version.h"
 #include "pcap.h"
 #include "uniqueiv.h"
+#include "ieee80211.h"
 #include "crypto.h"
 #include "osdep/osdep.h"
 #include "jairodump-ng.h"
@@ -80,6 +81,56 @@
 void dump_sort( void );
 void dump_print( int ws_row, int ws_col, int if_num );
 int dump_initialize( char *prefix, struct wif *wi[], int cards );
+
+/* IEEE802.11 Routines */
+static unsigned char *get_bssid(struct ieee80211_frame *wh)
+{
+	int type = wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK;
+	uint16_t *p = (uint16_t*) (wh + 1);
+
+	if (type == IEEE80211_FC0_TYPE_CTL)
+		return NULL;
+
+	if (wh->i_fc[1] & IEEE80211_FC1_DIR_TODS)
+		return wh->i_addr1;
+	else if (wh->i_fc[1] & IEEE80211_FC1_DIR_FROMDS)
+		return wh->i_addr2;
+
+	// XXX adhoc?
+	if (type == IEEE80211_FC0_TYPE_DATA)
+		return wh->i_addr1;
+
+	switch (wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK) {
+	case IEEE80211_FC0_SUBTYPE_ASSOC_REQ:
+	case IEEE80211_FC0_SUBTYPE_REASSOC_REQ:
+	case IEEE80211_FC0_SUBTYPE_DISASSOC:
+		return wh->i_addr1;
+
+	case IEEE80211_FC0_SUBTYPE_AUTH:
+		/* XXX check len */
+		switch (le16toh(p[1])) {
+		case 1:
+		case 3:
+			return wh->i_addr1;
+
+		case 2:
+		case 4:
+			return wh->i_addr2;
+		}
+		return NULL;
+
+	case IEEE80211_FC0_SUBTYPE_ASSOC_RESP:
+	case IEEE80211_FC0_SUBTYPE_REASSOC_RESP:
+	case IEEE80211_FC0_SUBTYPE_PROBE_RESP:
+	case IEEE80211_FC0_SUBTYPE_BEACON:
+	case IEEE80211_FC0_SUBTYPE_DEAUTH:
+		return wh->i_addr2;
+
+	case IEEE80211_FC0_SUBTYPE_PROBE_REQ:
+	default:
+		return NULL;
+	}
+}
 
 /* START JBLF FILE ROUTINES */
 
@@ -188,6 +239,42 @@ void jblf_write_tag(uint16_t tagType, uint16_t tagLength, void * tagBuffer)
 void jblf_write_int_tag(uint16_t tagType, int tagVal)
 {
 	jblf_write_tag(tagType, sizeof(int), &tagVal);
+}
+
+void jblf_write_80211_info(struct ieee80211_frame *wh, int len)
+{
+	if( !(G.output_format_jblf && G.f_jblf != NULL) || wh == NULL )
+		return;
+
+	if ( ( (wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK) == IEEE80211_FC0_SUBTYPE_NODATA ) || ( (wh->i_fc[1] & IEEE80211_FC1_WEP) == IEEE80211_FC1_WEP) ) //If there is no content, or it is encrypted, exit.
+	{
+		return;
+	}
+
+	uint8_t dir = (wh->i_fc[1] & IEEE80211_FC1_DIR_MASK);
+	int hdrlen = ( (dir & IEEE80211_FC1_DIR_TODS) && (dir & IEEE80211_FC1_DIR_FROMDS) ) ? 30 : 24;
+	if ( (wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK) == IEEE80211_FC0_SUBTYPE_QOS )
+	{
+		hdrlen += 2;
+	}
+
+	if( hdrlen >= len )
+		return;
+
+	struct llc* llc = (struct llc*) (((char *) wh) + hdrlen);
+
+	if ( !(llc->llc_dsap == LLC_SNAP_LSAP && llc->llc_ssap == LLC_SNAP_LSAP) )
+		return;
+
+	if (hdrlen + LLC_SNAPFRAMELEN >= len)
+		return;
+
+	uint16_t etherType = llc->llc_un.type_snap.ether_type;
+
+	char * pkt = ((char *) wh) + hdrlen + LLC_SNAPFRAMELEN;
+	int pktLen = len - hdrlen;
+
+	//data contents are at pkt with a lenght of pktLen
 }
 
 /* END JBLF FILE ROUTINES */
@@ -2516,6 +2603,11 @@ write_packet:
         }
 
     	//jblf PROCESS PACKET HERE!!!
+    	struct ieee80211_frame* wh = (struct ieee80211_frame*) h80211;
+    	if( (wf->i_fc[0] & IEEE80211_FC0_TYPE_MASK) == IEEE80211_FC0_TYPE_DATA )
+    	{
+    		jblf_write_80211_info(wh, caplen);
+    	}
 
     	jblf_write_tag(JBLF_TAG_EMPTY, 0, NULL);
     }

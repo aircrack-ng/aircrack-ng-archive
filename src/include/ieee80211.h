@@ -176,6 +176,27 @@ struct ieee80211_qosframe_addr4 {
 #define	IEEE80211_QOS_ESOP_S			4
 #define	IEEE80211_QOS_TID			0x0f
 
+/* simple data frame tests */
+#define IEEE80211_DATA_FRAME_IS_CF_ACK(x)	((x) & 0x01)
+#define IEEE80211_DATA_FRAME_IS_CF_POLL(x)	((x) & 0x02)
+#define IEEE80211_DATA_FRAME_IS_NULL(x)		((x) & 0x04)
+#define IEEE80211_DATA_FRAME_IS_QOS(x)		((x) & 0x08)
+
+/*
+ * Bits in the frame control field.
+ */
+#define	IEEE80211_FC_VERSION(fc)	((fc) & 0x3)
+#define	IEEE80211_FC_TYPE(fc)		(((fc) >> 2) & 0x3)
+#define	IEEE80211_FC_SUBTYPE(fc)	(((fc) >> 4) & 0xF)
+#define	IEEE80211_FC_TO_DS(fc)		((fc) & 0x0100)
+#define	IEEE80211_FC_FROM_DS(fc)	((fc) & 0x0200)
+#define	IEEE80211_FC_MORE_FLAG(fc)	((fc) & 0x0400)
+#define	IEEE80211_FC_RETRY(fc)		((fc) & 0x0800)
+#define	IEEE80211_FC_POWER_MGMT(fc)	((fc) & 0x1000)
+#define	IEEE80211_FC_MORE_DATA(fc)	((fc) & 0x2000)
+#define	IEEE80211_FC_WEP(fc)		((fc) & 0x4000)
+#define	IEEE80211_FC_ORDER(fc)		((fc) & 0x8000)
+
 /* does frame have QoS sequence control data */
 #define	IEEE80211_QOS_HAS_SEQ(wh) \
 	(((wh)->i_fc[0] & \
