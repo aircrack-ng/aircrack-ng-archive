@@ -280,6 +280,7 @@ struct ST_info
     char probes[NB_PRB][MAX_IE_ELEMENT_SIZE];
                              /* probed ESSIDs ring buffer */
     int ssid_length[NB_PRB]; /* ssid lengths ring buffer  */
+    int ssid_jblf_needs_log[NB_PRB]; /* does the ssid need to be jblf logged */
     int power;               /* last signal power         */
     int rate_to;             /* last bitrate to station   */
     int rate_from;           /* last bitrate from station */
@@ -478,10 +479,10 @@ G;
 #define JBLF_TAG_RX_INFO        (1 | JBLF_TAG_FILTER_SIZE)
 #define JBLF_TAG_LOCATION       (5 | JBLF_TAG_FILTER_SIZE)
 
-#define JBLF_TAG_SSID_NAME      10
-#define JBLF_TAG_ARP_NAME       11
-#define JBLF_TAG_URL            12
-#define JBLF_TAG_USER_AGENT     13
+#define JBLF_TAG_SSID_NAME      (10 | JBLF_TAG_FILTER_SIZE)
+#define JBLF_TAG_ARP_NAME       (11 | JBLF_TAG_FILTER_SIZE)
+#define JBLF_TAG_URL            (12 | JBLF_TAG_FILTER_SIZE)
+#define JBLF_TAG_USER_AGENT     (13 | JBLF_TAG_FILTER_SIZE)
 
 #define JBLF_GPS_INTERVAL       60 * 3 /* 3-second max time check */
 

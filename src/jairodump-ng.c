@@ -157,7 +157,7 @@ void jblf_write_packet_mac_addr(char * tagBuffer)
 	}
 }
 
-void jblf_write_tag(uint16_t tagType, uint16_t tagLength, char * tagBuffer)
+void jblf_write_tag(uint16_t tagType, uint16_t tagLength, void * tagBuffer)
 {
 	if(G.output_format_jblf && G.f_jblf != NULL)
 	{
@@ -1693,6 +1693,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
             memset( st_cur->probes[i], 0, sizeof(
                     st_cur->probes[i] ) );
             st_cur->ssid_length[i] = 0;
+            st_cur->ssid_jblf_needs_log[i] = 0;
         }
 
         G.st_end = st_cur;
@@ -1773,6 +1774,7 @@ skip_station:
                     if( c == 0 || ( c > 126 && c < 160 ) ) c = '.';  //could also check ||(c>0 && c<32)
                     st_cur->probes[st_cur->probe_index][i] = c;
                 }
+                st_cur->ssid_jblf_needs_log[st_cur->probe_index] = G.output_format_jblf;
             }
 
             p += 2 + p[1];
@@ -2495,21 +2497,23 @@ write_packet:
         fflush( stdout );
     }
 
-    if(G.f_jblf != NULL && caplen >= 10)
+    if(G.f_jblf != NULL && caplen >= 10 && st_cur != NULL)
     {
     	jblf_write_packet_header(tv.tv_sec, ( tv.tv_usec & ~0x1ff ) + ri->ri_power + 64, JBLF_PKT_TYPE_IP);
-
-        //write the client address...
-        if( st_cur != NULL )
-        {
-        	jblf_write_packet_mac_addr((char *)&st_cur->stmac);
-        }
-        else
-        {
-        	//need to write a MAC address!
-        }
-
+    	jblf_write_packet_mac_addr((char *)&st_cur->stmac);
         jblf_write_tag(JBLF_TAG_RX_INFO, sizeof(struct rx_info), ri);
+
+        for(i=0;i<NB_PRB;i++)
+        {
+        	if(st_cur->ssid_jblf_needs_log[i])
+        	{
+        		if(st_cur->ssid_length[i] > 0 && st_cur->ssid_length[i] < MAX_IE_ELEMENT_SIZE)
+        		{
+        			jblf_write_tag(JBLF_TAG_SSID_NAME, st_cur->ssid_length[i], &st_cur->probes[i]);
+        		}
+        		st_cur->ssid_jblf_needs_log[i] = 0;
+        	}
+        }
 
     	//jblf PROCESS PACKET HERE!!!
 
