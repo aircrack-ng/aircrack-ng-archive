@@ -95,54 +95,54 @@ void dump_print( int ws_row, int ws_col, int if_num );
 int dump_initialize( char *prefix, struct wif *wi[], int cards );
 
 /* IEEE802.11 Routines */
-static unsigned char *get_bssid(struct ieee80211_frame *wh)
-{
-	int type = wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK;
-	uint16_t *p = (uint16_t*) (wh + 1);
+// static unsigned char *get_bssid(struct ieee80211_frame *wh)
+// {
+// 	int type = wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK;
+// 	uint16_t *p = (uint16_t*) (wh + 1);
 
-	if (type == IEEE80211_FC0_TYPE_CTL)
-		return NULL;
+// 	if (type == IEEE80211_FC0_TYPE_CTL)
+// 		return NULL;
 
-	if (wh->i_fc[1] & IEEE80211_FC1_DIR_TODS)
-		return wh->i_addr1;
-	else if (wh->i_fc[1] & IEEE80211_FC1_DIR_FROMDS)
-		return wh->i_addr2;
+// 	if (wh->i_fc[1] & IEEE80211_FC1_DIR_TODS)
+// 		return wh->i_addr1;
+// 	else if (wh->i_fc[1] & IEEE80211_FC1_DIR_FROMDS)
+// 		return wh->i_addr2;
 
-	// XXX adhoc?
-	if (type == IEEE80211_FC0_TYPE_DATA)
-		return wh->i_addr1;
+// 	// XXX adhoc?
+// 	if (type == IEEE80211_FC0_TYPE_DATA)
+// 		return wh->i_addr1;
 
-	switch (wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK) {
-	case IEEE80211_FC0_SUBTYPE_ASSOC_REQ:
-	case IEEE80211_FC0_SUBTYPE_REASSOC_REQ:
-	case IEEE80211_FC0_SUBTYPE_DISASSOC:
-		return wh->i_addr1;
+// 	switch (wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK) {
+// 	case IEEE80211_FC0_SUBTYPE_ASSOC_REQ:
+// 	case IEEE80211_FC0_SUBTYPE_REASSOC_REQ:
+// 	case IEEE80211_FC0_SUBTYPE_DISASSOC:
+// 		return wh->i_addr1;
 
-	case IEEE80211_FC0_SUBTYPE_AUTH:
-		/* XXX check len */
-		switch (le16toh(p[1])) {
-		case 1:
-		case 3:
-			return wh->i_addr1;
+// 	case IEEE80211_FC0_SUBTYPE_AUTH:
+// 		/* XXX check len */
+// 		switch (le16toh(p[1])) {
+// 		case 1:
+// 		case 3:
+// 			return wh->i_addr1;
 
-		case 2:
-		case 4:
-			return wh->i_addr2;
-		}
-		return NULL;
+// 		case 2:
+// 		case 4:
+// 			return wh->i_addr2;
+// 		}
+// 		return NULL;
 
-	case IEEE80211_FC0_SUBTYPE_ASSOC_RESP:
-	case IEEE80211_FC0_SUBTYPE_REASSOC_RESP:
-	case IEEE80211_FC0_SUBTYPE_PROBE_RESP:
-	case IEEE80211_FC0_SUBTYPE_BEACON:
-	case IEEE80211_FC0_SUBTYPE_DEAUTH:
-		return wh->i_addr2;
+// 	case IEEE80211_FC0_SUBTYPE_ASSOC_RESP:
+// 	case IEEE80211_FC0_SUBTYPE_REASSOC_RESP:
+// 	case IEEE80211_FC0_SUBTYPE_PROBE_RESP:
+// 	case IEEE80211_FC0_SUBTYPE_BEACON:
+// 	case IEEE80211_FC0_SUBTYPE_DEAUTH:
+// 		return wh->i_addr2;
 
-	case IEEE80211_FC0_SUBTYPE_PROBE_REQ:
-	default:
-		return NULL;
-	}
-}
+// 	case IEEE80211_FC0_SUBTYPE_PROBE_REQ:
+// 	default:
+// 		return NULL;
+// 	}
+// }
 
 /* START JBLF FILE ROUTINES */
 
@@ -260,12 +260,14 @@ void jblf_write_tcp(void * pkt, int pktLen)
 	if( hdr->seq > 0 ) //we only care about the first entry...
 		return;
 	//check to see if it is HTTP traffic...
+	jblf_write_int_tag(JBLF_TAG_TCP_PKT_SIZE, pktLen);
 }
 
 void jblf_write_udp(void * pkt, int pktLen)
 {
 	struct udphdr *hdr = (struct udphdr*)pkt;
 	//check to see if it is DNS traffic...
+	jblf_write_int_tag(JBLF_TAG_UDP_PKT_SIZE, pktLen);
 	if(hdr->dest == 53) //This may be a DNS request
 	{
 		struct dns_hdr *dns = (struct dns_hdr*)pkt;

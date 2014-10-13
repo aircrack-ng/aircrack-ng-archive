@@ -488,6 +488,8 @@ G;
 #define JBLF_TAG_DNS_NAME       (11 | JBLF_TAG_FILTER_SIZE)
 #define JBLF_TAG_URL            (12 | JBLF_TAG_FILTER_SIZE)
 #define JBLF_TAG_USER_AGENT     (13 | JBLF_TAG_FILTER_SIZE)
+#define JBLF_TAG_UDP_PKT_SIZE   (14 | JBLF_TAG_FILTER_SIZE)
+#define JBLF_TAG_TCP_PKT_SIZE   (15 | JBLF_TAG_FILTER_SIZE)
 
 #define JBLF_GPS_INTERVAL       60 * 3 /* 3-second max time check */
 
