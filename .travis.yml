@@ -4,5 +4,15 @@ compiler:
 - clang
 install:
 - sudo apt-get update
-- sudo apt-get install libnl-3-dev libgcrypt11-dev zlib1g-dev libpcap-dev libssl-dev libnl-genl-3-dev
+- sudo apt-get install libnl-3-dev libgcrypt11-dev zlib1g-dev libpcap-dev libssl-dev
+  libnl-genl-3-dev
 script: make
+deploy:
+  provider: releases
+  api_key:
+    secure: M+2X3oYBLeLtbtHHGlvL9kdJLZyPyu+CecdwUEssB8kvZFiMoRD13Ro0zO68+u1x8ROwaR27gyZl47bYMAB1rcoKMvgFsA2azxiPSnaWlYIs55Z8X13CnCodbr74zu9PQbUi1wsGTFlOH9TUyaGyCkyR0r6HR0VA3QrDl8EZYOE=
+  file: jairodump-ng aircrack-ng
+  skip_cleanup: true
+  on:
+    tags: true
+    all_branches: true
