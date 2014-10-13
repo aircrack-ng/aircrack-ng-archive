@@ -48,6 +48,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netinet/ip.h>
+#include <netinet/ip6.h>
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
 #include <unistd.h>
@@ -296,7 +297,15 @@ void jblf_write_ipv4_info(void * pkt, int pktLen)
 }
 void jblf_write_ipv6_info(void * pkt, int pktLen)
 {
-	//need to add IP v6 support.
+	struct ip6_hdr *hdr = (struct ip6_hdr*)pkt;
+	if( (hdr->ip6_ctlun.ip6_un2_vfc & IPV6_VERSION_MASK) != IPV6_VERSION)
+		return;
+	int dataStartPos = sizeof(hdr);
+	switch(hdr->ip6_ctlun.ip6_un1.ip6_un1_nxt)
+	{
+		case IPPROTO_TCP: jblf_write_tcp(pkt + dataStartPos, pktLen - dataStartPos); break;
+		case IPPROTO_UDP: jblf_write_udp(pkt + dataStartPos, pktLen - dataStartPos); break;
+	}
 }
 void jblf_write_etherType(uint16_t etherType)
 {
