@@ -477,10 +477,11 @@ G;
 
 #define JBLF_TAG_EMPTY          0
 #define JBLF_TAG_RX_INFO        (1 | JBLF_TAG_FILTER_SIZE)
+#define JBLF_TAG_ETHER_TYPE     2
 #define JBLF_TAG_LOCATION       (5 | JBLF_TAG_FILTER_SIZE)
 
 #define JBLF_TAG_SSID_NAME      (10 | JBLF_TAG_FILTER_SIZE)
-#define JBLF_TAG_ARP_NAME       (11 | JBLF_TAG_FILTER_SIZE)
+#define JBLF_TAG_DNS_NAME       (11 | JBLF_TAG_FILTER_SIZE)
 #define JBLF_TAG_URL            (12 | JBLF_TAG_FILTER_SIZE)
 #define JBLF_TAG_USER_AGENT     (13 | JBLF_TAG_FILTER_SIZE)
 
@@ -526,5 +527,61 @@ struct jblf_tag_len
 {
     uint16_t tag_length;
 };
+
+/* Misc network protocol structures */
+struct dns_hdr
+{
+    unsigned short id; // identification number
+ 
+    unsigned char rd :1; // recursion desired
+    unsigned char tc :1; // truncated message
+    unsigned char aa :1; // authoritive answer
+    unsigned char opcode :4; // purpose of message
+    unsigned char qr :1; // query/response flag
+ 
+    unsigned char rcode :4; // response code
+    unsigned char cd :1; // checking disabled
+    unsigned char ad :1; // authenticated data
+    unsigned char z :1; // its z! reserved
+    unsigned char ra :1; // recursion available
+ 
+    unsigned short q_count; // number of question entries
+    unsigned short ans_count; // number of answer entries
+    unsigned short auth_count; // number of authority entries
+    unsigned short add_count; // number of resource entries
+};
+
+//Constant sized fields of query structure
+struct dns_question
+{
+    unsigned short qtype;
+    unsigned short qclass;
+};
+ 
+//Constant sized fields of the resource record structure
+#pragma pack(push, 1)
+struct dns_r_data
+{
+    unsigned short type;
+    unsigned short _class;
+    unsigned int ttl;
+    unsigned short data_len;
+};
+#pragma pack(pop)
+ 
+//Pointers to resource record contents
+struct dns_res_record
+{
+    unsigned char *name;
+    struct R_DATA *resource;
+    unsigned char *rdata;
+};
+ 
+//Structure of a Query
+typedef struct
+{
+    unsigned char *name;
+    struct dns_question *ques;
+} dns_query;
 
 #endif

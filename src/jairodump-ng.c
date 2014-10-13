@@ -45,6 +45,10 @@
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netinet/ip.h>
+#include <netinet/ipv6.h>
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
 #include <unistd.h>
 #include <signal.h>
 #include <string.h>
@@ -247,6 +251,63 @@ void jblf_write_int_tag(uint16_t tagType, int tagVal)
 	jblf_write_tag(tagType, sizeof(int), &tagVal);
 }
 
+void jblf_write_tcp(void * pkt, int pktLen)
+{
+	tcphdr *hdr = (tcphdr*)pkt;
+	if( hdr->th_seq > 0 ) //we only care about the first entry...
+		return;
+	//check to see if it is HTTP traffic...
+}
+
+void jblf_write_udp(void * pkt, int pktLen)
+{
+	udphdr *hdr = (udphdr*)pkt;
+	//check to see if it is DNS traffic...
+	if(hdr->uh_dport == 53) //This may be a DNS request
+	{
+		dns_hdr *dns = (dns_hdr*)pkt;
+		int dataPos = sizeof(dns);
+		pktLen -= dataPos;
+		if(dns->q && dns->opcode == 0 && dns->q_count > 0)
+		{
+			void* data=(pkt + dataPos);
+			int dnsNameLen = strlen(data);
+			if(dnsNameLen > 0)
+			{
+				jblf_write_tag(JBLF_TAG_DNS_NAME, dnsNameLen, data);
+			}
+		}
+	}
+}
+
+void jblf_write_ipv4_info(void * pkt, int pktLen)
+{
+	ip *hdr = (ip *)pkt;
+	if( hdr->ip_v != IPVERSION )
+		return;
+	int dataStartPos = hdr->ip_hl * 4;
+	switch(hdr->ip_p)
+	{
+		case IPPROTO_TCP: jblf_write_tcp(pkt + dataStartPos, pktLen - dataStartPos); break;
+		case IPPROTO_UDP: jblf_write_udp(pkt + dataStartPos, pktLen - dataStartPos); break;
+	}
+}
+void jblf_write_ipv6_info(void * pkt, int pktLen)
+{
+	ipv6hdr *hdr = (ipv6hdr *)pkt;
+	if( hdr->ipv6_version != 6 )
+		return;
+	switch( hdr->ipv6_nextheader )
+	{
+		case NEXTHDR_TCP: jblf_write_tcp(pkt + sizeof(hdr), pktLen - sizeof(hdr)); break;
+		case NEXTHDR_UDP: jblf_write_udp(pkt + sizeof(hdr), pktLen - sizeof(hdr)); break;
+	}
+}
+void jblf_write_etherType(uint16_t etherType)
+{
+	jblf_write_tag(JBLF_TAG_ETHER_TYPE, sizeof(uint16_t), &etherType);
+}
+
 void jblf_write_80211_info(struct ieee80211_frame *wh, int len)
 {
 	if( !(G.output_format_jblf && G.f_jblf != NULL) || wh == NULL )
@@ -280,7 +341,13 @@ void jblf_write_80211_info(struct ieee80211_frame *wh, int len)
 	char * pkt = ((char *) wh) + hdrlen + LLC_SNAPFRAMELEN;
 	int pktLen = len - hdrlen;
 
-	//data contents are at pkt with a lenght of pktLen
+	jblf_write_etherType(etherType);
+
+	switch ( etherType )
+	{
+		case ETHERTYPE_IP: jblf_write_ipv4_info(pkt, pktLen); break;
+		case ETHERTYPE_IPV6: jblf_write_ipv6_info(pkg, pktLen); break;
+	}
 }
 
 /* END JBLF FILE ROUTINES */
