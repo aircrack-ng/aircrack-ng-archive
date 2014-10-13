@@ -298,7 +298,7 @@ void jblf_write_ipv4_info(void * pkt, int pktLen)
 void jblf_write_ipv6_info(void * pkt, int pktLen)
 {
 	struct ip6_hdr *hdr = (struct ip6_hdr*)pkt;
-	if( (hdr->ip6_ctlun.ip6_un2_vfc & IPV6_VERSION_MASK) != IPV6_VERSION)
+	if( (hdr->ip6_ctlun.ip6_un2_vfc & 0xF0) != 0x60)
 		return;
 	int dataStartPos = sizeof(hdr);
 	switch(hdr->ip6_ctlun.ip6_un1.ip6_un1_nxt)
