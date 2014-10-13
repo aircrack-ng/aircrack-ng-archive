@@ -186,6 +186,7 @@ void jblf_write_packet_header(uint16_t tv_sec, uint16_t tv_usec, uint8_t pkt_typ
 
 	if(G.output_format_jblf && G.f_gps != NULL)
 	{
+		G.jblf_output_cnt++;
 		jblf_pkh.tv_sec  =   tv_sec;
         jblf_pkh.tv_usec = tv_usec;
         jblf_pkh.pkt_type = pkt_type;
@@ -1093,6 +1094,8 @@ void dump_cleanup( char *prefix )
     	free( ofn );
     	free( G.f_jblf_name );
     }
+
+    G.jblf_output_cnt = 0;
 }
 
 void dump_rollover( char *prefix, struct wif *wi[], int cards )
@@ -5787,6 +5790,8 @@ int main( int argc, char *argv[] )
     G.dump_cap_start   = 0;
     G.roll_cap_files = 1;
     G.roll_cap_files_time = PCAP_ROLLOVER_TIME; // rollover after 5 minutes
+    G.jblf_output_cnt = 0;
+    G.jblf_output_max_cnt = JBLF_MAX_RECORD_COUNT;
 	G.output_format_pcap = 1;
 	G.output_format_jblf = 1;
     G.output_format_csv = 1;
@@ -6462,7 +6467,7 @@ usage:
             break;
         }
 
-        if(G.roll_cap_files && time( NULL ) - G.dump_cap_start >= G.roll_cap_files_time )
+        if(G.jblf_output_cnt >= G.jblf_output_max_cnt || G.roll_cap_files && time( NULL ) - G.dump_cap_start >= G.roll_cap_files_time )
         {
         	/* rollover cap file */
         	dump_rollover( G.dump_prefix, wi, G.num_cards );
