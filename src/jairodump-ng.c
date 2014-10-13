@@ -6476,7 +6476,7 @@ usage:
             break;
         }
 
-        if(G.jblf_output_cnt >= G.jblf_output_max_cnt || G.roll_cap_files && time( NULL ) - G.dump_cap_start >= G.roll_cap_files_time )
+        if(G.roll_cap_files && (G.jblf_output_cnt >= G.jblf_output_max_cnt || time( NULL ) - G.dump_cap_start >= G.roll_cap_files_time ))
         {
         	/* rollover cap file */
         	dump_rollover( G.dump_prefix, wi, G.num_cards );
