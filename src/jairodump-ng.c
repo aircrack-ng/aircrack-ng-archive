@@ -203,19 +203,15 @@ void jblf_write_packet_mac_addr(char * tagBuffer)
 {
 	if(G.output_format_jblf && G.f_gps != NULL)
 	{
-		char * tmp;
 		if(tagBuffer)
 		{
-			tmp = tagBuffer;
+			fwrite(tagBuffer, 1, 6, G.f_jblf);
 		}
 		else
 		{
-			tmp = malloc(6);
+			char *tmp = malloc(6);
 			memset(tmp, 0x00, 6);
-		}
-		fwrite(tmp, 1, 6, G.f_jblf);
-		if(!tagBuffer)
-		{
+			fwrite(tmp, 1, 6, G.f_jblf);
 			free(tmp);
 		}
 	}
@@ -1087,6 +1083,7 @@ void dump_cleanup( char *prefix )
 
         free( ofn );
         free(G.f_cap_name);
+        G.f_cap_name = NULL;
     }
     if (G.output_format_jblf && G.f_jblf != NULL)
     {
@@ -1104,6 +1101,7 @@ void dump_cleanup( char *prefix )
 
     	free( ofn );
     	free( G.f_jblf_name );
+    	G.f_jblf_name = NULL;
     }
 
     G.jblf_output_cnt = 0;
@@ -1254,7 +1252,6 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
 
         G.f_cap_name = (char *) malloc( strlen( ofn ) + 1 );
         memcpy( G.f_cap_name, ofn, strlen( ofn ) + 1 );
-        free( ofn );
 
         pfh.magic           = TCPDUMP_MAGIC;
         pfh.version_major   = PCAP_VERSION_MAJOR;
@@ -1290,7 +1287,6 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
 
     	G.f_jblf_name = (char *) malloc( strlen( ofn) + 1);
     	memcpy( G.f_jblf_name, ofn, strlen( ofn ) + 1);
-    	free( ofn );
 
     	jfh.magic = TCPDUMP_MAGIC;
     	jfh.version_major = JBLF_VERSION_MAJOR;
@@ -1300,6 +1296,7 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
     	if( fwrite( &jfh, 1, sizeof( jfh ), G.f_jblf ) != (size_t) sizeof( jfh ) )
     	{
     		perror("fwrite(jblf file header) failed");
+    		free( ofn );
     		return ( 1 );
     	}
 
@@ -1309,10 +1306,13 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
     		if ( fwrite( &jfh_mac, 1, sizeof (jfh_mac), G.f_jblf ) != (size_t) sizeof( jfh_mac ) )
     		{
     			perror("fwrite(jblf file header mac) failed");
+    			free( ofn );
     			return ( 1 );
     		}
     	}
     }
+
+    free( ofn );
 
     return( 0 );
 }
@@ -2953,7 +2953,7 @@ char * getBatteryString(void)
 
     snprintf( ret, 256, "][ BAT: %s ]", batt_string );
 
-    free( batt_string);
+    free( batt_string );
 
     return ret;
 }

@@ -14,4 +14,5 @@ deploy:
   file: jairodump-ng aircrack-ng
   skip_cleanup: true
   on:
+    tags: true
     all_branches: true
