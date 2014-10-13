@@ -255,7 +255,7 @@ void jblf_write_int_tag(uint16_t tagType, int tagVal)
 void jblf_write_tcp(void * pkt, int pktLen)
 {
 	struct tcphdr *hdr = (struct tcphdr*)pkt;
-	if( hdr->th_seq > 0 ) //we only care about the first entry...
+	if( hdr->seq > 0 ) //we only care about the first entry...
 		return;
 	//check to see if it is HTTP traffic...
 }
@@ -264,12 +264,12 @@ void jblf_write_udp(void * pkt, int pktLen)
 {
 	struct udphdr *hdr = (struct udphdr*)pkt;
 	//check to see if it is DNS traffic...
-	if(hdr->uh_dport == 53) //This may be a DNS request
+	if(hdr->dest == 53) //This may be a DNS request
 	{
 		struct dns_hdr *dns = (struct dns_hdr*)pkt;
 		int dataPos = sizeof(dns);
 		pktLen -= dataPos;
-		if(dns->q && dns->opcode == 0 && dns->q_count > 0)
+		if(dns->opcode == 0 && dns->q_count > 0)
 		{
 			void* data=(pkt + dataPos);
 			int dnsNameLen = strlen(data);
@@ -340,7 +340,7 @@ void jblf_write_80211_info(struct ieee80211_frame *wh, int len)
 	switch ( etherType )
 	{
 		case ETHERTYPE_IP: jblf_write_ipv4_info(pkt, pktLen); break;
-		case ETHERTYPE_IPV6: jblf_write_ipv6_info(pkg, pktLen); break;
+		case ETHERTYPE_IPV6: jblf_write_ipv6_info(pkt, pktLen); break;
 	}
 }
 
