@@ -252,7 +252,7 @@ void jblf_write_int_tag(uint16_t tagType, int tagVal)
 
 void jblf_write_tcp(void * pkt, int pktLen)
 {
-	struct tcphdr *hdr = (tcphdr*)pkt;
+	struct tcphdr *hdr = (struct tcphdr*)pkt;
 	if( hdr->th_seq > 0 ) //we only care about the first entry...
 		return;
 	//check to see if it is HTTP traffic...
@@ -260,11 +260,11 @@ void jblf_write_tcp(void * pkt, int pktLen)
 
 void jblf_write_udp(void * pkt, int pktLen)
 {
-	struct udphdr *hdr = (udphdr*)pkt;
+	struct udphdr *hdr = (struct udphdr*)pkt;
 	//check to see if it is DNS traffic...
 	if(hdr->uh_dport == 53) //This may be a DNS request
 	{
-		struct dns_hdr *dns = (dns_hdr*)pkt;
+		struct dns_hdr *dns = (struct dns_hdr*)pkt;
 		int dataPos = sizeof(dns);
 		pktLen -= dataPos;
 		if(dns->q && dns->opcode == 0 && dns->q_count > 0)
@@ -281,7 +281,7 @@ void jblf_write_udp(void * pkt, int pktLen)
 
 void jblf_write_ipv4_info(void * pkt, int pktLen)
 {
-	struct ip *hdr = (ip *)pkt;
+	struct ip *hdr = (struct ip *)pkt;
 	if( hdr->ip_v != IPVERSION )
 		return;
 	int dataStartPos = hdr->ip_hl * 4;
