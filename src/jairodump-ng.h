@@ -34,9 +34,6 @@
 
 #include "eapol.h"
 
- #define _BSD_SOURCE 1
- #define __FAVOR_BSD 1
-
 /* some constants */
 
 #define REFRESH_RATE 100000  /* default delay in us between updates */

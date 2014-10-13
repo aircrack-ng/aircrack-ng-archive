@@ -33,6 +33,8 @@
  *  files in the program, then also delete it here.
  */
 
+#define __FAVOR_BSD 1
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
