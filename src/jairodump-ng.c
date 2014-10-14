@@ -1273,7 +1273,6 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
     if( G.output_format_jblf )
     {
     	struct jblf_file_header jfh;
-    	struct jblf_mac_addr jfh_mac;
     	memset(ofn, 0, ofn_len);
     	snprintf( ofn,  ofn_len, "%s-%04d.%s",
                   prefix, G.f_index, JAIRODUMP_NG_TJBLF_EXT );
@@ -1291,7 +1290,7 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
     	jfh.magic = TCPDUMP_MAGIC;
     	jfh.version_major = JBLF_VERSION_MAJOR;
     	jfh.version_minor = JBLF_VERSION_MINOR;
-    	jfh.num_mac_addresses = cards;
+    	jfh.num_mac_addresses = (cards & 0xFF);
 
     	if( fwrite( &jfh, 1, sizeof( jfh ), G.f_jblf ) != (size_t) sizeof( jfh ) )
     	{
@@ -1300,16 +1299,20 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
     		return ( 1 );
     	}
 
+    	unsigned char *macTemp = (unsigned char *)malloc(6);
+
     	for( i=0; i < cards; i++ )
     	{
     		wi_get_mac( wi[i], jfh_mac.macAddress );
-    		if ( fwrite( &jfh_mac, 1, sizeof (jfh_mac), G.f_jblf ) != (size_t) sizeof( jfh_mac ) )
+    		if ( fwrite( &macTemp, 1, 6, G.f_jblf ) != 6 )
     		{
     			perror("fwrite(jblf file header mac) failed");
     			free( ofn );
     			return ( 1 );
     		}
     	}
+
+    	free(macTemp);
     }
 
     free( ofn );
@@ -2700,7 +2703,8 @@ write_packet:
     		jblf_write_80211_info(wh, caplen);
     	}
 
-    	jblf_write_tag(JBLF_TAG_EMPTY, 0, NULL);
+
+    	jblf_write_tag(JBLF_TAG_EMPTY, 8, G.jblf_empty_tag_flush);
     }
 
     return( 0 );
@@ -5824,6 +5828,9 @@ int main( int argc, char *argv[] )
 #ifdef HAVE_PCRE
     G.f_essid_regex = NULL;
 #endif
+
+    G.jblf_empty_tag_flush = (char *)malloc(8);
+    memcpy(G.jblf_empty_tag_flush, JBLF_EMPTY_TAG_FLUSH, 8);
 
 	// Default selection.
     resetSelection();

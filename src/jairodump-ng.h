@@ -435,6 +435,7 @@ struct globals
 
     int jblf_output_cnt;
     int jblf_output_max_cnt;
+    char * jblf_empty_tag_flush;
 
     int output_format_pcap;
     int output_format_jblf;
@@ -471,8 +472,8 @@ struct globals
 G;
 
 /* JBLF (Joe's Binary Log File) defines */
-#define JBLF_VERSION_MAJOR      2
-#define JBLF_VERSION_MINOR      4
+#define JBLF_VERSION_MAJOR      1
+#define JBLF_VERSION_MINOR      0
 
 #define JBLF_PKT_TYPE_IP        0
 #define JBLF_PKT_TYPE_GPS       1
@@ -493,18 +494,15 @@ G;
 
 #define JBLF_GPS_INTERVAL       60 * 3 /* 3-second max time check */
 
+#define JBLF_EMPTY_TAG_FLUSH    "\xFF\xAA\xFF\xAA\xEE\xBB\xEE\xBB"
+
 /* JBLF (Joe's Binary Log File) structures */
 struct jblf_file_header
 {
     uint32_t magic;
-    uint16_t version_major;
-    uint16_t version_minor;
+    uint8_t version_major;
+    uint8_t version_minor;
     uint8_t num_mac_addresses;
-};
-
-struct jblf_mac_addr
-{
-    uint8_t macAddress[6];
 };
 
 struct jblf_pkthdr
