@@ -491,7 +491,7 @@ G;
 #define JBLF_TAG_UDP_PKT_SIZE   0x0008
 #define JBLF_TAG_TCP_PKT_SIZE   0x0009
 #define JBLF_TAG_ST_MANU_NAME   0x000a
-#define JGLB_TAG_AP_MANU_NAME   0x000b
+#define JBLF_TAG_AP_MANU_NAME   0x000b
 
 #define JBLF_GPS_INTERVAL       60 * 3 /* 3-second max time check */
 
