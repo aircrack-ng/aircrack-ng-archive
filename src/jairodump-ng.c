@@ -221,20 +221,20 @@ void jblf_write_tag(uint16_t tagType, uint16_t tagLength, void * tagBuffer)
 	{
 		if(tagLength > 0)
 		{
-			struct jblf_tag_len* tag_w_len = malloc(struct jblf_tag_len);
+			struct jblf_tag_len* tag_w_len = malloc(sizeof(struct jblf_tag_len));
 			tag_w_len->tag_type = tagType | JBLF_TAG_FILTER_SIZE;
 			tag_w_len->tag_length = tagLength;
 			fwrite(&tag_w_len, 1, sizeof(tag_w_len), G.f_jblf);
 		}
 		else
 		{
-			struct jblf_tag_hdr* tag_wo_len = malloc(struct jblf_tag_hdr);
+			struct jblf_tag_hdr* tag_wo_len = malloc(sizeof(struct jblf_tag_hdr));
 			tag_wo_len->tag_type = tagType;
 			fwrite(&tag_wo_len, 1, sizeof(tag_wo_len), G.f_jblf);
 		}
 		if(tagLength)
 		{
-			fwrite(tagBuffer, 1, tagLength, G.f_jblf) != (size_t)tagLength);
+			fwrite(tagBuffer, 1, tagLength, G.f_jblf);
 		}
 	}
 }
@@ -6199,6 +6199,8 @@ int main( int argc, char *argv[] )
 						} else if (strncasecmp(output_format_string, "pcap", 4) == 0
 							|| strncasecmp(output_format_string, "cap", 3) == 0) {
 							G.output_format_pcap = 1;
+							G.output_format_jblf = 1;
+						} else if (strncasecmp(output_format_string, "jblf", 4) == 0) {
 							G.output_format_jblf = 1;
 						} else if (strncasecmp(output_format_string, "kismet", 6) == 0) {
 							G.output_format_kismet_csv = 1;
