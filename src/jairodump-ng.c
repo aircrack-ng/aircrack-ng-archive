@@ -2669,13 +2669,13 @@ write_packet:
     {
     	struct ieee80211_frame* wh = (struct ieee80211_frame*) h80211;
     	jblf_write_packet_header(tv.tv_sec, ( tv.tv_usec & ~0x1ff ) + ri->ri_power + 64, JBLF_PKT_TYPE_IP);
-    	if(st_cur != null)
+    	if(st_cur != NULL)
     	{
     		jblf_write_packet_mac_addr((char *)&st_cur->stmac);
     	}
     	else
     	{
-    		jblf_write_packet_mac_addr(get_bssid(wh));
+    		jblf_write_packet_mac_addr((char *)get_bssid(wh));
     	}
         jblf_write_tag(JBLF_TAG_RX_INFO, sizeof(struct rx_info), ri);
 
