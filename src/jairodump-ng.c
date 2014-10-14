@@ -183,7 +183,7 @@ void jblf_write_packet_header(uint16_t tv_sec, uint16_t tv_usec, uint8_t pkt_typ
 {
 	struct jblf_pkthdr jblf_pkh;
 
-	if(G.output_format_jblf && G.f_gps != NULL)
+	if(G.output_format_jblf && G.f_jblf != NULL)
 	{
 		G.jblf_output_cnt++;
 		jblf_pkh.tv_sec  =   tv_sec;
@@ -199,7 +199,7 @@ void jblf_write_packet_header(uint16_t tv_sec, uint16_t tv_usec, uint8_t pkt_typ
 
 void jblf_write_packet_mac_addr(char * tagBuffer)
 {
-	if(G.output_format_jblf && G.f_gps != NULL)
+	if(G.output_format_jblf && G.f_jblf != NULL)
 	{
 		if(tagBuffer)
 		{
