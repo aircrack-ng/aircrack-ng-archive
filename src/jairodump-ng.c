@@ -2689,6 +2689,18 @@ write_packet:
 	        		st_cur->ssid_jblf_needs_log[i] = 0;
 	        	}
 	        }
+
+	        if(st_cur->manuf != NULL)
+	        {
+	        	jblf_write_tag(JBLF_TAG_ST_MANU_NAME, strlen(st_cur->manuf), st_cur->manuf);
+	        }
+	    }
+	    if(ap_cur)
+	    {
+	    	if(ap_cur->manuf != NULL)
+	    	{
+	    		jblf_write_tag(JBLF_TAG_AP_MANU_NAME, strlen(ap_cur->manuf), ap_cur->manuf);
+	    	}
 	    }
 
     	//jblf PROCESS PACKET HERE!!!
