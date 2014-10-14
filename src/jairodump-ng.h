@@ -33,7 +33,6 @@
 #define _AIRODUMP_NG_H_
 
 #include "eapol.h"
-#include "byteorder.h"
 #include "packed.h"
 
 /* some constants */
