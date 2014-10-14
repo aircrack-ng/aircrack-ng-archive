@@ -33,6 +33,8 @@
 #define _AIRODUMP_NG_H_
 
 #include "eapol.h"
+#include "byteorder.h"
+#include "packed.h"
 
 /* some constants */
 
@@ -478,19 +480,18 @@ G;
 #define JBLF_PKT_TYPE_IP        0
 #define JBLF_PKT_TYPE_GPS       1
 
-#define JBLF_TAG_FILTER_SIZE    32768
+#define JBLF_TAG_FILTER_SIZE    0x8000
 
-#define JBLF_TAG_EMPTY          0
-#define JBLF_TAG_RX_INFO        (1 | JBLF_TAG_FILTER_SIZE)
-#define JBLF_TAG_ETHER_TYPE     2
-#define JBLF_TAG_LOCATION       (5 | JBLF_TAG_FILTER_SIZE)
-
-#define JBLF_TAG_SSID_NAME      (10 | JBLF_TAG_FILTER_SIZE)
-#define JBLF_TAG_DNS_NAME       (11 | JBLF_TAG_FILTER_SIZE)
-#define JBLF_TAG_URL            (12 | JBLF_TAG_FILTER_SIZE)
-#define JBLF_TAG_USER_AGENT     (13 | JBLF_TAG_FILTER_SIZE)
-#define JBLF_TAG_UDP_PKT_SIZE   (14 | JBLF_TAG_FILTER_SIZE)
-#define JBLF_TAG_TCP_PKT_SIZE   (15 | JBLF_TAG_FILTER_SIZE)
+#define JBLF_TAG_EMPTY          0x0000
+#define JBLF_TAG_RX_INFO        0x0001
+#define JBLF_TAG_ETHER_TYPE     0x0002
+#define JBLF_TAG_LOCATION       0x0003
+#define JBLF_TAG_SSID_NAME      0x0004
+#define JBLF_TAG_DNS_NAME       0x0005
+#define JBLF_TAG_URL            0x0006
+#define JBLF_TAG_USER_AGENT     0x0007
+#define JBLF_TAG_UDP_PKT_SIZE   0x0008
+#define JBLF_TAG_TCP_PKT_SIZE   0x0009
 
 #define JBLF_GPS_INTERVAL       60 * 3 /* 3-second max time check */
 
@@ -503,34 +504,25 @@ struct jblf_file_header
     uint8_t version_major;
     uint8_t version_minor;
     uint8_t num_mac_addresses;
-};
+} __packed;
 
 struct jblf_pkthdr
 {
     int32_t tv_sec;
     int32_t tv_usec;
     uint8_t pkt_type;
-};
-
-struct jblf_ip_pkthdr
-{
-    uint8_t macAddress[6];
-};
-
-struct jblf_gps_pkthdr
-{
-    float gps_loc[5];
-};
+} __packed;
 
 struct jblf_tag_hdr
 {
     uint16_t tag_type;
-};
+} __packed;
 
 struct jblf_tag_len
 {
+    uint16_t tag_type;
     uint16_t tag_length;
-};
+} __packed;
 
 /* Misc network protocol structures */
 struct dns_hdr

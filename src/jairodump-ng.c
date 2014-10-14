@@ -150,7 +150,6 @@ void jblf_write_current_gps ()
 {
 	struct timeval cur_time;
 	struct jblf_pkthdr recHdr;
-	struct jblf_gps_pkthdr gpsHdr;
 
 	if (G.output_format_jblf && G.f_jblf != NULL && G.gps_loc[0] && G.jblf_gps_data_available)
 	{
@@ -162,14 +161,13 @@ void jblf_write_current_gps ()
 		recHdr.tv_usec = cur_time.tv_usec;
 		recHdr.pkt_type = JBLF_PKT_TYPE_GPS;
 
-		memcpy( gpsHdr.gps_loc, G.gps_loc, sizeof( float ) * 5 );
 		if( fwrite( &recHdr, 1, sizeof( recHdr ), G.f_jblf ) != (size_t) sizeof( recHdr ) )
     	{
     		perror("fwrite(jblf gps record header) failed");
     		return;
     	}
 
-    	if( fwrite( &gpsHdr, 1, sizeof( gpsHdr ), G.f_jblf ) != (size_t) sizeof( gpsHdr ) )
+    	if( fwrite( &G.gps_loc, 1, sizeof( float ) * 5, G.f_jblf ) != (size_t) ( sizeof( float ) * 5 ) )
     	{
     		perror("fwrite(jblf gps record) failed");
     		return;
@@ -221,26 +219,22 @@ void jblf_write_tag(uint16_t tagType, uint16_t tagLength, void * tagBuffer)
 {
 	if(G.output_format_jblf && G.f_jblf != NULL)
 	{
-		if( fwrite(&tagType, 1, sizeof(uint16_t), G.f_jblf) != (size_t) sizeof(uint16_t) )
+		if(tagLength > 0)
 		{
-			perror("fwrite(jblf tagType) failed");
-			return;
+			struct jblf_tag_len* tag_w_len = malloc(struct jblf_tag_len);
+			tag_w_len->tag_type = tagType | JBLF_TAG_FILTER_SIZE;
+			tag_w_len->tag_length = tagLength;
+			fwrite(&tag_w_len, 1, sizeof(tag_w_len), G.f_jblf);
 		}
-		if( ( tagType & JBLF_TAG_FILTER_SIZE) == JBLF_TAG_FILTER_SIZE )
+		else
 		{
-			if( fwrite(&tagLength, 1, sizeof(uint16_t), G.f_jblf) != (size_t) sizeof(uint16_t) )
-			{
-				perror("fwrite(jblf tagLength) failed");
-				return;
-			}
+			struct jblf_tag_hdr* tag_wo_len = malloc(struct jblf_tag_hdr);
+			tag_wo_len->tag_type = tagType;
+			fwrite(&tag_wo_len, 1, sizeof(tag_wo_len), G.f_jblf);
 		}
 		if(tagLength)
 		{
-			if( fwrite(tagBuffer, 1, tagLength, G.f_jblf) != (size_t)tagLength)
-			{
-				perror("fwrite(jblf tagBuffer) failed");
-				return;
-			}
+			fwrite(tagBuffer, 1, tagLength, G.f_jblf) != (size_t)tagLength);
 		}
 	}
 }
@@ -2704,7 +2698,7 @@ write_packet:
     	}
 
 
-    	jblf_write_tag(JBLF_TAG_EMPTY, 8, G.jblf_empty_tag_flush);
+    	jblf_write_tag(JBLF_TAG_EMPTY, 0, NULL);
     }
 
     return( 0 );
@@ -5828,9 +5822,6 @@ int main( int argc, char *argv[] )
 #ifdef HAVE_PCRE
     G.f_essid_regex = NULL;
 #endif
-
-    G.jblf_empty_tag_flush = (char *)malloc(8);
-    memcpy(G.jblf_empty_tag_flush, JBLF_EMPTY_TAG_FLUSH, 8);
 
 	// Default selection.
     resetSelection();
