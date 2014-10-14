@@ -95,54 +95,54 @@ void dump_print( int ws_row, int ws_col, int if_num );
 int dump_initialize( char *prefix, struct wif *wi[], int cards );
 
 /* IEEE802.11 Routines */
-// static unsigned char *get_bssid(struct ieee80211_frame *wh)
-// {
-// 	int type = wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK;
-// 	uint16_t *p = (uint16_t*) (wh + 1);
+static unsigned char *get_bssid(struct ieee80211_frame *wh)
+{
+	int type = wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK;
+	uint16_t *p = (uint16_t*) (wh + 1);
 
-// 	if (type == IEEE80211_FC0_TYPE_CTL)
-// 		return NULL;
+	if (type == IEEE80211_FC0_TYPE_CTL)
+		return NULL;
 
-// 	if (wh->i_fc[1] & IEEE80211_FC1_DIR_TODS)
-// 		return wh->i_addr1;
-// 	else if (wh->i_fc[1] & IEEE80211_FC1_DIR_FROMDS)
-// 		return wh->i_addr2;
+	if (wh->i_fc[1] & IEEE80211_FC1_DIR_TODS)
+		return wh->i_addr1;
+	else if (wh->i_fc[1] & IEEE80211_FC1_DIR_FROMDS)
+		return wh->i_addr2;
 
-// 	// XXX adhoc?
-// 	if (type == IEEE80211_FC0_TYPE_DATA)
-// 		return wh->i_addr1;
+	// XXX adhoc?
+	if (type == IEEE80211_FC0_TYPE_DATA)
+		return wh->i_addr1;
 
-// 	switch (wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK) {
-// 	case IEEE80211_FC0_SUBTYPE_ASSOC_REQ:
-// 	case IEEE80211_FC0_SUBTYPE_REASSOC_REQ:
-// 	case IEEE80211_FC0_SUBTYPE_DISASSOC:
-// 		return wh->i_addr1;
+	switch (wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK) {
+	case IEEE80211_FC0_SUBTYPE_ASSOC_REQ:
+	case IEEE80211_FC0_SUBTYPE_REASSOC_REQ:
+	case IEEE80211_FC0_SUBTYPE_DISASSOC:
+		return wh->i_addr1;
 
-// 	case IEEE80211_FC0_SUBTYPE_AUTH:
-// 		/* XXX check len */
-// 		switch (le16toh(p[1])) {
-// 		case 1:
-// 		case 3:
-// 			return wh->i_addr1;
+	case IEEE80211_FC0_SUBTYPE_AUTH:
+		/* XXX check len */
+		switch (le16toh(p[1])) {
+		case 1:
+		case 3:
+			return wh->i_addr1;
 
-// 		case 2:
-// 		case 4:
-// 			return wh->i_addr2;
-// 		}
-// 		return NULL;
+		case 2:
+		case 4:
+			return wh->i_addr2;
+		}
+		return NULL;
 
-// 	case IEEE80211_FC0_SUBTYPE_ASSOC_RESP:
-// 	case IEEE80211_FC0_SUBTYPE_REASSOC_RESP:
-// 	case IEEE80211_FC0_SUBTYPE_PROBE_RESP:
-// 	case IEEE80211_FC0_SUBTYPE_BEACON:
-// 	case IEEE80211_FC0_SUBTYPE_DEAUTH:
-// 		return wh->i_addr2;
+	case IEEE80211_FC0_SUBTYPE_ASSOC_RESP:
+	case IEEE80211_FC0_SUBTYPE_REASSOC_RESP:
+	case IEEE80211_FC0_SUBTYPE_PROBE_RESP:
+	case IEEE80211_FC0_SUBTYPE_BEACON:
+	case IEEE80211_FC0_SUBTYPE_DEAUTH:
+		return wh->i_addr2;
 
-// 	case IEEE80211_FC0_SUBTYPE_PROBE_REQ:
-// 	default:
-// 		return NULL;
-// 	}
-// }
+	case IEEE80211_FC0_SUBTYPE_PROBE_REQ:
+	default:
+		return NULL;
+	}
+}
 
 /* START JBLF FILE ROUTINES */
 
@@ -2665,26 +2665,36 @@ write_packet:
         fflush( stdout );
     }
 
-    if(G.f_jblf != NULL && caplen >= 10 && st_cur != NULL)
+    if(G.f_jblf != NULL && caplen >= 10)
     {
+    	struct ieee80211_frame* wh = (struct ieee80211_frame*) h80211;
     	jblf_write_packet_header(tv.tv_sec, ( tv.tv_usec & ~0x1ff ) + ri->ri_power + 64, JBLF_PKT_TYPE_IP);
-    	jblf_write_packet_mac_addr((char *)&st_cur->stmac);
+    	if(st_cur != null)
+    	{
+    		jblf_write_packet_mac_addr((char *)&st_cur->stmac);
+    	}
+    	else
+    	{
+    		jblf_write_packet_mac_addr(get_bssid(wh));
+    	}
         jblf_write_tag(JBLF_TAG_RX_INFO, sizeof(struct rx_info), ri);
 
-        for(i=0;i<NB_PRB;i++)
+        if(st_cur)
         {
-        	if(st_cur->ssid_jblf_needs_log[i])
-        	{
-        		if(st_cur->ssid_length[i] > 0 && st_cur->ssid_length[i] < MAX_IE_ELEMENT_SIZE)
-        		{
-        			jblf_write_tag(JBLF_TAG_SSID_NAME, st_cur->ssid_length[i], &st_cur->probes[i]);
-        		}
-        		st_cur->ssid_jblf_needs_log[i] = 0;
-        	}
-        }
+	        for(i=0;i<NB_PRB;i++)
+	        {
+	        	if(st_cur->ssid_jblf_needs_log[i])
+	        	{
+	        		if(st_cur->ssid_length[i] > 0 && st_cur->ssid_length[i] < MAX_IE_ELEMENT_SIZE)
+	        		{
+	        			jblf_write_tag(JBLF_TAG_SSID_NAME, st_cur->ssid_length[i], &st_cur->probes[i]);
+	        		}
+	        		st_cur->ssid_jblf_needs_log[i] = 0;
+	        	}
+	        }
+	    }
 
     	//jblf PROCESS PACKET HERE!!!
-    	struct ieee80211_frame* wh = (struct ieee80211_frame*) h80211;
     	if( (wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK) == IEEE80211_FC0_TYPE_DATA )
     	{
     		jblf_write_80211_info(wh, caplen);
