@@ -33,7 +33,6 @@
 #define _AIRODUMP_NG_H_
 
 #include "eapol.h"
-#include "packed.h"
 
 /* some constants */
 
@@ -503,25 +502,25 @@ struct jblf_file_header
     uint8_t version_major;
     uint8_t version_minor;
     uint8_t num_mac_addresses;
-} __packed;
+};
 
 struct jblf_pkthdr
 {
     int32_t tv_sec;
     int32_t tv_usec;
     uint8_t pkt_type;
-} __packed;
+};
 
 struct jblf_tag_hdr
 {
     uint16_t tag_type;
-} __packed;
+};
 
 struct jblf_tag_len
 {
     uint16_t tag_type;
     uint16_t tag_length;
-} __packed;
+};
 
 /* Misc network protocol structures */
 struct dns_hdr
