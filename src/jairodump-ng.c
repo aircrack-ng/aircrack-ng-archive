@@ -1303,7 +1303,7 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
 
     	for( i=0; i < cards; i++ )
     	{
-    		wi_get_mac( wi[i], jfh_mac.macAddress );
+    		wi_get_mac( wi[i], macTemp );
     		if ( fwrite( &macTemp, 1, 6, G.f_jblf ) != 6 )
     		{
     			perror("fwrite(jblf file header mac) failed");
