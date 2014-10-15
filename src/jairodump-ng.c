@@ -56,6 +56,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <ctype.h>
 #include <errno.h>
 #include <time.h>
@@ -94,14 +95,22 @@ void dump_sort( void );
 void dump_print( int ws_row, int ws_col, int if_num );
 int dump_initialize( char *prefix, struct wif *wi[], int cards );
 
-void log_print(const char *lpszFormat, args...)
+void log_print(const char *lpszFormat, ...)
 {
 	if(!G.f_error_log)
 		return;
 
-    fprintf(G.f_error_log, msg, ## args);
+	va_list argList;
+    va_start(argList, lpszFormat);
+    char msg[512];
+
+    vsprintf( &msg[0], lpszFormat, argList );
+
+    fprintf(G.f_error_log, msg);
 
     fflush(G.f_error_log);
+
+    va_end(argList);
 }
 
 /* IEEE802.11 Routines */
