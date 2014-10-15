@@ -146,24 +146,6 @@ static unsigned char *get_bssid(struct ieee80211_frame *wh)
 
 /* START JBLF FILE ROUTINES */
 
-void jblf_write_current_gps ()
-{
-	struct timeval cur_time;
-
-	if (G.output_format_jblf && G.f_jblf != NULL && G.gps_loc[0] && G.jblf_gps_data_available)
-	{
-		fprintf( G.f_error_log, "Outputting GPS to JBLF\n" );
-
-		gettimeofday( &cur_time, NULL );
-
-		jblf_write_packet_header(cur_time.tv_sec, cur_time.tc_usec, JBLF_PKT_TYPE_GPS);
-
-    	fwrite( &G.gps_loc, 1, sizeof( float ) * 5, G.f_jblf );
-	}
-	
-	G.jblf_gps_data_available = 0;
-}
-
 void jblf_write_packet_header(uint16_t tv_sec, uint16_t tv_usec, uint8_t pkt_type)
 {
 	fprintf(G.f_error_log, "JBLF: Write Packet Header: %d, Sec=%d, USec=%d\n", pkt_type, tv_sec, tv_usec );
@@ -179,6 +161,24 @@ void jblf_write_packet_header(uint16_t tv_sec, uint16_t tv_usec, uint8_t pkt_typ
         fwrite( &jblf_pkh, 1, sizeof(struct jblf_pkthdr), G.f_jblf);
         free(jblf_pkh);
 	}
+}
+
+void jblf_write_current_gps ()
+{
+	struct timeval cur_time;
+
+	if (G.output_format_jblf && G.f_jblf != NULL && G.gps_loc[0] && G.jblf_gps_data_available)
+	{
+		fprintf( G.f_error_log, "Outputting GPS to JBLF\n" );
+
+		gettimeofday( &cur_time, NULL );
+
+		jblf_write_packet_header(cur_time.tv_sec, cur_time.tv_usec, JBLF_PKT_TYPE_GPS);
+
+    	fwrite( &G.gps_loc, 1, sizeof( float ) * 5, G.f_jblf );
+	}
+	
+	G.jblf_gps_data_available = 0;
 }
 
 void jblf_write_mac_addr(void * tagBuffer)
