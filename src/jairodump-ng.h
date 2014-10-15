@@ -126,18 +126,16 @@ extern int get_ram_size(void);
 #define JBLF_MAX_RECORD_COUNT 5000
 
 #define AIRODUMP_NG_CSV_EXT "csv"
-#define KISMET_CSV_EXT "kismet.csv"
-#define KISMET_NETXML_EXT "kismet.netxml"
 #define AIRODUMP_NG_GPS_EXT "gps"
 #define AIRODUMP_NG_CAP_EXT "cap"
 #define AIRODUMP_NG_PCAP_EXT "pcap"
 #define JAIRODUMP_NG_JBLF_EXT "jblf"
 #define JAIRODUMP_NG_TJBLF_EXT "tjblf" //temporary JBLF file, used while writing the output. Extension is changed to JAIRODUMP_NG_JBLF_EXT on log rollover
 
-#define NB_EXTENSIONS 8
+#define NB_EXTENSIONS 6
 
 const unsigned char llcnull[4] = {0, 0, 0, 0};
-char *f_ext[NB_EXTENSIONS] = { AIRODUMP_NG_CSV_EXT, AIRODUMP_NG_GPS_EXT, AIRODUMP_NG_CAP_EXT, KISMET_CSV_EXT, KISMET_NETXML_EXT, AIRODUMP_NG_PCAP_EXT, JAIRODUMP_NG_JBLF_EXT, JAIRODUMP_NG_TJBLF_EXT };
+char *f_ext[NB_EXTENSIONS] = { AIRODUMP_NG_CSV_EXT, AIRODUMP_NG_GPS_EXT, AIRODUMP_NG_CAP_EXT, AIRODUMP_NG_PCAP_EXT, JAIRODUMP_NG_JBLF_EXT, JAIRODUMP_NG_TJBLF_EXT };
 
 extern const unsigned long int crc_tbl[256];
 extern const unsigned char crc_chop_tbl[256][4];
@@ -326,12 +324,10 @@ struct globals
 
     int f_index;            /* outfiles index       */
     FILE *f_txt;            /* output csv file      */
-    FILE *f_kis;            /* output kismet csv file      */
-    FILE *f_kis_xml;        /* output kismet netxml file */
     FILE *f_gps;            /* output gps file      */
     FILE *f_cap;            /* output cap file      */
     FILE *f_jblf;           /* output jblf file     */
-    FILE *f_error_log;      /* output errors */
+    FILE *f_debug_log;      /* output errors */
     FILE *f_xor;            /* output prga file     */
 
     char * batt;            /* Battery string       */
@@ -417,9 +413,6 @@ struct globals
     int chanoption;
     int active_scan_sim;    /* simulates an active scan, sending probe requests */
 
-    /* Airodump-ng start time: for kismet netxml file */
-    char * airodump_start_time;
-
     time_t dump_cap_start;
     int roll_cap_files;
     int roll_cap_files_time;
@@ -428,11 +421,10 @@ struct globals
     int jblf_output_max_cnt;
     char * jblf_empty_tag_flush;
 
+    int output_debug_log;
     int output_format_pcap;
     int output_format_jblf;
     int output_format_csv;
-    int output_format_kismet_csv;
-    int output_format_kismet_netxml;
     pthread_t input_tid;
     int sort_by;
     int sort_inv;

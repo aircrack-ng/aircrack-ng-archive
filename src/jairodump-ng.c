@@ -97,7 +97,7 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards );
 
 void log_print(const char *lpszFormat, ...)
 {
-	if(!G.f_error_log)
+	if(!G.f_debug_log)
 		return;
 
 	va_list argList;
@@ -106,10 +106,10 @@ void log_print(const char *lpszFormat, ...)
 
     vsprintf( &msg[0], lpszFormat, argList );
 
-    fprintf(G.f_error_log, msg);
-    fprintf(G.f_error_log, "\r\n");
+    fprintf(G.f_debug_log, msg);
+    fprintf(G.f_debug_log, "\r\n");
 
-    fflush(G.f_error_log);
+    fflush(G.f_debug_log);
 
     va_end(argList);
 }
@@ -119,7 +119,7 @@ void jblf_write_byte(uint8_t b)
 	if(G.f_jblf)
 	{
 		log_print("JBLF: Write Byte: %02x", b);
-		fwrite(&b, 1, 1, G.f_jblf);
+		fputc(b, G.f_jblf);
 	}
 }
 
@@ -237,14 +237,13 @@ void jblf_write_mac_addr(void * tagBuffer)
 	{
 		if(tagBuffer)
 		{
-			fwrite(tagBuffer, 1, 6, G.f_jblf);
+			jblf_write_bytes(tagBuffer, 6);
 		}
 		else
 		{
-			void *tmp = malloc(6);
-			memset(tmp, 0x00, 6);
-			fwrite(tmp, 1, 6, G.f_jblf);
-			free(tmp);
+			int i;
+			for(i=0;i<6;i++)
+				jblf_write_byte(0x00);
 		}
 	}
 }
@@ -845,10 +844,11 @@ char usage[] =
 "      --uptime              : Display AP Uptime from Beacon Timestamp\n"
 "      --output-format\n"
 "                  <formats> : Output format. Possible values:\n"
-"                              pcap, csv, gps, kismet, netxml\n"
+"                              pcap, csv, gps\n"
 "      --ignore-negative-one : Removes the message that says\n"
 "                              fixed channel <interface>: -1\n"
 "      --roll          <secs> : Rollover PCap output files in seconds\n"
+"      --debug                : Output debug log.\n"
 "\n"
 "  Filter options:\n"
 "      --encrypt   <suite>   : Filter APs by cipher suite\n"
@@ -1039,6 +1039,13 @@ void dump_cleanup( char *prefix )
     	G.f_jblf_name = NULL;
     }
 
+    if (G.f_debug_log != NULL )
+    {
+    	fflush( G.f_debug_log );
+    	fclose( G.f_debug_log );
+    	G.f_debug_log = NULL;
+    }
+
     G.jblf_output_cnt = 0;
 }
 
@@ -1107,12 +1114,14 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
     /* create the error log file */
     memset(ofn, 0, ofn_len);
     snprintf(ofn, ofn_len, "%s-%04d.%s", prefix, G.f_index, "LOG");
-    if( ( G.f_error_log = fopen(ofn, "wb+" ) ) == NULL )
-    {
-    	perror("fopen failed");
-    	free ( ofn );
-    	return ( 1 );
-    }
+    if (G.output_debug_log) {
+	    if( ( G.f_debug_log = fopen(ofn, "wb+" ) ) == NULL )
+	    {
+	    	perror("fopen failed");
+	    	free ( ofn );
+	    	return ( 1 );
+	    }
+	}
 
     /* create the output CSV file */
 
@@ -1122,21 +1131,6 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
 				  prefix, G.f_index, AIRODUMP_NG_CSV_EXT );
 
 		if( ( G.f_txt = fopen( ofn, "wb+" ) ) == NULL )
-		{
-			perror( "fopen failed" );
-			fprintf( stderr, "Could not create \"%s\".\n", ofn );
-			free( ofn );
-			return( 1 );
-		}
-	}
-
-    /* create the output Kismet CSV file */
-	if (G.output_format_kismet_csv) {
-		memset(ofn, 0, ofn_len);
-		snprintf( ofn,  ofn_len, "%s-%04d.%s",
-				  prefix, G.f_index, KISMET_CSV_EXT );
-
-		if( ( G.f_kis = fopen( ofn, "wb+" ) ) == NULL )
 		{
 			perror( "fopen failed" );
 			fprintf( stderr, "Could not create \"%s\".\n", ofn );
@@ -1161,22 +1155,6 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
             return( 1 );
         }
     }
-
-    /* Create the output kismet.netxml file */
-
-	if (G.output_format_kismet_netxml) {
-		memset(ofn, 0, ofn_len);
-		snprintf( ofn,  ofn_len, "%s-%04d.%s",
-				  prefix, G.f_index, KISMET_NETXML_EXT );
-
-		if( ( G.f_kis_xml = fopen( ofn, "wb+" ) ) == NULL )
-		{
-			perror( "fopen failed" );
-			fprintf( stderr, "Could not create \"%s\".\n", ofn );
-			free( ofn );
-			return( 1 );
-		}
-	}
 
     /* create the output packet capture file */
     if( G.output_format_pcap )
@@ -3853,539 +3831,6 @@ char * sanitize_xml(unsigned char * text, int length)
 }
 
 
-#define KISMET_NETXML_HEADER_BEGIN "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n<!DOCTYPE detection-run SYSTEM \"http://kismetwireless.net/kismet-3.1.0.dtd\">\n\n<detection-run kismet-version=\"jairodump-ng-1.0\" start-time=\""
-#define KISMET_NETXML_HEADER_END "\">\n\n"
-
-#define KISMET_NETXML_TRAILER "</detection-run>"
-
-#define TIME_STR_LENGTH 255
-int dump_write_kismet_netxml( void )
-{
-    int network_number, average_power, client_nbr;
-    int client_max_rate, unused;
-    struct AP_info *ap_cur;
-    struct ST_info *st_cur;
-    char first_time[TIME_STR_LENGTH];
-    char last_time[TIME_STR_LENGTH];
-    char * essid = NULL;
-
-    if (! G.record_data || !G.output_format_kismet_netxml)
-    	return 0;
-
-    fseek( G.f_kis_xml, 0, SEEK_SET );
-
-	/* Header and jairodump-ng start time */
-    fprintf( G.f_kis_xml, "%s%s%s",
-    		KISMET_NETXML_HEADER_BEGIN,
-			G.airodump_start_time,
-    		KISMET_NETXML_HEADER_END );
-
-
-    ap_cur = G.ap_1st;
-
-    network_number = 0;
-    while( ap_cur != NULL )
-    {
-        if( memcmp( ap_cur->bssid, BROADCAST, 6 ) == 0 )
-        {
-            ap_cur = ap_cur->next;
-            continue;
-        }
-
-        if(ap_cur->security != 0 && G.f_encrypt != 0 && ((ap_cur->security & G.f_encrypt) == 0))
-        {
-            ap_cur = ap_cur->next;
-            continue;
-        }
-
-        if(is_filtered_essid(ap_cur->essid) || ap_cur->nb_pkt < 2 /* XXX: Maybe this last check should be removed */ )
-        {
-            ap_cur = ap_cur->next;
-            continue;
-        }
-
-		++network_number; // Network Number
-		strncpy(first_time, ctime(&ap_cur->tinit), TIME_STR_LENGTH - 1);
-		first_time[strlen(first_time) - 1] = 0; // remove new line
-
-		strncpy(last_time, ctime(&ap_cur->tlast), TIME_STR_LENGTH - 1);
-		last_time[strlen(last_time) - 1] = 0; // remove new line
-
-		fprintf(G.f_kis_xml, "\t<wireless-network number=\"%d\" type=\"infrastructure\" ",
-			network_number);
-		fprintf(G.f_kis_xml, "first-time=\"%s\" last-time=\"%s\">\n", first_time, last_time);
-
-		fprintf(G.f_kis_xml, "\t\t<SSID first-time=\"%s\" last-time=\"%s\">\n",
-				first_time, last_time);
-		fprintf(G.f_kis_xml, "\t\t\t<type>Beacon</type>\n" );
-		fprintf(G.f_kis_xml, "\t\t\t<max-rate>%d.000000</max-rate>\n", ap_cur->max_speed );
-		fprintf(G.f_kis_xml, "\t\t\t<packets>%ld</packets>\n", ap_cur->nb_bcn );
-		fprintf(G.f_kis_xml, "\t\t\t<beaconrate>%d</beaconrate>\n", 10 );
-		fprintf(G.f_kis_xml, "\t\t\t<encryption>");
-		//Encryption
-		if( (ap_cur->security & (STD_OPN|STD_WEP|STD_WPA|STD_WPA2)) != 0)
-		{
-			if( ap_cur->security & STD_WPA2 ) fprintf( G.f_kis_xml, "WPA2 " );
-			if( ap_cur->security & STD_WPA  ) fprintf( G.f_kis_xml, "WPA " );
-			if( ap_cur->security & STD_WEP  ) fprintf( G.f_kis_xml, "WEP " );
-			if( ap_cur->security & STD_OPN  ) fprintf( G.f_kis_xml, "OPN " );
-		}
-
-		if( (ap_cur->security & (ENC_WEP|ENC_TKIP|ENC_WRAP|ENC_CCMP|ENC_WEP104|ENC_WEP40)) != 0 )
-		{
-			if( ap_cur->security & ENC_CCMP   ) fprintf( G.f_kis_xml, "AES-CCM ");
-			if( ap_cur->security & ENC_WRAP   ) fprintf( G.f_kis_xml, "WRAP ");
-			if( ap_cur->security & ENC_TKIP   ) fprintf( G.f_kis_xml, "TKIP ");
-			if( ap_cur->security & ENC_WEP104 ) fprintf( G.f_kis_xml, "WEP104 ");
-			if( ap_cur->security & ENC_WEP40  ) fprintf( G.f_kis_xml, "WEP40 ");
-/*      	if( ap_cur->security & ENC_WEP    ) fprintf( G.f_kis_xml, "WEP ");*/
-		}
-		fprintf(G.f_kis_xml, "</encryption>\n");
-
-		/* ESSID */
-		fprintf(G.f_kis_xml, "\t\t\t<essid cloaked=\"%s\">",
-					(ap_cur->essid[0] == 0) ? "true" : "false");
-		essid = sanitize_xml(ap_cur->essid, ap_cur->ssid_length);
-		if (essid != NULL) {
-			fprintf(G.f_kis_xml, "%s", essid);
-			free(essid);
-		}
-		fprintf(G.f_kis_xml, "</essid>\n");
-
-		/* End of SSID tag */
-		fprintf(G.f_kis_xml, "\t\t</SSID>\n");
-
-		/* BSSID */
-		fprintf( G.f_kis_xml, "\t\t<BSSID>%02X:%02X:%02X:%02X:%02X:%02X</BSSID>\n",
-					 ap_cur->bssid[0], ap_cur->bssid[1],
-					 ap_cur->bssid[2], ap_cur->bssid[3],
-					 ap_cur->bssid[4], ap_cur->bssid[5] );
-
-		/* Channel
-		   FIXME: Take G.freqoption in account */
-		fprintf(G.f_kis_xml, "\t\t<channel>%d</channel>\n", ap_cur->channel);
-
-		/* Freq (in Mhz) and total number of packet on that frequency
-		   FIXME: Take G.freqoption in account */
-		fprintf(G.f_kis_xml, "\t\t<freqmhz>%d %ld</freqmhz>\n",
-					getFrequencyFromChannel(ap_cur->channel),
-					//ap_cur->nb_data + ap_cur->nb_bcn );
-					ap_cur->nb_pkt );
-
-		/* XXX: What about 5.5Mbit */
-		fprintf(G.f_kis_xml, "\t\t<maxseenrate>%d</maxseenrate>\n", ap_cur->max_speed * 1000);
-
-		/* Packets */
-		fprintf(G.f_kis_xml, "\t\t<packets>\n"
-					"\t\t\t<LLC>%ld</LLC>\n"
-					"\t\t\t<data>%ld</data>\n"
-					"\t\t\t<crypt>0</crypt>\n"
-					"\t\t\t<total>%ld</total>\n"
-					"\t\t\t<fragments>0</fragments>\n"
-					"\t\t\t<retries>0</retries>\n"
-					"\t\t</packets>\n",
-					ap_cur->nb_bcn, ap_cur->nb_data,
-					//ap_cur->nb_data + ap_cur->nb_bcn );
-					ap_cur->nb_pkt );
-
-
-		/*
-		 * XXX: What does that field mean? Is it the total size of data?
-		 *      It seems that 'd' is appended at the end for clients, why?
-		 */
-		fprintf(G.f_kis_xml, "\t\t<datasize>0</datasize>\n");
-
-		/* Client information */
-		st_cur = G.st_1st;
-		client_nbr = 0;
-
-		while ( st_cur != NULL )
-		{
-			/* If not associated or Broadcast Mac, try next one */
-			if ( st_cur->base == NULL ||
-				 memcmp( st_cur->stmac, BROADCAST, 6 ) == 0  )
-			{
-				st_cur = st_cur->next;
-				continue;
-			}
-
-			/* Compare BSSID */
-			if ( memcmp( st_cur->base->bssid, ap_cur->bssid, 6 ) != 0 )
-			{
-				st_cur = st_cur->next;
-				continue;
-			}
-
-			++client_nbr;
-
-
-			strncpy(first_time, ctime(&st_cur->tinit), TIME_STR_LENGTH - 1);
-			first_time[strlen(first_time) - 1] = 0; // remove new line
-
-			strncpy(last_time, ctime(&st_cur->tlast), TIME_STR_LENGTH - 1);
-			last_time[strlen(last_time) - 1] = 0; // remove new line
-
-			fprintf(G.f_kis_xml, "\t\t<wireless-client number=\"%d\" "
-								 "type=\"established\" first-time=\"%s\""
-								 " last-time=\"%s\">\n",
-								 client_nbr, first_time, last_time );
-
-			fprintf( G.f_kis_xml, "\t\t\t<client-mac>%02X:%02X:%02X:%02X:%02X:%02X</client-mac>\n",
-						 st_cur->stmac[0], st_cur->stmac[1],
-						 st_cur->stmac[2], st_cur->stmac[3],
-						 st_cur->stmac[4], st_cur->stmac[5] );
-
-			/* Channel
-			   FIXME: Take G.freqoption in account */
-			fprintf(G.f_kis_xml, "\t\t\t<channel>%d</channel>\n", ap_cur->channel);
-
-			/* Rate: unaccurate because it's the latest rate seen */
-			client_max_rate = ( st_cur->rate_from > st_cur->rate_to ) ? st_cur->rate_from : st_cur->rate_to ;
-			fprintf(G.f_kis_xml, "\t\t\t<maxseenrate>%.6f</maxseenrate>\n", client_max_rate / 1000000.0 );
-
-			/* Packets */
-			fprintf(G.f_kis_xml, "\t\t\t<packets>\n"
-						"\t\t\t\t<LLC>0</LLC>\n"
-						"\t\t\t\t<data>0</data>\n"
-						"\t\t\t\t<crypt>0</crypt>\n"
-						"\t\t\t\t<total>%ld</total>\n"
-						"\t\t\t\t<fragments>0</fragments>\n"
-						"\t\t\t\t<retries>0</retries>\n"
-						"\t\t\t</packets>\n",
-						st_cur->nb_pkt );
-
-			/* SNR information */
-			average_power = (st_cur->power == -1) ? 0 : st_cur->power;
-			fprintf(G.f_kis_xml, "\t\t\t<snr-info>\n"
-					"\t\t\t\t<last_signal_dbm>%d</last_signal_dbm>\n"
-					"\t\t\t\t<last_noise_dbm>0</last_noise_dbm>\n"
-					"\t\t\t\t<last_signal_rssi>%d</last_signal_rssi>\n"
-					"\t\t\t\t<last_noise_rssi>0</last_noise_rssi>\n"
-					"\t\t\t\t<min_signal_dbm>%d</min_signal_dbm>\n"
-					"\t\t\t\t<min_noise_dbm>0</min_noise_dbm>\n"
-					"\t\t\t\t<min_signal_rssi>1024</min_signal_rssi>\n"
-					"\t\t\t\t<min_noise_rssi>1024</min_noise_rssi>\n"
-					"\t\t\t\t<max_signal_dbm>%d</max_signal_dbm>\n"
-					"\t\t\t\t<max_noise_dbm>0</max_noise_dbm>\n"
-					"\t\t\t\t<max_signal_rssi>%d</max_signal_rssi>\n"
-					"\t\t\t\t<max_noise_rssi>0</max_noise_rssi>\n"
-					 "\t\t\t</snr-info>\n",
-					 average_power, average_power, average_power,
-					 average_power, average_power );
-
-			/* GPS Coordinates
-			   XXX: We don't have GPS coordinates for clients */
-			if (G.usegpsd)
-			{
-				fprintf(G.f_kis_xml, "\t\t<gps-info>\n"
-							"\t\t\t<min-lat>%.6f</min-lat>\n"
-							"\t\t\t<min-lon>%.6f</min-lon>\n"
-							"\t\t\t<min-alt>%.6f</min-alt>\n"
-							"\t\t\t<min-spd>%.6f</min-spd>\n"
-							"\t\t\t<max-lat>%.6f</max-lat>\n"
-							"\t\t\t<max-lon>%.6f</max-lon>\n"
-							"\t\t\t<max-alt>%.6f</max-alt>\n"
-							"\t\t\t<max-spd>%.6f</max-spd>\n"
-							"\t\t\t<peak-lat>%.6f</peak-lat>\n"
-							"\t\t\t<peak-lon>%.6f</peak-lon>\n"
-							"\t\t\t<peak-alt>%.6f</peak-alt>\n"
-							"\t\t\t<avg-lat>%.6f</avg-lat>\n"
-							"\t\t\t<avg-lon>%.6f</avg-lon>\n"
-							"\t\t\t<avg-alt>%.6f</avg-alt>\n"
-							 "\t\t</gps-info>\n",
-							 0.0, 0.0, 0.0, 0.0,
-							 0.0, 0.0, 0.0, 0.0,
-							 0.0, 0.0, 0.0,
-							 0.0, 0.0, 0.0 );
-			}
-
-
-			/* Trailing information */
-			fprintf(G.f_kis_xml, "\t\t\t<cdp-device></cdp-device>\n"
-								 "\t\t\t<cdp-portid></cdp-portid>\n");
-			fprintf(G.f_kis_xml, "\t\t</wireless-client>\n" );
-
-			/* Next client */
-			st_cur = st_cur->next;
-		}
-
-		/* SNR information */
-		average_power = (ap_cur->avg_power == -1) ? 0 : ap_cur->avg_power;
-		fprintf(G.f_kis_xml, "\t\t<snr-info>\n"
-					"\t\t\t<last_signal_dbm>%d</last_signal_dbm>\n"
-					"\t\t\t<last_noise_dbm>0</last_noise_dbm>\n"
-					"\t\t\t<last_signal_rssi>%d</last_signal_rssi>\n"
-					"\t\t\t<last_noise_rssi>0</last_noise_rssi>\n"
-					"\t\t\t<min_signal_dbm>%d</min_signal_dbm>\n"
-					"\t\t\t<min_noise_dbm>0</min_noise_dbm>\n"
-					"\t\t\t<min_signal_rssi>1024</min_signal_rssi>\n"
-					"\t\t\t<min_noise_rssi>1024</min_noise_rssi>\n"
-					"\t\t\t<max_signal_dbm>%d</max_signal_dbm>\n"
-					"\t\t\t<max_noise_dbm>0</max_noise_dbm>\n"
-					"\t\t\t<max_signal_rssi>%d</max_signal_rssi>\n"
-					"\t\t\t<max_noise_rssi>0</max_noise_rssi>\n"
-					 "\t\t</snr-info>\n",
-					 average_power, average_power, average_power,
-					 average_power, average_power );
-
-		/* GPS Coordinates */
-		if (G.usegpsd)
-		{
-			fprintf(G.f_kis_xml, "\t\t<gps-info>\n"
-						"\t\t\t<min-lat>%.6f</min-lat>\n"
-						"\t\t\t<min-lon>%.6f</min-lon>\n"
-						"\t\t\t<min-alt>%.6f</min-alt>\n"
-						"\t\t\t<min-spd>%.6f</min-spd>\n"
-						"\t\t\t<max-lat>%.6f</max-lat>\n"
-						"\t\t\t<max-lon>%.6f</max-lon>\n"
-						"\t\t\t<max-alt>%.6f</max-alt>\n"
-						"\t\t\t<max-spd>%.6f</max-spd>\n"
-						"\t\t\t<peak-lat>%.6f</peak-lat>\n"
-						"\t\t\t<peak-lon>%.6f</peak-lon>\n"
-						"\t\t\t<peak-alt>%.6f</peak-alt>\n"
-						"\t\t\t<avg-lat>%.6f</avg-lat>\n"
-						"\t\t\t<avg-lon>%.6f</avg-lon>\n"
-						"\t\t\t<avg-alt>%.6f</avg-alt>\n"
-						 "\t\t</gps-info>\n",
-						ap_cur->gps_loc_min[0],
-						ap_cur->gps_loc_min[1],
-						ap_cur->gps_loc_min[2],
-						ap_cur->gps_loc_min[3],
-						ap_cur->gps_loc_max[0],
-						ap_cur->gps_loc_max[1],
-						ap_cur->gps_loc_max[2],
-						ap_cur->gps_loc_max[3],
-						ap_cur->gps_loc_best[0],
-						ap_cur->gps_loc_best[1],
-						ap_cur->gps_loc_best[2],
-						/* Can the "best" be considered as average??? */
-						ap_cur->gps_loc_best[0],
-						ap_cur->gps_loc_best[1],
-						ap_cur->gps_loc_best[2] );
-		}
-
-		/* Trailing information */
-		fprintf(G.f_kis_xml, "\t\t<bsstimestamp>0</bsstimestamp>\n"
-					 "\t\t<cdp-device></cdp-device>\n"
-					 "\t\t<cdp-portid></cdp-portid>\n");
-
-		/* Closing tag for the current wireless network */
-		fprintf(G.f_kis_xml, "\t</wireless-network>\n");
-		//-------- End of XML
-
-        ap_cur = ap_cur->next;
-    }
-
-	/* Trailing */
-    fprintf( G.f_kis_xml, "%s\n", KISMET_NETXML_TRAILER );
-
-    fflush( G.f_kis_xml );
-
-    /* Sometimes there can be crap at the end of the file, so truncating is a good idea.
-       XXX: Is this really correct, I hope fileno() won't have any side effect */
-	unused = ftruncate(fileno(G.f_kis_xml), ftell( G.f_kis_xml ) );
-
-    return 0;
-}
-#undef TIME_STR_LENGTH
-
-#define KISMET_HEADER "Network;NetType;ESSID;BSSID;Info;Channel;Cloaked;Encryption;Decrypted;MaxRate;MaxSeenRate;Beacon;LLC;Data;Crypt;Weak;Total;Carrier;Encoding;FirstTime;LastTime;BestQuality;BestSignal;BestNoise;GPSMinLat;GPSMinLon;GPSMinAlt;GPSMinSpd;GPSMaxLat;GPSMaxLon;GPSMaxAlt;GPSMaxSpd;GPSBestLat;GPSBestLon;GPSBestAlt;DataSize;IPType;IP;\n"
-
-
-int dump_write_kismet_csv( void )
-{
-    int i, k;
-//     struct tm *ltime;
-/*    char ssid_list[512];*/
-    struct AP_info *ap_cur;
-
-    if (! G.record_data || !G.output_format_kismet_csv)
-    	return 0;
-
-    fseek( G.f_kis, 0, SEEK_SET );
-
-    fprintf( G.f_kis, KISMET_HEADER );
-
-    ap_cur = G.ap_1st;
-
-    k=1;
-    while( ap_cur != NULL )
-    {
-        if( memcmp( ap_cur->bssid, BROADCAST, 6 ) == 0 )
-        {
-            ap_cur = ap_cur->next;
-            continue;
-        }
-
-        if(ap_cur->security != 0 && G.f_encrypt != 0 && ((ap_cur->security & G.f_encrypt) == 0))
-        {
-            ap_cur = ap_cur->next;
-            continue;
-        }
-
-        if(is_filtered_essid(ap_cur->essid) || ap_cur->nb_pkt < 2)
-        {
-            ap_cur = ap_cur->next;
-            continue;
-        }
-
-        //Network
-        fprintf( G.f_kis, "%d;", k );
-
-        //NetType
-        fprintf( G.f_kis, "infrastructure;");
-
-        //ESSID
-        for(i=0; i<ap_cur->ssid_length; i++)
-        {
-            fprintf( G.f_kis, "%c", ap_cur->essid[i] );
-        }
-        fprintf( G.f_kis, ";" );
-
-        //BSSID
-        fprintf( G.f_kis, "%02X:%02X:%02X:%02X:%02X:%02X;",
-                 ap_cur->bssid[0], ap_cur->bssid[1],
-                 ap_cur->bssid[2], ap_cur->bssid[3],
-                 ap_cur->bssid[4], ap_cur->bssid[5] );
-
-        //Info
-        fprintf( G.f_kis, ";");
-
-        //Channel
-        fprintf( G.f_kis, "%d;", ap_cur->channel);
-
-        //Cloaked
-        fprintf( G.f_kis, "No;");
-
-        //Encryption
-        if( (ap_cur->security & (STD_OPN|STD_WEP|STD_WPA|STD_WPA2)) != 0)
-        {
-            if( ap_cur->security & STD_WPA2 ) fprintf( G.f_kis, "WPA2," );
-            if( ap_cur->security & STD_WPA  ) fprintf( G.f_kis, "WPA," );
-            if( ap_cur->security & STD_WEP  ) fprintf( G.f_kis, "WEP," );
-            if( ap_cur->security & STD_OPN  ) fprintf( G.f_kis, "OPN," );
-        }
-
-        if( (ap_cur->security & (ENC_WEP|ENC_TKIP|ENC_WRAP|ENC_CCMP|ENC_WEP104|ENC_WEP40)) == 0 ) fprintf( G.f_kis, "None,");
-        else
-        {
-            if( ap_cur->security & ENC_CCMP   ) fprintf( G.f_kis, "AES-CCM,");
-            if( ap_cur->security & ENC_WRAP   ) fprintf( G.f_kis, "WRAP,");
-            if( ap_cur->security & ENC_TKIP   ) fprintf( G.f_kis, "TKIP,");
-            if( ap_cur->security & ENC_WEP104 ) fprintf( G.f_kis, "WEP104,");
-            if( ap_cur->security & ENC_WEP40  ) fprintf( G.f_kis, "WEP40,");
-/*            if( ap_cur->security & ENC_WEP    ) fprintf( G.f_kis, " WEP,");*/
-        }
-
-        fseek(G.f_kis, -1, SEEK_CUR);
-        fprintf(G.f_kis, ";");
-
-        //Decrypted
-        fprintf( G.f_kis, "No;");
-
-        //MaxRate
-        fprintf( G.f_kis, "%d.0;", ap_cur->max_speed );
-
-        //MaxSeenRate
-        fprintf( G.f_kis, "0;");
-
-        //Beacon
-        fprintf( G.f_kis, "%ld;", ap_cur->nb_bcn);
-
-        //LLC
-        fprintf( G.f_kis, "0;");
-
-        //Data
-        fprintf( G.f_kis, "%ld;", ap_cur->nb_data );
-
-        //Crypt
-        fprintf( G.f_kis, "0;");
-
-        //Weak
-        fprintf( G.f_kis, "0;");
-
-        //Total
-        fprintf( G.f_kis, "%ld;", ap_cur->nb_data );
-
-        //Carrier
-        fprintf( G.f_kis, ";");
-
-        //Encoding
-        fprintf( G.f_kis, ";");
-
-        //FirstTime
-        fprintf( G.f_kis, "%s", ctime(&ap_cur->tinit) );
-        fseek(G.f_kis, -1, SEEK_CUR);
-        fprintf( G.f_kis, ";");
-
-        //LastTime
-        fprintf( G.f_kis, "%s", ctime(&ap_cur->tlast) );
-        fseek(G.f_kis, -1, SEEK_CUR);
-        fprintf( G.f_kis, ";");
-
-        //BestQuality
-        fprintf( G.f_kis, "%d;", ap_cur->avg_power );
-
-        //BestSignal
-        fprintf( G.f_kis, "0;" );
-
-        //BestNoise
-        fprintf( G.f_kis, "0;" );
-
-        //GPSMinLat
-        fprintf( G.f_kis, "%.6f;", ap_cur->gps_loc_min[0]);
-
-        //GPSMinLon
-        fprintf( G.f_kis, "%.6f;", ap_cur->gps_loc_min[1]);
-
-        //GPSMinAlt
-        fprintf( G.f_kis, "%.6f;", ap_cur->gps_loc_min[2]);
-
-        //GPSMinSpd
-        fprintf( G.f_kis, "%.6f;", ap_cur->gps_loc_min[3]);
-
-        //GPSMaxLat
-        fprintf( G.f_kis, "%.6f;", ap_cur->gps_loc_max[0]);
-
-        //GPSMaxLon
-        fprintf( G.f_kis, "%.6f;", ap_cur->gps_loc_max[1]);
-
-        //GPSMaxAlt
-        fprintf( G.f_kis, "%.6f;", ap_cur->gps_loc_max[2]);
-
-        //GPSMaxSpd
-        fprintf( G.f_kis, "%.6f;", ap_cur->gps_loc_max[3]);
-
-        //GPSBestLat
-        fprintf( G.f_kis, "%.6f;", ap_cur->gps_loc_best[0]);
-
-        //GPSBestLon
-        fprintf( G.f_kis, "%.6f;", ap_cur->gps_loc_best[1]);
-
-        //GPSBestAlt
-        fprintf( G.f_kis, "%.6f;", ap_cur->gps_loc_best[2]);
-
-        //DataSize
-        fprintf( G.f_kis, "0;" );
-
-        //IPType
-        fprintf( G.f_kis, "0;" );
-
-        //IP
-        fprintf( G.f_kis, "%d.%d.%d.%d;",
-                 ap_cur->lanip[0], ap_cur->lanip[1],
-                 ap_cur->lanip[2], ap_cur->lanip[3] );
-
-        fprintf( G.f_kis, "\r\n");
-
-        ap_cur = ap_cur->next;
-        k++;
-    }
-
-    fflush( G.f_kis );
-    return 0;
-}
-
 void gps_tracker( void )
 {
 	ssize_t unused;
@@ -5527,6 +4972,7 @@ int main( int argc, char *argv[] )
         {"update",   1, 0, 'u'},
         {"berlin",   1, 0, 'B'},
         {"roll",     1, 0, 'X'},
+        {"debug",    0, 0, 'l'},
         {"help",     0, 0, 'H'},
         {"nodecloak",0, 0, 'D'},
         {"showack",  0, 0, 'A'},
@@ -5577,8 +5023,6 @@ int main( int argc, char *argv[] )
     G.f_index      =  0; //JG 2014/10/09 - Added for log rolling support.
     G.f_cap        =  NULL;
     G.f_txt        =  NULL;
-    G.f_kis        =  NULL;
-    G.f_kis_xml    =  NULL;
     G.f_gps        =  NULL;
     G.keyout       =  NULL;
     G.f_xor        =  NULL;
@@ -5606,7 +5050,6 @@ int main( int argc, char *argv[] )
     G.hopfreq      =  DEFAULT_HOPFREQ;
     G.s_iface      =  NULL;
     G.detect_anomaly = 0;
-    G.airodump_start_time = NULL;
 
     G.dump_cap_start   = 0;
     G.roll_cap_files = 1;
@@ -5616,8 +5059,8 @@ int main( int argc, char *argv[] )
 	G.output_format_pcap = 1;
 	G.output_format_jblf = 1;
     G.output_format_csv = 1;
-    G.output_format_kismet_csv = 1;
-    G.output_format_kismet_netxml = 1;
+
+    G.output_debug_log = 0;
 
     G.jblf_gps_data_available = 0;
 
@@ -5843,6 +5286,10 @@ int main( int argc, char *argv[] )
 
                 break;
 
+            case 'x':
+            	G.output_debug_log = 1;
+            	break;
+
             case 'g':
 
                 G.usegpsd  = 1;
@@ -5982,8 +5429,6 @@ int main( int argc, char *argv[] )
 					G.output_format_pcap = 0;
 					G.output_format_jblf = 0;
 					G.output_format_csv = 0;
-					G.output_format_kismet_csv = 0;
-    				G.output_format_kismet_netxml = 0;
 				}
 
 				// Parse the value
@@ -5999,29 +5444,16 @@ int main( int argc, char *argv[] )
 							G.output_format_jblf = 1;
 						} else if (strncasecmp(output_format_string, "jblf", 4) == 0) {
 							G.output_format_jblf = 1;
-						} else if (strncasecmp(output_format_string, "kismet", 6) == 0) {
-							G.output_format_kismet_csv = 1;
 						} else if (strncasecmp(output_format_string, "gps", 3) == 0) {
 							G.usegpsd  = 1;
-						} else if (strncasecmp(output_format_string, "netxml", 6) == 0
-							|| strncasecmp(output_format_string, "newcore", 7) == 0
-							|| strncasecmp(output_format_string, "kismet-nc", 9) == 0
-							|| strncasecmp(output_format_string, "kismet_nc", 9) == 0
-							|| strncasecmp(output_format_string, "kismet-newcore", 14) == 0
-							|| strncasecmp(output_format_string, "kismet_newcore", 14) == 0) {
-							G.output_format_kismet_netxml = 1;
 						} else if (strncasecmp(output_format_string, "default", 6) == 0) {
 							G.output_format_pcap = 1;
 							G.output_format_jblf = 1;
 							G.output_format_csv = 1;
-							G.output_format_kismet_csv = 1;
-							G.output_format_kismet_netxml = 1;
 						} else if (strncasecmp(output_format_string, "none", 6) == 0) {
 							G.output_format_pcap = 0;
 							G.output_format_jblf = 0;
 							G.output_format_csv = 0;
-							G.output_format_kismet_csv = 0;
-    						G.output_format_kismet_netxml = 0;
 
 							G.usegpsd  = 0;
 						} else {
@@ -6260,12 +5692,6 @@ usage:
     G.elapsed_time = (char *) calloc( 1, 4 );
     strncpy(G.elapsed_time, "0 s", 4 - 1);
 
-	/* Create start time string for kismet netxml file */
-    G.airodump_start_time = (char *) calloc( 1, 1000 * sizeof(char) );
-    strncpy(G.airodump_start_time, ctime( & start_time ), 1000 - 1);
-    G.airodump_start_time[strlen(G.airodump_start_time) - 1] = 0; // remove new line
-    G.airodump_start_time = (char *) realloc( G.airodump_start_time, sizeof(char) * (strlen(G.airodump_start_time) + 1) );
-
     if( pthread_create( &(G.input_tid), NULL, (void *) input_thread, NULL ) != 0 )
     {
 	perror( "pthread_create failed" );
@@ -6292,9 +5718,7 @@ usage:
 
             tt1 = time( NULL );
             if (G. output_format_csv)  dump_write_csv();
-            if (G.output_format_kismet_csv) dump_write_kismet_csv();
-            if (G.output_format_kismet_netxml) dump_write_kismet_netxml();
-
+            
             /* sort the APs by power */
 
 	    if(G.sort_by != SORT_BY_NOTHING) {
@@ -6520,20 +5944,12 @@ usage:
 
     if (G.record_data) {
         if ( G. output_format_csv)  dump_write_csv();
-        if ( G.output_format_kismet_csv) dump_write_kismet_csv();
-        if ( G.output_format_kismet_netxml) dump_write_kismet_netxml();
-
+        
         if ( G. output_format_csv || G.f_txt != NULL ) fclose( G.f_txt );
-        if ( G.output_format_kismet_csv || G.f_kis != NULL ) fclose( G.f_kis );
-        if ( G.output_format_kismet_netxml || G.f_kis_xml != NULL )
-        {
-			fclose( G.f_kis_xml );
-			free(G.airodump_start_time);
-		}
         if ( G.f_gps != NULL ) fclose( G.f_gps );
     }
 
-    if ( G.f_error_log != NULL ) fclose( G.f_error_log );
+    if ( G.f_debug_log != NULL ) fclose( G.f_debug_log );
 
     if( ! G.save_gps )
     {
