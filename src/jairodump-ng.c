@@ -175,7 +175,7 @@ void jblf_write_packet_header(uint16_t tv_sec, uint16_t tv_usec, uint32_t pkt_ty
 		G.jblf_output_cnt++;
 
 		struct jblf_pkthdr jblf_pkh;
-		memset(jblf_pkh, 0, sizeof(jblf_pkh));
+		memset(&jblf_pkh, 0, sizeof(jblf_pkh));
 		jblf_pkh.tv_sec  =   tv_sec;
         jblf_pkh.tv_usec = tv_usec;
         jblf_pkh.pkt_type = pkt_type;
@@ -228,7 +228,7 @@ void jblf_write_tag(uint16_t tagType, uint16_t tagLength, void * tagBuffer)
 		if(tagLength > 0)
 		{
 			struct jblf_tag_len tag_w_len;
-			memset(tag_w_len, 0, sizeof(tag_w_len));
+			memset(&tag_w_len, 0, sizeof(tag_w_len));
 			tag_w_len.tag_type = tagType | JBLF_TAG_FILTER_SIZE;
 			tag_w_len.tag_length = tagLength;
 			fwrite(&tag_w_len, 1, sizeof(tag_w_len), G.f_jblf);
@@ -236,7 +236,7 @@ void jblf_write_tag(uint16_t tagType, uint16_t tagLength, void * tagBuffer)
 		else
 		{
 			struct jblf_tag_hdr tag_wo_len;
-			memset(tag_wo_len, 0, sizeof(tag_wo_len));
+			memset(&tag_wo_len, 0, sizeof(tag_wo_len));
 			tag_wo_len.tag_type = tagType;
 			fwrite(&tag_wo_len, 1, sizeof(tag_wo_len), G.f_jblf);
 		}
@@ -1211,7 +1211,7 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
 
     	struct jblf_file_header jfh;
 
-    	memset(jfh, 0, sizeof(jfh));
+    	memset(&jfh, 0, sizeof(jfh));
 
     	jfh.magic = TCPDUMP_MAGIC;
     	jfh.version_major = JBLF_VERSION_MAJOR;
