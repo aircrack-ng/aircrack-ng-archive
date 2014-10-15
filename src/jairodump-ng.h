@@ -465,8 +465,8 @@ G;
 #define JBLF_VERSION_MAJOR      1
 #define JBLF_VERSION_MINOR      0
 
-#define JBLF_PKT_TYPE_IP        0x0000
-#define JBLF_PKT_TYPE_GPS       0x0001
+#define JBLF_PKT_TYPE_IP        0x00
+#define JBLF_PKT_TYPE_GPS       0x01
 
 #define JBLF_TAG_FILTER_SIZE    0x8000
 
@@ -484,33 +484,6 @@ G;
 #define JBLF_GPS_INTERVAL       60 * 3 /* 3-second max time check */
 
 #define JBLF_EMPTY_TAG_FLUSH    "\xFF\xAA\xFF\xAA\xEE\xBB\xEE\xBB"
-
-/* JBLF (Joe's Binary Log File) structures */
-struct jblf_file_header
-{
-    uint32_t magic;
-    uint8_t version_major;
-    uint8_t version_minor;
-    uint8_t num_mac_addresses;
-};
-
-struct jblf_pkthdr
-{
-    uint32_t pkt_type;
-    int32_t tv_sec;
-    int32_t tv_usec;
-};
-
-struct jblf_tag_hdr
-{
-    uint16_t tag_type;
-};
-
-struct jblf_tag_len
-{
-    uint16_t tag_type;
-    uint16_t tag_length;
-};
 
 /* Misc network protocol structures */
 struct dns_hdr

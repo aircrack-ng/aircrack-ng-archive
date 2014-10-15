@@ -114,6 +114,36 @@ void log_print(const char *lpszFormat, ...)
     va_end(argList);
 }
 
+void jblf_write_byte(uint8_t b)
+{
+	if(G.f_jblf)
+	{
+		log_print("JBLF: Write Byte: %02x", b);
+		fwrite(&b, 1, 1, G.f_jblf);
+	}
+}
+
+void jblf_write_uint16(uint16_t i)
+{
+	jblf_write_byte((i >> 8) & 0xff);
+	jblf_write_byte(i & 0xff);
+}
+
+void jblf_write_uint32(uint32_t i)
+{
+	jblf_write_byte((i >> 24) & 0xff);
+	jblf_write_byte((i >> 16) & 0xff);
+	jblf_write_byte((i >> 8) & 0xff);
+	jblf_write_byte(i & 0xff);
+}
+
+void jblf_write_bytes(void * bytes, int len)
+{
+	int i;
+	for(i = 0; i < len; i++)
+		jblf_write_byte(bytes[i]);
+}
+
 /* IEEE802.11 Routines */
 static unsigned char *get_bssid(struct ieee80211_frame *wh)
 {
@@ -166,7 +196,7 @@ static unsigned char *get_bssid(struct ieee80211_frame *wh)
 
 /* START JBLF FILE ROUTINES */
 
-void jblf_write_packet_header(uint16_t tv_sec, uint16_t tv_usec, uint32_t pkt_type)
+void jblf_write_packet_header(uint16_t tv_sec, uint16_t tv_usec, uint8_t pkt_type)
 {
 	log_print("JBLF: Write Packet Header: %d, Sec=%d, USec=%d", pkt_type, tv_sec, tv_usec );
 
@@ -174,12 +204,9 @@ void jblf_write_packet_header(uint16_t tv_sec, uint16_t tv_usec, uint32_t pkt_ty
 	{
 		G.jblf_output_cnt++;
 
-		struct jblf_pkthdr jblf_pkh;
-		memset(&jblf_pkh, 0, sizeof(jblf_pkh));
-		jblf_pkh.tv_sec  =   tv_sec;
-        jblf_pkh.tv_usec = tv_usec;
-        jblf_pkh.pkt_type = pkt_type;
-        fwrite( &jblf_pkh, 1, sizeof(jblf_pkh), G.f_jblf);
+		jblf_write_uint16(tv_sec);
+		jblf_write_uint16(tv_usec);
+		jblf_write_byte(pkt_type);
 	}
 }
 
@@ -187,7 +214,7 @@ void jblf_write_current_gps ()
 {
 	struct timeval cur_time;
 
-	if (G.output_format_jblf && G.f_jblf != NULL && G.gps_loc[0] && G.jblf_gps_data_available)
+	if (G.f_jblf != NULL && G.gps_loc[0] && G.jblf_gps_data_available)
 	{
 		log_print("Outputting GPS to JBLF" );
 
@@ -203,8 +230,8 @@ void jblf_write_current_gps ()
 
 void jblf_write_mac_addr(void * tagBuffer)
 {
-	log_print("JBLF: Write Packet MAC Address" );
-	if(G.output_format_jblf && G.f_jblf != NULL)
+	log_print("JBLF: Write MAC Address" );
+	if(G.f_jblf != NULL)
 	{
 		if(tagBuffer)
 		{
@@ -227,22 +254,16 @@ void jblf_write_tag(uint16_t tagType, uint16_t tagLength, void * tagBuffer)
 	{
 		if(tagLength > 0)
 		{
-			struct jblf_tag_len tag_w_len;
-			memset(&tag_w_len, 0, sizeof(tag_w_len));
-			tag_w_len.tag_type = tagType | JBLF_TAG_FILTER_SIZE;
-			tag_w_len.tag_length = tagLength;
-			fwrite(&tag_w_len, 1, sizeof(tag_w_len), G.f_jblf);
+			jblf_write_uint16(tagType | JBLF_TAG_FILTER_SIZE);
+			jblf_write_uint16(tagLength);
 		}
 		else
 		{
-			struct jblf_tag_hdr tag_wo_len;
-			memset(&tag_wo_len, 0, sizeof(tag_wo_len));
-			tag_wo_len.tag_type = tagType;
-			fwrite(&tag_wo_len, 1, sizeof(tag_wo_len), G.f_jblf);
+			jblf_write_uint16(tagType);
 		}
 		if(tagLength)
 		{
-			fwrite(tagBuffer, 1, tagLength, G.f_jblf);
+			jblf_write_bytes(tagBuffer, tagLength);
 		}
 	}
 }
@@ -1209,18 +1230,13 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
     	G.f_jblf_name = (char *) malloc( strlen( ofn) + 1);
     	memcpy( G.f_jblf_name, ofn, strlen( ofn ) + 1);
 
-    	struct jblf_file_header jfh;
-
-    	memset(&jfh, 0, sizeof(jfh));
-
-    	jfh.magic = TCPDUMP_MAGIC;
-    	jfh.version_major = JBLF_VERSION_MAJOR;
-    	jfh.version_minor = JBLF_VERSION_MINOR;
-    	jfh.num_mac_addresses = (cards & 0xFF);
-
     	log_print("JBLF: Writing log file header.");
-    	fwrite( &jfh, 1, sizeof( struct jblf_file_header ), G.f_jblf );
-    	
+
+    	jblf_write_uint32(TCPDUMP_MAGIC);
+    	jblf_write_byte(JBLF_VERSION_MAJOR);
+    	jblf_write_byte(JBLF_VERSION_MINOR);
+    	jblf_write_byte(cards & 0xff);
+
     	void* macTemp = (void *)malloc(6);
 
     	for( i=0; i < cards; i++ )
