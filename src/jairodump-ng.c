@@ -141,7 +141,7 @@ void jblf_write_bytes(void * bytes, int len)
 {
 	int i;
 	for(i = 0; i < len; i++)
-		jblf_write_byte(bytes[i]);
+		jblf_write_byte((uint8_t)bytes[i]);
 }
 
 /* IEEE802.11 Routines */
