@@ -32,6 +32,7 @@
 #ifndef _AIRODUMP_NG_H_
 #define _AIRODUMP_NG_H_
 
+#include <stdint.h>
 #include "eapol.h"
 
 /* some constants */
@@ -464,8 +465,8 @@ G;
 #define JBLF_VERSION_MAJOR      1
 #define JBLF_VERSION_MINOR      0
 
-#define JBLF_PKT_TYPE_IP        0
-#define JBLF_PKT_TYPE_GPS       1
+#define JBLF_PKT_TYPE_IP        0x0000
+#define JBLF_PKT_TYPE_GPS       0x0001
 
 #define JBLF_TAG_FILTER_SIZE    0x8000
 
@@ -495,9 +496,9 @@ struct jblf_file_header
 
 struct jblf_pkthdr
 {
-    uint32_t tv_sec;
-    uint32_t tv_usec;
-    uint8_t pkt_type;
+    uint32_t pkt_type;
+    int32_t tv_sec;
+    int32_t tv_usec;
 };
 
 struct jblf_tag_hdr
