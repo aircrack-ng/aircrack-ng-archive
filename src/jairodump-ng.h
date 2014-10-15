@@ -120,7 +120,6 @@
 extern char * getVersion(char * progname, int maj, int min, int submin, int svnrev, int beta, int rc);
 extern unsigned char * getmac(char * macAddress, int strict, unsigned char * mac);
 extern int get_ram_size(void);
-char *get_manufacturer(unsigned char mac0, unsigned char mac1, unsigned char mac2);
 
 #define PCAP_ROLLOVER_TIME 5 * 60
 #define JBLF_MAX_RECORD_COUNT 5000
@@ -189,13 +188,6 @@ struct pkt_buf
     struct timeval  ctime;      /* capture time */
 };
 
-/* oui struct for list management */
-struct oui {
-	char id[9]; /* TODO: Don't use ASCII chars to compare, use unsigned char[3] (later) with the value (hex ascii will have to be converted) */
-	char manuf[128]; /* TODO: Switch to a char * later to improve memory usage */
-	struct oui *next;
-};
-
 /* linked list of detected access points */
 struct AP_info
 {
@@ -228,7 +220,6 @@ struct AP_info
     struct timeval tv;        /* time for data per second */
 
     unsigned char bssid[6];   /* the access point's MAC   */
-    char *manuf;              /* the access point's manufacturer */
     unsigned char essid[MAX_IE_ELEMENT_SIZE];
                               /* ascii network identifier */
     unsigned long long timestamp;
@@ -276,7 +267,6 @@ struct ST_info
     time_t tinit, tlast;     /* first and last time seen  */
     unsigned long nb_pkt;    /* total number of packets   */
     unsigned char stmac[6];  /* the client's MAC address  */
-    char *manuf;             /* the client's manufacturer */
     int probe_index;         /* probed ESSIDs ring index  */
     char probes[NB_PRB][MAX_IE_ELEMENT_SIZE];
                              /* probed ESSIDs ring buffer */
@@ -319,8 +309,7 @@ struct globals
     struct AP_info *ap_1st, *ap_end;
     struct ST_info *st_1st, *st_end;
     struct NA_info *na_1st, *na_end;
-    struct oui *manufList;
-
+    
     unsigned char prev_bssid[6];
     unsigned char f_bssid[6];
     unsigned char f_netmask[6];
@@ -341,6 +330,7 @@ struct globals
     FILE *f_gps;            /* output gps file      */
     FILE *f_cap;            /* output cap file      */
     FILE *f_jblf;           /* output jblf file     */
+    FILE *f_error_log;      /* output errors */
     FILE *f_xor;            /* output prga file     */
 
     char * batt;            /* Battery string       */
@@ -466,7 +456,6 @@ struct globals
 
     int ignore_negative_one;
     u_int maxsize_essid_seen;
-    int show_manufacturer;
     int show_uptime;
 }
 G;
@@ -490,8 +479,6 @@ G;
 #define JBLF_TAG_USER_AGENT     0x0007
 #define JBLF_TAG_UDP_PKT_SIZE   0x0008
 #define JBLF_TAG_TCP_PKT_SIZE   0x0009
-#define JBLF_TAG_ST_MANU_NAME   0x000a
-#define JBLF_TAG_AP_MANU_NAME   0x000b
 
 #define JBLF_GPS_INTERVAL       60 * 3 /* 3-second max time check */
 

@@ -153,6 +153,8 @@ void jblf_write_current_gps ()
 
 	if (G.output_format_jblf && G.f_jblf != NULL && G.gps_loc[0] && G.jblf_gps_data_available)
 	{
+		fprintf( G.f_error_log, "Outputting GPS to JBLF\n" );
+
 		G.jblf_gps_data_available = 0;
 
 		gettimeofday( &cur_time, NULL );
@@ -163,13 +165,13 @@ void jblf_write_current_gps ()
 
 		if( fwrite( &recHdr, 1, sizeof( recHdr ), G.f_jblf ) != (size_t) sizeof( recHdr ) )
     	{
-    		perror("fwrite(jblf gps record header) failed");
+    		fprintf( G.f_error_log, "fwrite(jblf gps record header) failed");
     		return;
     	}
 
     	if( fwrite( &G.gps_loc, 1, sizeof( float ) * 5, G.f_jblf ) != (size_t) ( sizeof( float ) * 5 ) )
     	{
-    		perror("fwrite(jblf gps record) failed");
+    		fprintf(G.f_error_log, "fwrite(jblf gps record) failed");
     		return;
     	}
 	}
@@ -182,6 +184,7 @@ void jblf_write_current_gps ()
 void jblf_write_packet_header(uint16_t tv_sec, uint16_t tv_usec, uint8_t pkt_type)
 {
 	struct jblf_pkthdr jblf_pkh;
+	fprintf(G.f_error_log, "JBLF: Write Packet Header\n" );
 
 	if(G.output_format_jblf && G.f_jblf != NULL)
 	{
@@ -191,14 +194,15 @@ void jblf_write_packet_header(uint16_t tv_sec, uint16_t tv_usec, uint8_t pkt_typ
         jblf_pkh.pkt_type = pkt_type;
         if( fwrite( &jblf_pkh, 1, sizeof(jblf_pkh), G.f_jblf) != (size_t)sizeof(jblf_pkh) )
         {
-        	perror("fwrite(jblf packet header) failed");
+        	fprintf( G.f_error_log, "fwrite(jblf packet header) failed");
         	return;
         }
 	}
 }
 
-void jblf_write_packet_mac_addr(char * tagBuffer)
+void jblf_write_mac_addr(void * tagBuffer)
 {
+	fprintf(G.f_error_log, "JBLF: Write Packet MAC Address\n" );
 	if(G.output_format_jblf && G.f_jblf != NULL)
 	{
 		if(tagBuffer)
@@ -207,7 +211,7 @@ void jblf_write_packet_mac_addr(char * tagBuffer)
 		}
 		else
 		{
-			char *tmp = malloc(6);
+			void *tmp = malloc(6);
 			memset(tmp, 0x00, 6);
 			fwrite(tmp, 1, 6, G.f_jblf);
 			free(tmp);
@@ -217,6 +221,7 @@ void jblf_write_packet_mac_addr(char * tagBuffer)
 
 void jblf_write_tag(uint16_t tagType, uint16_t tagLength, void * tagBuffer)
 {
+	fprintf(G.f_error_log, "JBLF: Write Tag: %d, %d\n", tagType, tagLength);
 	if(G.output_format_jblf && G.f_jblf != NULL)
 	{
 		if(tagLength > 0)
@@ -306,7 +311,9 @@ void jblf_write_etherType(uint16_t etherType)
 
 void jblf_write_80211_info(struct ieee80211_frame *wh, int len)
 {
-	if( !(G.output_format_jblf && G.f_jblf != NULL) || wh == NULL )
+	if( wh == NULL )
+		return;
+	if( !( G.output_format_jblf && G.f_jblf != NULL ) )
 		return;
 
 	if ( ( (wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK) == IEEE80211_FC0_SUBTYPE_NODATA ) || ( (wh->i_fc[1] & IEEE80211_FC1_WEP) == IEEE80211_FC1_WEP) ) //If there is no content, or it is encrypted, exit.
@@ -347,41 +354,6 @@ void jblf_write_80211_info(struct ieee80211_frame *wh, int len)
 }
 
 /* END JBLF FILE ROUTINES */
-
-char * get_manufacturer_from_string(char * buffer) {
-	char * manuf = NULL;
-	char * buffer_manuf;
-	if (buffer != NULL && strlen(buffer) > 0) {
-		buffer_manuf = strstr(buffer, "(hex)");
-		if (buffer_manuf != NULL) {
-			buffer_manuf += 6; // skip '(hex)' and one more character (there's at least one 'space' character after that string)
-			while (*buffer_manuf == '\t' || *buffer_manuf == ' ') {
-				++buffer_manuf;
-			}
-
-			// Did we stop at the manufacturer
-			if (*buffer_manuf != '\0') {
-
-				// First make sure there's no end of line
-				if (buffer_manuf[strlen(buffer_manuf) - 1] == '\n' || buffer_manuf[strlen(buffer_manuf) - 1] == '\r') {
-					buffer_manuf[strlen(buffer_manuf) - 1] = '\0';
-					if (*buffer_manuf != '\0' && (buffer_manuf[strlen(buffer_manuf) - 1] == '\n' || buffer[strlen(buffer_manuf) - 1] == '\r')) {
-						buffer_manuf[strlen(buffer_manuf) - 1] = '\0';
-					}
-				}
-				if (*buffer_manuf != '\0') {
-					if ((manuf = (char *)malloc((strlen(buffer_manuf) + 1) * sizeof(char))) == NULL) {
-						perror("malloc failed");
-						return NULL;
-					}
-					snprintf(manuf, strlen(buffer_manuf) + 1, "%s", buffer_manuf);
-				}
-			}
-		}
-	}
-
-	return manuf;
-}
 
 void textcolor(int attr, int fg, int bg)
 {	char command[13];
@@ -664,70 +636,6 @@ void trim(char *str)
     str[i - begin] = '\0'; // Null terminate string.
 }
 
-struct oui * load_oui_file(void) {
-	FILE *fp;
-	char * manuf;
-	char buffer[BUFSIZ];
-	unsigned char a[2];
-	unsigned char b[2];
-	unsigned char c[2];
-	struct oui *oui_ptr = NULL, *oui_head = NULL;
-
-	if (!(fp = fopen(OUI_PATH0, "r"))) {
-		if (!(fp = fopen(OUI_PATH1, "r"))) {
-			if (!(fp = fopen(OUI_PATH2, "r"))) {
-				if (!(fp = fopen(OUI_PATH3, "r"))) {
-					return NULL;
-				}
-			}
-		}
-	}
-
-	memset(buffer, 0x00, sizeof(buffer));
-	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-		if (!(strstr(buffer, "(hex)")))
-			continue;
-
-		memset(a, 0x00, sizeof(a));
-		memset(b, 0x00, sizeof(b));
-		memset(c, 0x00, sizeof(c));
-		// Remove leading/trailing whitespaces.
-		trim(buffer);
-		if (sscanf(buffer, "%2c-%2c-%2c", a, b, c) == 3) {
-			if (oui_ptr == NULL) {
-				if (!(oui_ptr = (struct oui *)malloc(sizeof(struct oui)))) {
-					fclose(fp);
-					perror("malloc failed");
-					return NULL;
-				}
-			} else {
-				if (!(oui_ptr->next = (struct oui *)malloc(sizeof(struct oui)))) {
-					fclose(fp);
-					perror("malloc failed");
-					return NULL;
-				}
-				oui_ptr = oui_ptr->next;
-			}
-			memset(oui_ptr->id, 0x00, sizeof(oui_ptr->id));
-			memset(oui_ptr->manuf, 0x00, sizeof(oui_ptr->manuf));
-			snprintf(oui_ptr->id, sizeof(oui_ptr->id), "%c%c:%c%c:%c%c", a[0], a[1], b[0], b[1], c[0], c[1]);
-			manuf = get_manufacturer_from_string(buffer);
-			if (manuf != NULL) {
-				snprintf(oui_ptr->manuf, sizeof(oui_ptr->manuf), "%s", manuf);
-				free(manuf);
-			} else {
-				snprintf(oui_ptr->manuf, sizeof(oui_ptr->manuf), "Unknown");
-			}
-			if (oui_head == NULL)
-				oui_head = oui_ptr;
-			oui_ptr->next = NULL;
-		}
-	}
-
-	fclose(fp);
-	return oui_head;
-}
-
 int check_shared_key(unsigned char *h80211, int caplen)
 {
     int m_bmac, m_smac, m_dmac, n, textlen;
@@ -901,7 +809,6 @@ char usage[] =
 "                              from the screen when no more packets\n"
 "                              are received (Default: 120 seconds)\n"
 "      -x            <msecs> : Active Scanning Simulation\n"
-"      --manufacturer        : Display manufacturer from IEEE OUI list\n"
 "      --uptime              : Display AP Uptime from Beacon Timestamp\n"
 "      --output-format\n"
 "                  <formats> : Output format. Possible values:\n"
@@ -1081,6 +988,7 @@ void dump_cleanup( char *prefix )
     }
     if (G.output_format_jblf && G.f_jblf != NULL)
     {
+    	fprintf( G.f_error_log, "Closing JBLF Output File\n" );
     	ofn_len = strlen(prefix) + 1 + 4 + 13 + 1;
     	ofn = (char *)calloc(1, ofn_len);
 
@@ -1162,6 +1070,16 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
 
     G.prefix = (char *) malloc(strlen(prefix) + 1);
     memcpy(G.prefix, prefix, strlen(prefix) + 1);
+
+    /* create the error log file */
+    memset(ofn, 0, ofn_len);
+    snprintf(ofn, ofn_len, "%s-%04d.%s", prefix, G.f_index, "LOG");
+    if( ( G.f_error_log = fopen(ofn, "wb+" ) ) == NULL )
+    {
+    	perror("fopen failed");
+    	free ( ofn );
+    	return ( 1 );
+    }
 
     /* create the output CSV file */
 
@@ -1270,6 +1188,7 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
     	memset(ofn, 0, ofn_len);
     	snprintf( ofn,  ofn_len, "%s-%04d.%s",
                   prefix, G.f_index, JAIRODUMP_NG_TJBLF_EXT );
+    	fprintf(G.f_error_log, "JGLF: Creating log file: %s\n", ofn);
     	if( ( G.f_jblf = fopen( ofn, "wb+" ) ) == NULL)
     	{
     		perror( "fopen failed" );
@@ -1286,9 +1205,10 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
     	jfh.version_minor = JBLF_VERSION_MINOR;
     	jfh.num_mac_addresses = (cards & 0xFF);
 
+    	fprintf( G.f_error_log, "JBLF: Writing log file header.\n");
     	if( fwrite( &jfh, 1, sizeof( jfh ), G.f_jblf ) != (size_t) sizeof( jfh ) )
     	{
-    		perror("fwrite(jblf file header) failed");
+    		fprintf(stderr, "fwrite(jblf file header) failed");
     		free( ofn );
     		return ( 1 );
     	}
@@ -1298,12 +1218,8 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
     	for( i=0; i < cards; i++ )
     	{
     		wi_get_mac( wi[i], macTemp );
-    		if ( fwrite( &macTemp, 1, 6, G.f_jblf ) != 6 )
-    		{
-    			perror("fwrite(jblf file header mac) failed");
-    			free( ofn );
-    			return ( 1 );
-    		}
+    		fprintf( G.f_error_log, "JBLF: Writing MAC Address %d\n", i + 1);
+    		jblf_write_mac_addr( macTemp );
     	}
 
     	free(macTemp);
@@ -1625,11 +1541,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
             ap_prv->next  = ap_cur;
 
         memcpy( ap_cur->bssid, bssid, 6 );
-		if (ap_cur->manuf == NULL) {
-			ap_cur->manuf = get_manufacturer(ap_cur->bssid[0], ap_cur->bssid[1], ap_cur->bssid[2]);
-		}
-
-        ap_cur->prev = ap_prv;
+		ap_cur->prev = ap_prv;
 
         ap_cur->tinit = time( NULL );
         ap_cur->tlast = time( NULL );
@@ -1833,11 +1745,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
 
         memcpy( st_cur->stmac, stmac, 6 );
 
-		if (st_cur->manuf == NULL) {
-			st_cur->manuf = get_manufacturer(st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2]);
-		}
-
-        st_cur->prev = st_prv;
+		st_cur->prev = st_prv;
 
         st_cur->tinit = time( NULL );
         st_cur->tlast = time( NULL );
@@ -2668,11 +2576,11 @@ write_packet:
     	jblf_write_packet_header(tv.tv_sec, ( tv.tv_usec & ~0x1ff ) + ri->ri_power + 64, JBLF_PKT_TYPE_IP);
     	if(st_cur != NULL)
     	{
-    		jblf_write_packet_mac_addr((char *)&st_cur->stmac);
+    		jblf_write_mac_addr((char *)&st_cur->stmac);
     	}
     	else
     	{
-    		jblf_write_packet_mac_addr((char *)get_bssid(wh));
+    		jblf_write_mac_addr((char *)get_bssid(wh));
     	}
         jblf_write_tag(JBLF_TAG_RX_INFO, sizeof(struct rx_info), ri);
 
@@ -2689,18 +2597,6 @@ write_packet:
 	        		st_cur->ssid_jblf_needs_log[i] = 0;
 	        	}
 	        }
-
-	        if(st_cur->manuf != NULL)
-	        {
-	        	jblf_write_tag(JBLF_TAG_ST_MANU_NAME, strlen(st_cur->manuf), st_cur->manuf);
-	        }
-	    }
-	    if(ap_cur)
-	    {
-	    	if(ap_cur->manuf != NULL)
-	    	{
-	    		jblf_write_tag(JBLF_TAG_AP_MANU_NAME, strlen(ap_cur->manuf), ap_cur->manuf);
-	    	}
 	    }
 
     	//jblf PROCESS PACKET HERE!!!
@@ -3267,12 +3163,6 @@ void dump_print( int ws_row, int ws_col, int if_num )
 
     strcat(strbuf, "ESSID");
 
-	if ( G.show_manufacturer && ( ws_col > (columns_ap - 4) ) ) {
-		// write spaces (32).
-		memset(strbuf+columns_ap, 32, G.maxsize_essid_seen - 5 ); // 5 is the len of "ESSID"
-		snprintf(strbuf+columns_ap+G.maxsize_essid_seen-5, 15,"%s","  MANUFACTURER");
-	}
-
 	strbuf[ws_col - 1] = '\0';
 	fprintf( stderr, "%s\n", strbuf );
 
@@ -3452,19 +3342,6 @@ void dump_print( int ws_row, int ws_col, int if_num )
 		{
 		    snprintf( strbuf,  sizeof( strbuf ) - 1,
 			    "<length:%3d>%s", ap_cur->ssid_length, "\x00" );
-		}
-
-		if (G.show_manufacturer) {
-
-			if (G.maxsize_essid_seen <= strlen(strbuf))
-				G.maxsize_essid_seen = strlen(strbuf);
-			else // write spaces (32)
-				memset( strbuf+strlen(strbuf), 32,  (G.maxsize_essid_seen - strlen(strbuf))  );
-
-			if (ap_cur->manuf == NULL)
-				ap_cur->manuf = get_manufacturer(ap_cur->bssid[0], ap_cur->bssid[1], ap_cur->bssid[2]);
-
-			snprintf( strbuf + G.maxsize_essid_seen , sizeof(strbuf)-G.maxsize_essid_seen, "  %s", ap_cur->manuf );
 		}
 
 		// write spaces (32) until the end of column
@@ -3949,107 +3826,6 @@ char * sanitize_xml(unsigned char * text, int length)
 }
 
 
-#define OUI_STR_SIZE 8
-#define MANUF_SIZE 128
-char *get_manufacturer(unsigned char mac0, unsigned char mac1, unsigned char mac2) {
-	static char * oui_location = NULL;
-	char oui[OUI_STR_SIZE + 1];
-	char *manuf;
-	//char *buffer_manuf;
-	char * manuf_str;
-	struct oui *ptr;
-	FILE *fp;
-	char buffer[BUFSIZ];
-	char temp[OUI_STR_SIZE + 1];
-	unsigned char a[2];
-	unsigned char b[2];
-	unsigned char c[2];
-	int found = 0;
-
-	if ((manuf = (char *)calloc(1, MANUF_SIZE * sizeof(char))) == NULL) {
-		perror("calloc failed");
-		return NULL;
-	}
-
-	snprintf(oui, sizeof(oui), "%02X:%02X:%02X", mac0, mac1, mac2 );
-
-	if (G.manufList != NULL) {
-		// Search in the list
-		ptr = G.manufList;
-		while (ptr != NULL) {
-			found = ! strncasecmp(ptr->id, oui, OUI_STR_SIZE);
-			if (found) {
-				memcpy(manuf, ptr->manuf, MANUF_SIZE);
-				break;
-			}
-			ptr = ptr->next;
-		}
-	} else {
-		// If the file exist, then query it each time we need to get a manufacturer.
-		if (oui_location == NULL) {
-			fp = fopen(OUI_PATH0, "r");
-			if (fp == NULL) {
-				fp = fopen(OUI_PATH1, "r");
-				if (fp == NULL) {
-				    fp = fopen(OUI_PATH2, "r");
-				    if (fp != NULL) {
-					oui_location = OUI_PATH2;
-				    }
-				} else {
-				    oui_location = OUI_PATH1;
-				}
-			} else {
-				oui_location = OUI_PATH0;
-			}
-		} else {
-			fp = fopen(oui_location, "r");
-		}
-
-		if (fp != NULL) {
-
-			memset(buffer, 0x00, sizeof(buffer));
-			while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-				if (strstr(buffer, "(hex)") == NULL) {
-					continue;
-				}
-
-				memset(a, 0x00, sizeof(a));
-				memset(b, 0x00, sizeof(b));
-				memset(c, 0x00, sizeof(c));
-				if (sscanf(buffer, "%2c-%2c-%2c", a, b, c) == 3) {
-					snprintf(temp, sizeof(temp), "%c%c:%c%c:%c%c", a[0], a[1], b[0], b[1], c[0], c[1] );
-					found = !memcmp(temp, oui, strlen(oui));
-					if (found) {
-						manuf_str = get_manufacturer_from_string(buffer);
-						if (manuf_str != NULL) {
-							snprintf(manuf, MANUF_SIZE, "%s", manuf_str);
-							free(manuf_str);
-						}
-
-						break;
-					}
-				}
-				memset(buffer, 0x00, sizeof(buffer));
-			}
-
-			fclose(fp);
-		}
-	}
-
-	// Not found, use "Unknown".
-	if (!found || *manuf == '\0') {
-		memcpy(manuf, "Unknown", 7);
-		manuf[strlen(manuf)] = '\0';
-	}
-
-	manuf = (char *)realloc(manuf, (strlen(manuf) + 1) * sizeof(char));
-
-	return manuf;
-}
-#undef OUI_STR_SIZE
-#undef MANUF_SIZE
-
-
 #define KISMET_NETXML_HEADER_BEGIN "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n<!DOCTYPE detection-run SYSTEM \"http://kismetwireless.net/kismet-3.1.0.dtd\">\n\n<detection-run kismet-version=\"jairodump-ng-1.0\" start-time=\""
 #define KISMET_NETXML_HEADER_END "\">\n\n"
 
@@ -4064,7 +3840,6 @@ int dump_write_kismet_netxml( void )
     struct ST_info *st_cur;
     char first_time[TIME_STR_LENGTH];
     char last_time[TIME_STR_LENGTH];
-    char * manuf;
     char * essid = NULL;
 
     if (! G.record_data || !G.output_format_kismet_netxml)
@@ -4159,11 +3934,6 @@ int dump_write_kismet_netxml( void )
 					 ap_cur->bssid[2], ap_cur->bssid[3],
 					 ap_cur->bssid[4], ap_cur->bssid[5] );
 
-		/* Manufacturer, if set using standard oui list */
-		manuf = sanitize_xml((unsigned char *)ap_cur->manuf, strlen(ap_cur->manuf));
-		fprintf(G.f_kis_xml, "\t\t<manuf>%s</manuf>\n", (manuf != NULL) ? manuf : "Unknown");
-		free(manuf);
-
 		/* Channel
 		   FIXME: Take G.freqoption in account */
 		fprintf(G.f_kis_xml, "\t\t<channel>%d</channel>\n", ap_cur->channel);
@@ -4237,9 +4007,6 @@ int dump_write_kismet_netxml( void )
 						 st_cur->stmac[0], st_cur->stmac[1],
 						 st_cur->stmac[2], st_cur->stmac[3],
 						 st_cur->stmac[4], st_cur->stmac[5] );
-
-			/* Manufacturer, if set using standard oui list */
-			fprintf(G.f_kis_xml, "\t\t\t<client-manuf>%s</client-manuf>\n", (st_cur->manuf != NULL) ? st_cur->manuf : "Unknown");
 
 			/* Channel
 			   FIXME: Take G.freqoption in account */
@@ -5695,8 +5462,7 @@ int main( int argc, char *argv[] )
     struct AP_info *ap_cur, *ap_prv, *ap_next;
     struct ST_info *st_cur, *st_next;
     struct NA_info *na_cur, *na_next;
-    struct oui *oui_cur, *oui_next;
-
+    
     time_t tt1, tt2, tt3, start_time, jblf_gps_time;
 
     struct wif	       *wi[MAX_CARDS];
@@ -5740,7 +5506,6 @@ int main( int argc, char *argv[] )
         {"detect-anomaly", 0, 0, 'E'},
         {"output-format",  1, 0, 'o'},
         {"ignore-negative-one", 0, &G.ignore_negative_one, 1},
-        {"manufacturer",  0, 0, 'M'},
         {"uptime",   0, 0, 'U'},
         {0,          0, 0,  0 }
     };
@@ -5810,13 +5575,11 @@ int main( int argc, char *argv[] )
     G.show_ack     =  0;
     G.hide_known   =  0;
     G.maxsize_essid_seen  =  5; // Initial value: length of "ESSID"
-    G.show_manufacturer = 0;
     G.show_uptime  = 0;
     G.hopfreq      =  DEFAULT_HOPFREQ;
     G.s_iface      =  NULL;
     G.detect_anomaly = 0;
     G.airodump_start_time = NULL;
-	G.manufList = NULL;
 
     G.dump_cap_start   = 0;
     G.roll_cap_files = 1;
@@ -5960,11 +5723,6 @@ int main( int argc, char *argv[] )
             case 'D':
 
                 G.decloak = 0;
-                break;
-
-	    case 'M':
-
-                G.show_manufacturer = 1;
                 break;
 
 	    case 'U' :
@@ -6443,11 +6201,6 @@ usage:
 
     sighandler( SIGWINCH );
 
-    /* fill oui struct if ram is greater than 32 MB */
-    if (get_ram_size()  > MIN_RAM_SIZE_LOAD_OUI_RAM) {
-        G.manufList = load_oui_file();
-	}
-
     /* start the GPS tracker */
 
     if (G.usegpsd)
@@ -6751,6 +6504,8 @@ usage:
 			free(G.airodump_start_time);
 		}
         if ( G.f_gps != NULL ) fclose( G.f_gps );
+
+        if ( G.f_error_log != NULL ) fclose( G.f_error_log );
     }
 
     if( ! G.save_gps )
@@ -6768,9 +6523,6 @@ usage:
         uniqueiv_wipe( ap_cur->uiv_root );
 
         list_tail_free(&(ap_cur->packets));
-
-	if (G.manufList)
-		free(ap_cur->manuf);
 
 	if (G.detect_anomaly)
         	data_wipe(ap_cur->data_root);
@@ -6798,8 +6550,6 @@ usage:
     while(st_cur != NULL)
     {
         st_next = st_cur->next;
-	if (G.manufList)
-		free(st_cur->manuf);
         free(st_cur);
         st_cur = st_next;
     }
@@ -6812,15 +6562,6 @@ usage:
         na_next = na_cur->next;
         free(na_cur);
         na_cur = na_next;
-    }
-
-    if (G.manufList) {
-        oui_cur = G.manufList;
-        while (oui_cur != NULL) {
-            oui_next = oui_cur->next;
-	    free(oui_cur);
-	    oui_cur = oui_next;
-        }
     }
 
     fprintf( stderr, "\33[?25h" );
