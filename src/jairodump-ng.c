@@ -149,54 +149,35 @@ static unsigned char *get_bssid(struct ieee80211_frame *wh)
 void jblf_write_current_gps ()
 {
 	struct timeval cur_time;
-	struct jblf_pkthdr recHdr;
 
 	if (G.output_format_jblf && G.f_jblf != NULL && G.gps_loc[0] && G.jblf_gps_data_available)
 	{
 		fprintf( G.f_error_log, "Outputting GPS to JBLF\n" );
 
-		G.jblf_gps_data_available = 0;
-
 		gettimeofday( &cur_time, NULL );
 
-		recHdr.tv_sec = cur_time.tv_sec;
-		recHdr.tv_usec = cur_time.tv_usec;
-		recHdr.pkt_type = JBLF_PKT_TYPE_GPS;
+		jblf_write_packet_header(cur_time.tv_sec, cur_time.tc_usec, JBLF_PKT_TYPE_GPS);
 
-		if( fwrite( &recHdr, 1, sizeof( recHdr ), G.f_jblf ) != (size_t) sizeof( recHdr ) )
-    	{
-    		fprintf( G.f_error_log, "fwrite(jblf gps record header) failed");
-    		return;
-    	}
-
-    	if( fwrite( &G.gps_loc, 1, sizeof( float ) * 5, G.f_jblf ) != (size_t) ( sizeof( float ) * 5 ) )
-    	{
-    		fprintf(G.f_error_log, "fwrite(jblf gps record) failed");
-    		return;
-    	}
+    	fwrite( &G.gps_loc, 1, sizeof( float ) * 5, G.f_jblf );
 	}
-	else
-	{
-		G.jblf_gps_data_available = 0;
-	}
+	
+	G.jblf_gps_data_available = 0;
 }
 
 void jblf_write_packet_header(uint16_t tv_sec, uint16_t tv_usec, uint8_t pkt_type)
 {
-	struct jblf_pkthdr jblf_pkh;
-	fprintf(G.f_error_log, "JBLF: Write Packet Header\n" );
+	fprintf(G.f_error_log, "JBLF: Write Packet Header: %d, Sec=%d, USec=%d\n", pkt_type, tv_sec, tv_usec );
 
 	if(G.output_format_jblf && G.f_jblf != NULL)
 	{
 		G.jblf_output_cnt++;
-		jblf_pkh.tv_sec  =   tv_sec;
-        jblf_pkh.tv_usec = tv_usec;
-        jblf_pkh.pkt_type = pkt_type;
-        if( fwrite( &jblf_pkh, 1, sizeof(jblf_pkh), G.f_jblf) != (size_t)sizeof(jblf_pkh) )
-        {
-        	fprintf( G.f_error_log, "fwrite(jblf packet header) failed");
-        	return;
-        }
+
+		struct jblf_pkthdr* jblf_pkh = (struct jblf_pkthdr*)malloc(sizeof(struct jblf_pkthdr));
+		jblf_pkh->tv_sec  =   tv_sec;
+        jblf_pkh->tv_usec = tv_usec;
+        jblf_pkh->pkt_type = pkt_type;
+        fwrite( &jblf_pkh, 1, sizeof(struct jblf_pkthdr), G.f_jblf);
+        free(jblf_pkh);
 	}
 }
 
@@ -226,16 +207,18 @@ void jblf_write_tag(uint16_t tagType, uint16_t tagLength, void * tagBuffer)
 	{
 		if(tagLength > 0)
 		{
-			struct jblf_tag_len* tag_w_len = malloc(sizeof(struct jblf_tag_len));
+			struct jblf_tag_len* tag_w_len = (struct jblf_tag_len*)malloc(sizeof(struct jblf_tag_len));
 			tag_w_len->tag_type = tagType | JBLF_TAG_FILTER_SIZE;
 			tag_w_len->tag_length = tagLength;
 			fwrite(&tag_w_len, 1, sizeof(tag_w_len), G.f_jblf);
+			free(tag_w_len);
 		}
 		else
 		{
-			struct jblf_tag_hdr* tag_wo_len = malloc(sizeof(struct jblf_tag_hdr));
+			struct jblf_tag_hdr* tag_wo_len = (struct jblf_tag_hdr*)malloc(sizeof(struct jblf_tag_hdr));
 			tag_wo_len->tag_type = tagType;
 			fwrite(&tag_wo_len, 1, sizeof(tag_wo_len), G.f_jblf);
+			free(tag_wo_len);
 		}
 		if(tagLength)
 		{
@@ -246,11 +229,13 @@ void jblf_write_tag(uint16_t tagType, uint16_t tagLength, void * tagBuffer)
 
 void jblf_write_int_tag(uint16_t tagType, int tagVal)
 {
+	fprintf( G.f_error_log, "JBLF: Writing Int Tag: %d = %d\n", tagType, tagVal );
 	jblf_write_tag(tagType, sizeof(int), &tagVal);
 }
 
 void jblf_write_tcp(void * pkt, int pktLen)
 {
+	fprintf( G.f_error_log, "JBLF: Processing TCP\n" );
 	struct tcphdr *hdr = (struct tcphdr*)pkt;
 	if( hdr->seq > 0 ) //we only care about the first entry...
 		return;
@@ -260,6 +245,7 @@ void jblf_write_tcp(void * pkt, int pktLen)
 
 void jblf_write_udp(void * pkt, int pktLen)
 {
+	fprintf( G.f_error_log, "JBLF: Processing UDP\n" );
 	struct udphdr *hdr = (struct udphdr*)pkt;
 	//check to see if it is DNS traffic...
 	jblf_write_int_tag(JBLF_TAG_UDP_PKT_SIZE, pktLen);
@@ -282,6 +268,7 @@ void jblf_write_udp(void * pkt, int pktLen)
 
 void jblf_write_ipv4_info(void * pkt, int pktLen)
 {
+	fprintf( G.f_error_log, "JBLF: Processing IPv4\n" );
 	struct ip *hdr = (struct ip *)pkt;
 	if( hdr->ip_v != IPVERSION )
 		return;
@@ -294,6 +281,7 @@ void jblf_write_ipv4_info(void * pkt, int pktLen)
 }
 void jblf_write_ipv6_info(void * pkt, int pktLen)
 {
+	fprintf( G.f_error_log, "JBLF: Processing IPv6\n" );
 	struct ip6_hdr *hdr = (struct ip6_hdr*)pkt;
 	if( (hdr->ip6_ctlun.ip6_un2_vfc & 0xF0) != 0x60)
 		return;
@@ -306,11 +294,13 @@ void jblf_write_ipv6_info(void * pkt, int pktLen)
 }
 void jblf_write_etherType(uint16_t etherType)
 {
+	fprintf( G.f_error_log, "JBLF: Processing EtherType %d\n", etherType );
 	jblf_write_tag(JBLF_TAG_ETHER_TYPE, sizeof(uint16_t), &etherType);
 }
 
 void jblf_write_80211_info(struct ieee80211_frame *wh, int len)
 {
+	fprintf( G.f_error_log, "JBLF: Processing 802.11 info.\n" );
 	if( wh == NULL )
 		return;
 	if( !( G.output_format_jblf && G.f_jblf != NULL ) )
@@ -1184,7 +1174,6 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
     /* create the JBLF output capture file */
     if( G.output_format_jblf )
     {
-    	struct jblf_file_header jfh;
     	memset(ofn, 0, ofn_len);
     	snprintf( ofn,  ofn_len, "%s-%04d.%s",
                   prefix, G.f_index, JAIRODUMP_NG_TJBLF_EXT );
@@ -1200,24 +1189,23 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
     	G.f_jblf_name = (char *) malloc( strlen( ofn) + 1);
     	memcpy( G.f_jblf_name, ofn, strlen( ofn ) + 1);
 
-    	jfh.magic = TCPDUMP_MAGIC;
-    	jfh.version_major = JBLF_VERSION_MAJOR;
-    	jfh.version_minor = JBLF_VERSION_MINOR;
-    	jfh.num_mac_addresses = (cards & 0xFF);
+    	struct jblf_file_header* jfh = (struct jblf_file_header*)malloc(sizeof(struct jblf_file_header));
+
+    	jfh->magic = TCPDUMP_MAGIC;
+    	jfh->version_major = JBLF_VERSION_MAJOR;
+    	jfh->version_minor = JBLF_VERSION_MINOR;
+    	jfh->num_mac_addresses = (cards & 0xFF);
 
     	fprintf( G.f_error_log, "JBLF: Writing log file header.\n");
-    	if( fwrite( &jfh, 1, sizeof( jfh ), G.f_jblf ) != (size_t) sizeof( jfh ) )
-    	{
-    		fprintf(stderr, "fwrite(jblf file header) failed");
-    		free( ofn );
-    		return ( 1 );
-    	}
+    	fwrite( jfh, 1, sizeof( struct jblf_file_header ), G.f_jblf );
+    	free( jfh );
 
-    	unsigned char *macTemp = (unsigned char *)malloc(6);
+    	void* macTemp = (void *)malloc(6);
 
     	for( i=0; i < cards; i++ )
     	{
-    		wi_get_mac( wi[i], macTemp );
+    		memset( macTemp, 0, 6);
+    		wi_get_mac( wi[i], (unsigned char*)macTemp );
     		fprintf( G.f_error_log, "JBLF: Writing MAC Address %d\n", i + 1);
     		jblf_write_mac_addr( macTemp );
     	}
