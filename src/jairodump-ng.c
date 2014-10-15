@@ -5286,7 +5286,7 @@ int main( int argc, char *argv[] )
 
                 break;
 
-            case 'x':
+            case 'l':
             	G.output_debug_log = 1;
             	break;
 
