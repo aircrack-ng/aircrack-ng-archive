@@ -94,6 +94,16 @@ void dump_sort( void );
 void dump_print( int ws_row, int ws_col, int if_num );
 int dump_initialize( char *prefix, struct wif *wi[], int cards );
 
+void log_print(const char *lpszFormat, args...)
+{
+	if(!G.f_error_log)
+		return;
+
+    fprintf(G.f_error_log, msg, ## args);
+
+    fflush(G.f_error_log);
+}
+
 /* IEEE802.11 Routines */
 static unsigned char *get_bssid(struct ieee80211_frame *wh)
 {
@@ -148,7 +158,7 @@ static unsigned char *get_bssid(struct ieee80211_frame *wh)
 
 void jblf_write_packet_header(uint16_t tv_sec, uint16_t tv_usec, uint8_t pkt_type)
 {
-	fprintf(G.f_error_log, "JBLF: Write Packet Header: %d, Sec=%d, USec=%d\n", pkt_type, tv_sec, tv_usec );
+	log_print("JBLF: Write Packet Header: %d, Sec=%d, USec=%d\n", pkt_type, tv_sec, tv_usec );
 
 	if(G.output_format_jblf && G.f_jblf != NULL)
 	{
@@ -169,7 +179,7 @@ void jblf_write_current_gps ()
 
 	if (G.output_format_jblf && G.f_jblf != NULL && G.gps_loc[0] && G.jblf_gps_data_available)
 	{
-		fprintf( G.f_error_log, "Outputting GPS to JBLF\n" );
+		log_print("Outputting GPS to JBLF\n" );
 
 		gettimeofday( &cur_time, NULL );
 
@@ -183,7 +193,7 @@ void jblf_write_current_gps ()
 
 void jblf_write_mac_addr(void * tagBuffer)
 {
-	fprintf(G.f_error_log, "JBLF: Write Packet MAC Address\n" );
+	log_print("JBLF: Write Packet MAC Address\n" );
 	if(G.output_format_jblf && G.f_jblf != NULL)
 	{
 		if(tagBuffer)
@@ -202,7 +212,7 @@ void jblf_write_mac_addr(void * tagBuffer)
 
 void jblf_write_tag(uint16_t tagType, uint16_t tagLength, void * tagBuffer)
 {
-	fprintf(G.f_error_log, "JBLF: Write Tag: %d, %d\n", tagType, tagLength);
+	log_print("JBLF: Write Tag: %d, %d\n", tagType, tagLength);
 	if(G.output_format_jblf && G.f_jblf != NULL)
 	{
 		if(tagLength > 0)
@@ -229,13 +239,13 @@ void jblf_write_tag(uint16_t tagType, uint16_t tagLength, void * tagBuffer)
 
 void jblf_write_int_tag(uint16_t tagType, int tagVal)
 {
-	fprintf( G.f_error_log, "JBLF: Writing Int Tag: %d = %d\n", tagType, tagVal );
+	log_print("JBLF: Writing Int Tag: %d = %d\n", tagType, tagVal );
 	jblf_write_tag(tagType, sizeof(int), &tagVal);
 }
 
 void jblf_write_tcp(void * pkt, int pktLen)
 {
-	fprintf( G.f_error_log, "JBLF: Processing TCP\n" );
+	log_print("JBLF: Processing TCP\n" );
 	struct tcphdr *hdr = (struct tcphdr*)pkt;
 	if( hdr->seq > 0 ) //we only care about the first entry...
 		return;
@@ -245,7 +255,7 @@ void jblf_write_tcp(void * pkt, int pktLen)
 
 void jblf_write_udp(void * pkt, int pktLen)
 {
-	fprintf( G.f_error_log, "JBLF: Processing UDP\n" );
+	log_print("JBLF: Processing UDP\n" );
 	struct udphdr *hdr = (struct udphdr*)pkt;
 	//check to see if it is DNS traffic...
 	jblf_write_int_tag(JBLF_TAG_UDP_PKT_SIZE, pktLen);
@@ -268,7 +278,7 @@ void jblf_write_udp(void * pkt, int pktLen)
 
 void jblf_write_ipv4_info(void * pkt, int pktLen)
 {
-	fprintf( G.f_error_log, "JBLF: Processing IPv4\n" );
+	log_print("JBLF: Processing IPv4\n" );
 	struct ip *hdr = (struct ip *)pkt;
 	if( hdr->ip_v != IPVERSION )
 		return;
@@ -281,7 +291,7 @@ void jblf_write_ipv4_info(void * pkt, int pktLen)
 }
 void jblf_write_ipv6_info(void * pkt, int pktLen)
 {
-	fprintf( G.f_error_log, "JBLF: Processing IPv6\n" );
+	log_print("JBLF: Processing IPv6\n" );
 	struct ip6_hdr *hdr = (struct ip6_hdr*)pkt;
 	if( (hdr->ip6_ctlun.ip6_un2_vfc & 0xF0) != 0x60)
 		return;
@@ -294,13 +304,13 @@ void jblf_write_ipv6_info(void * pkt, int pktLen)
 }
 void jblf_write_etherType(uint16_t etherType)
 {
-	fprintf( G.f_error_log, "JBLF: Processing EtherType %d\n", etherType );
+	log_print("JBLF: Processing EtherType %d\n", etherType );
 	jblf_write_tag(JBLF_TAG_ETHER_TYPE, sizeof(uint16_t), &etherType);
 }
 
 void jblf_write_80211_info(struct ieee80211_frame *wh, int len)
 {
-	fprintf( G.f_error_log, "JBLF: Processing 802.11 info.\n" );
+	log_print("JBLF: Processing 802.11 info.\n" );
 	if( wh == NULL )
 		return;
 	if( !( G.output_format_jblf && G.f_jblf != NULL ) )
@@ -978,7 +988,7 @@ void dump_cleanup( char *prefix )
     }
     if (G.output_format_jblf && G.f_jblf != NULL)
     {
-    	fprintf( G.f_error_log, "Closing JBLF Output File\n" );
+    	log_print("Closing JBLF Output File\n" );
     	ofn_len = strlen(prefix) + 1 + 4 + 13 + 1;
     	ofn = (char *)calloc(1, ofn_len);
 
@@ -1177,7 +1187,7 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
     	memset(ofn, 0, ofn_len);
     	snprintf( ofn,  ofn_len, "%s-%04d.%s",
                   prefix, G.f_index, JAIRODUMP_NG_TJBLF_EXT );
-    	fprintf(G.f_error_log, "JGLF: Creating log file: %s\n", ofn);
+    	log_print("JGLF: Creating log file: %s\n", ofn);
     	if( ( G.f_jblf = fopen( ofn, "wb+" ) ) == NULL)
     	{
     		perror( "fopen failed" );
@@ -1196,7 +1206,7 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
     	jfh->version_minor = JBLF_VERSION_MINOR;
     	jfh->num_mac_addresses = (cards & 0xFF);
 
-    	fprintf( G.f_error_log, "JBLF: Writing log file header.\n");
+    	log_print("JBLF: Writing log file header.\n");
     	fwrite( jfh, 1, sizeof( struct jblf_file_header ), G.f_jblf );
     	free( jfh );
 
@@ -1206,7 +1216,7 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
     	{
     		memset( macTemp, 0, 6);
     		wi_get_mac( wi[i], (unsigned char*)macTemp );
-    		fprintf( G.f_error_log, "JBLF: Writing MAC Address %d\n", i + 1);
+    		log_print("JBLF: Writing MAC Address %d\n", i + 1);
     		jblf_write_mac_addr( macTemp );
     	}
 
@@ -6492,9 +6502,9 @@ usage:
 			free(G.airodump_start_time);
 		}
         if ( G.f_gps != NULL ) fclose( G.f_gps );
-
-        if ( G.f_error_log != NULL ) fclose( G.f_error_log );
     }
+
+    if ( G.f_error_log != NULL ) fclose( G.f_error_log );
 
     if( ! G.save_gps )
     {

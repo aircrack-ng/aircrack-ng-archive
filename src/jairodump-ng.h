@@ -495,8 +495,8 @@ struct jblf_file_header
 
 struct jblf_pkthdr
 {
-    int32_t tv_sec;
-    int32_t tv_usec;
+    uint32_t tv_sec;
+    uint32_t tv_usec;
     uint8_t pkt_type;
 };
 
