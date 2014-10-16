@@ -146,12 +146,6 @@ static unsigned char ZERO[32] =
 "\x00\x00\x00\x00\x00\x00\x00\x00"
 "\x00\x00\x00\x00\x00\x00\x00\x00";
 
-#define OUI_PATH0 "/etc/aircrack-ng/airodump-ng-oui.txt"
-#define OUI_PATH1 "/usr/local/etc/aircrack-ng/airodump-ng-oui.txt"
-#define OUI_PATH2 "/usr/share/aircrack-ng/airodump-ng-oui.txt"
-#define OUI_PATH3 "/usr/share/misc/oui.txt"
-#define MIN_RAM_SIZE_LOAD_OUI_RAM 32768
-
 int read_pkts=0;
 
 int abg_chans [] =
@@ -270,7 +264,6 @@ struct ST_info
     char probes[NB_PRB][MAX_IE_ELEMENT_SIZE];
                              /* probed ESSIDs ring buffer */
     int ssid_length[NB_PRB]; /* ssid lengths ring buffer  */
-    int ssid_jblf_needs_log[NB_PRB]; /* does the ssid need to be jblf logged */
     int power;               /* last signal power         */
     int rate_to;             /* last bitrate to station   */
     int rate_from;           /* last bitrate from station */

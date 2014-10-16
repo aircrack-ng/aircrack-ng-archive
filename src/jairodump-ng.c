@@ -137,6 +137,14 @@ void jblf_write_uint32(uint32_t i)
 	jblf_write_byte(i & 0xff);
 }
 
+void jblf_write_int32(int32_t i)
+{
+	jblf_write_byte((i >> 24) & 0xff);
+	jblf_write_byte((i >> 16) & 0xff);
+	jblf_write_byte((i >> 8) & 0xff);
+	jblf_write_byte(i & 0xff);
+}
+
 void jblf_write_bytes(void * bytes, int len)
 {
 	int i;
@@ -340,7 +348,7 @@ void jblf_write_etherType(uint16_t etherType)
 	jblf_write_tag(JBLF_TAG_ETHER_TYPE, sizeof(uint16_t), &etherType);
 }
 
-void jblf_write_80211_info(struct ieee80211_frame *wh, int len)
+void jblf_write_80211_data_info(struct ieee80211_frame *wh, int len)
 {
 	log_print("JBLF: Processing 802.11 info." );
 	if( wh == NULL )
@@ -1458,6 +1466,9 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
     unsigned char stmac[6];
     unsigned char namac[6];
 
+    unsigned char pktSSID[MAX_IE_ELEMENT_SIZE];
+    int pktSSID_Len = -1;
+
     struct AP_info *ap_cur = NULL;
     struct ST_info *st_cur = NULL;
     struct NA_info *na_cur = NULL;
@@ -1771,7 +1782,6 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
             memset( st_cur->probes[i], 0, sizeof(
                     st_cur->probes[i] ) );
             st_cur->ssid_length[i] = 0;
-            st_cur->ssid_jblf_needs_log[i] = 0;
         }
 
         G.st_end = st_cur;
@@ -1852,7 +1862,13 @@ skip_station:
                     if( c == 0 || ( c > 126 && c < 160 ) ) c = '.';  //could also check ||(c>0 && c<32)
                     st_cur->probes[st_cur->probe_index][i] = c;
                 }
-                st_cur->ssid_jblf_needs_log[st_cur->probe_index] = G.output_format_jblf;
+
+                if ( pktSSID_Len < 0)
+                {
+                	memset( pktSSID, 0, MAX_IE_ELEMENT_SIZE );
+                	memcpy( pktSSID, st_cur->probes[st_cur->probe_index], n );
+                	pktSSID_Len = n;
+                }
             }
 
             p += 2 + p[1];
@@ -1901,6 +1917,13 @@ skip_probe:
                     if( ( ap_cur->essid[i] >   0 && ap_cur->essid[i] <  32 ) ||
                         ( ap_cur->essid[i] > 126 && ap_cur->essid[i] < 160 ) )
                         ap_cur->essid[i] = '.';
+
+                if ( pktSSID_Len < 0)
+                {
+                	memset( pktSSID, 0, MAX_IE_ELEMENT_SIZE );
+                	memcpy( pktSSID, ap_cur->essid, n );
+                	pktSSID_Len = n;
+                }
             }
 
             /* get the maximum speed in Mb and the AP's channel */
@@ -2079,6 +2102,13 @@ skip_probe:
                     if( ap_cur->essid[i] < 32 ||
                       ( ap_cur->essid[i] > 126 && ap_cur->essid[i] < 160 ) )
                         ap_cur->essid[i] = '.';
+
+                if ( pktSSID_Len < 0)
+                {
+                	memset( pktSSID, 0, MAX_IE_ELEMENT_SIZE );
+                	memcpy( pktSSID, ap_cur->essid, n );
+                	pktSSID_Len = n;
+                }
             }
 
             p += 2 + p[1];
@@ -2589,25 +2619,15 @@ write_packet:
     	}
         jblf_write_tag(JBLF_TAG_RX_INFO, sizeof(struct rx_info), ri);
 
-        if(st_cur)
+        if ( pktSSID_Len > 0)
         {
-	        for(i=0;i<NB_PRB;i++)
-	        {
-	        	if(st_cur->ssid_jblf_needs_log[i])
-	        	{
-	        		if(st_cur->ssid_length[i] > 0 && st_cur->ssid_length[i] < MAX_IE_ELEMENT_SIZE)
-	        		{
-	        			jblf_write_tag(JBLF_TAG_SSID_NAME, st_cur->ssid_length[i], &st_cur->probes[i]);
-	        		}
-	        		st_cur->ssid_jblf_needs_log[i] = 0;
-	        	}
-	        }
-	    }
+        	jblf_write_tag(JBLF_TAG_SSID_NAME, pktSSID_Len, &pktSSID);
+        }
 
     	//jblf PROCESS PACKET HERE!!!
     	if( (wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK) == IEEE80211_FC0_TYPE_DATA )
     	{
-    		jblf_write_80211_info(wh, caplen);
+    		jblf_write_80211_data_info(wh, caplen);
     	}
 
 
