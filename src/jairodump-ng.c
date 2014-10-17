@@ -2575,11 +2575,11 @@ write_packet:
         }
     }
 
+    gettimeofday( &tv, NULL );
+
     if( G.f_cap != NULL && caplen >= 10)
     {
         pkh.caplen = pkh.len = caplen;
-
-        gettimeofday( &tv, NULL );
 
         pkh.tv_sec  =   tv.tv_sec;
         pkh.tv_usec = ( tv.tv_usec & ~0x1ff ) + ri->ri_power + 64;
