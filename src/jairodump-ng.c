@@ -206,7 +206,7 @@ static unsigned char *get_bssid(struct ieee80211_frame *wh)
 
 /* START JBLF FILE ROUTINES */
 
-void jblf_write_packet_header(uint16_t tv_sec, uint16_t tv_usec, uint8_t pkt_type)
+void jblf_write_packet_header(uint32_t tv_sec, uint32_t tv_usec, uint8_t pkt_type)
 {
 	log_print("JBLF: Write Packet Header: %d, Sec=%d, USec=%d", pkt_type, tv_sec, tv_usec );
 
@@ -214,8 +214,8 @@ void jblf_write_packet_header(uint16_t tv_sec, uint16_t tv_usec, uint8_t pkt_typ
 	{
 		G.jblf_output_cnt++;
 
-		jblf_write_uint16(tv_sec);
-		jblf_write_uint16(tv_usec);
+		jblf_write_uint32(tv_sec);
+		jblf_write_uint32(tv_usec);
 		jblf_write_byte(pkt_type);
 	}
 }

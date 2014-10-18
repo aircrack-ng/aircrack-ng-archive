@@ -448,7 +448,7 @@ G;
 
 /* JBLF (Joe's Binary Log File) defines */
 #define JBLF_VERSION_MAJOR      1
-#define JBLF_VERSION_MINOR      0
+#define JBLF_VERSION_MINOR      1
 
 #define JBLF_PKT_TYPE_IP        0x00
 #define JBLF_PKT_TYPE_GPS       0x01
