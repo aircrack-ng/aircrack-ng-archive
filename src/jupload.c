@@ -64,7 +64,7 @@ void doProcessingLoop(char *dirName, char *fileFilter, char *uploadUrl)
 		perror("scandir");
 	else {
 		while ( n-- ) {
-			if (fnmatch(fileFilter, namelist[n]->d_name, FNM_FILE_NAME))
+			if (fnmatch(fileFilter, namelist[n]->d_name, FNM_PATHNAME) == 0)
 			{
 				uploadFile(namelist[n]->d_name, uploadUrl, 0);
 			}
