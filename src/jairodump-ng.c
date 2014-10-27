@@ -256,7 +256,7 @@ void jblf_write_current_gps ()
 	G.jblf_gps_data_available = 0;
 }
 
-int jblf_is_good_mac_addr(void *macAddr)
+int jblf_is_good_mac_addr(unsigned char *macAddr)
 {
 	if(!macAddr)
 		return 0;
