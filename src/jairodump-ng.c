@@ -263,7 +263,7 @@ int jblf_is_good_mac_addr(void *macAddr)
 	int i;
 	for(i = 0; i < 6; i++)
 	{
-		if (!(macAddr == 0x00 || macAddr == 0xff))
+		if (!(macAddr[i] == 0x00 || macAddr[i] == 0xff))
 			return 1;
 	}
 	return 0;
