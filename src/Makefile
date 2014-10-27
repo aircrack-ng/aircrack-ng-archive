@@ -5,8 +5,8 @@ TEST_DIR	= $(AC_ROOT)/test
 
 CFLAGS		+= -Iinclude
 
-JU_CFLAGS	= CFLAGS
-JU_LDFLAGS  = LDFLAGS
+JU_CFLAGS	= $(CFLAGS)
+JU_LDFLAGS  = $(LDFLAGS)
 JU_CFLAGS   += -c -g
 JU_LDFLAGS  += -lcurl
 
