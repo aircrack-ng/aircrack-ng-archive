@@ -1,10 +1,10 @@
 #define __FAVOR_BSD 1
 
-#include <stdio.h>
 #include <string.h>
 #include <dirent.h>
 #include <fnmatch.h>
 #include <unistd.h>
+#include <stdio.h>
 #include <curl/curl.h>
 
 void uploadFile(char *strFileName, char* uploadUrl, char expectNoHeader)
