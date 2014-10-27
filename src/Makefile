@@ -4,8 +4,11 @@ include $(AC_ROOT)/common.mak
 TEST_DIR	= $(AC_ROOT)/test
 
 CFLAGS		+= -Iinclude
-CFLAGS      += -c -g
-LDFLAGS     += -lcurl
+
+JU_CFLAGS	= CFLAGS
+JU_LDFLAGS  = LDFLAGS
+JU_CFLAGS   += -c -g
+JU_LDFLAGS  += -lcurl
 
 iCC             = $(shell find /opt/intel/cc/*/bin/icc)
 iCFLAGS         = -w -mcpu=pentiumpro -march=pentiumpro $(COMMON_CFLAGS)
@@ -153,7 +156,7 @@ jairodump-ng$(EXE): $(OBJS_JDU) $(LIBOSD)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_JDU) -o $(@) $(LIBS) $(LIBSSL) -lpthread $(LIBPCRE)
 
 jupload$(EXE): $(OBJS_JU) $(LIBOSD)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_JU) -o $(@) $(LIBS) -lpthread $(LIBPCRE)
+	$(CC) $(JU_CFLAGS) $(JU_LDFLAGS) $(OBJS_JU) -o $(@) $(LIBS) -lpthread $(LIBPCRE)
 
 airserv-ng$(EXE): $(OBJS_AS) $(LIBOSD)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_AS) -o $(@) $(LIBS)
