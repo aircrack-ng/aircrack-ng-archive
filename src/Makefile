@@ -32,7 +32,7 @@ endif
 
 
 SBINFILES       = aireplay-ng$(EXE) airodump-ng$(EXE) airserv-ng$(EXE) \
-		  airtun-ng$(EXE) airbase-ng$(EXE) besside-ng$(EXE) jairodump-ng$(EXE)
+		  airtun-ng$(EXE) airbase-ng$(EXE) besside-ng$(EXE) jairodump-ng$(EXE) jupload$(EXE)
 		  
 OPTFILES	= aircrack-ng-opt-prof_gen aircrack-ng-opt \
 		  aircrack-ng-opt-prof prof/*
@@ -73,6 +73,7 @@ OBJS_AB		= airbase-ng.o common.o crypto.o osdep/radiotap/radiotap.o
 OBJS_AU		= airdecloak-ng.o common.o osdep/radiotap/radiotap.o
 OBJS_TT		= tkiptun-ng.o common.o crypto.o osdep/radiotap/radiotap.o
 OBJS_WC		= wpaclean.o osdep/radiotap/radiotap.o
+OBJS_JU     = jupload.o
 
 OSD		= osdep
 LIBS		:= -L$(OSD) -l$(OSD) $(LIBS)
@@ -148,6 +149,9 @@ airodump-ng$(EXE): $(OBJS_ADU) $(LIBOSD)
 
 jairodump-ng$(EXE): $(OBJS_JDU) $(LIBOSD)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_JDU) -o $(@) $(LIBS) $(LIBSSL) -lpthread $(LIBPCRE)
+
+jupload$(EXE): $(OBJS_JU) $(LIBOSD)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_JU) -o $(@) $(LIBS) -lpthread $(LIBPCRE)
 
 airserv-ng$(EXE): $(OBJS_AS) $(LIBOSD)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_AS) -o $(@) $(LIBS)
@@ -233,6 +237,7 @@ uninstall:
 	-rm -f $(DESTDIR)$(bindir)/makeivs-ng$(EXE)
 	-rm -f $(DESTDIR)$(bindir)/airdecloak-ng$(EXE)
 	-rm -f $(DESTDIR)$(sbindir)/tkiptun-ng$(EXE)
+	-rm -f $(DESTDIR)$(sbindir)/jupload$(EXE)
 	-rm -rf $(DESTDIR)$(etcdir)
 
 check: all

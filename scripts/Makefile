@@ -11,7 +11,6 @@ all:
 
 install:
 	install -m 755 $(SCRIPTS) $(DESTDIR)$(sbindir)
-	install -m 755 jupload.py $(DESTDIR)$(sbindir)
 ifeq ($(OSNAME), Linux)
 	install -m 755 $(SCRIPTS_LNX) $(DESTDIR)$(sbindir)
 endif
