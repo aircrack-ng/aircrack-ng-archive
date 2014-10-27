@@ -199,9 +199,27 @@ static unsigned char *get_bssid(struct ieee80211_frame *wh)
 		return wh->i_addr2;
 
 	case IEEE80211_FC0_SUBTYPE_PROBE_REQ:
+
 	default:
 		return NULL;
 	}
+}
+
+static unsigned char *get_client_mac(struct ieee80211_frame *wh)
+{
+	unsigned char *bssid = get_bssid(wh);
+	int type = wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK;
+
+	if (type == IEEE80211_FC0_TYPE_CTL)
+		return NULL;
+
+	if (!bssid)
+		return wh->i_addr2;
+
+	if (bssid == wh->i_addr1)
+		return wh->i_addr2;
+	else
+		return wh->i_addr1;
 }
 
 /* START JBLF FILE ROUTINES */
@@ -236,6 +254,19 @@ void jblf_write_current_gps ()
 	}
 	
 	G.jblf_gps_data_available = 0;
+}
+
+int jblf_is_good_mac_addr(void *macAddr)
+{
+	if(!macAddr)
+		return 0;
+	int i;
+	for(i = 0; i < 6; i++)
+	{
+		if (!(macAddr == 0x00 || macAddr == 0xff))
+			return 1;
+	}
+	return 0;
 }
 
 void jblf_write_mac_addr(void * tagBuffer)
@@ -2608,30 +2639,39 @@ write_packet:
     if(G.f_jblf != NULL && caplen >= 10)
     {
     	struct ieee80211_frame* wh = (struct ieee80211_frame*) h80211;
-    	jblf_write_packet_header(tv.tv_sec, ( tv.tv_usec & ~0x1ff ) + ri->ri_power + 64, JBLF_PKT_TYPE_IP);
+    	unsigned char *client_mac = NULL;
     	if(st_cur != NULL)
     	{
-    		jblf_write_mac_addr((char *)&st_cur->stmac);
+    		client_mac = (char *)st_cur->stmac;
     	}
-    	else
+    	if (client_mac == NULL )
+    		client_mac = get_client_mac(wh);
+    	if( client_mac != NULL && jblf_is_good_mac_addr(client_mac) )
     	{
-    		jblf_write_mac_addr((char *)get_bssid(wh));
-    	}
-        jblf_write_tag(JBLF_TAG_RX_INFO, sizeof(struct rx_info), ri);
+	    	jblf_write_packet_header(tv.tv_sec, ( tv.tv_usec & ~0x1ff ) + ri->ri_power + 64, JBLF_PKT_TYPE_IP);
+	    	if(st_cur != NULL)
+	    	{
+	    		jblf_write_mac_addr((char *)&st_cur->stmac);
+	    	}
+	    	else
+	    	{
+	    		jblf_write_mac_addr((char *)get_client_mac(wh));
+	    	}
+	        jblf_write_tag(JBLF_TAG_RX_INFO, sizeof(struct rx_info), ri);
 
-        if ( pktSSID_Len > 0)
-        {
-        	jblf_write_tag(JBLF_TAG_SSID_NAME, pktSSID_Len, &pktSSID);
-        }
+	        if ( pktSSID_Len > 0)
+	        {
+	        	jblf_write_tag(JBLF_TAG_SSID_NAME, pktSSID_Len, &pktSSID);
+	        }
 
-    	//jblf PROCESS PACKET HERE!!!
-    	if( (wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK) == IEEE80211_FC0_TYPE_DATA )
-    	{
-    		jblf_write_80211_data_info(wh, caplen);
-    	}
+	    	//jblf PROCESS PACKET HERE!!!
+	    	if( (wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK) == IEEE80211_FC0_TYPE_DATA )
+	    	{
+	    		jblf_write_80211_data_info(wh, caplen);
+	    	}
 
-
-    	jblf_write_tag(JBLF_TAG_EMPTY, 0, NULL);
+	    	jblf_write_tag(JBLF_TAG_EMPTY, 0, NULL);
+	    }
     }
 
     return( 0 );
