@@ -5,10 +5,13 @@
 #include <fnmatch.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <curl/curl.h>
 
 void uploadFile(char *strFileName, char* uploadUrl, char expectNoHeader)
 {
+	printf("Uploading file %s\n", strFileName);
+
 	CURL *curl;
 	CURLcode res;
 
