@@ -7,7 +7,6 @@ CFLAGS		+= -Iinclude
 
 JU_CFLAGS	= $(CFLAGS)
 JU_LDFLAGS  = $(LDFLAGS)
-JU_CFLAGS   += -c -g
 JU_LDFLAGS  += -lcurl
 
 iCC             = $(shell find /opt/intel/cc/*/bin/icc)

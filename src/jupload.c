@@ -42,6 +42,7 @@ void uploadFile(char *strFileName, char* uploadUrl, char expectNoHeader)
 		if(res == CURLE_OK)
 		{
 			//delete the file...
+			printf("File %s uploaded, deleting file.\n", strFileName);
 			remove(strFileName);
 		}
 
@@ -59,12 +60,16 @@ void doProcessingLoop(char *dirName, char *fileFilter, char *uploadUrl)
 	int n;
 	if ( chdir(dirName) < 0 )
 	{
+		printf("Unable to set directory to %s\n", dirName);
 		perror("chdir");
 		return;
 	}
 	n = scandir(".", &namelist, NULL, alphasort);
 	if (n < 0)
+	{
+		printf("Unable to search for %s files in %s\n", fileFilter, dirName);
 		perror("scandir");
+	}
 	else {
 		while ( n-- ) {
 			if (fnmatch(fileFilter, namelist[n]->d_name, FNM_PATHNAME) == 0)
@@ -83,7 +88,10 @@ int main(int argc, char *argv[])
 	char* fileFilter;
 	char* uploadUrl;
 	if(argc < 4) // not enough arguments!!!
+	{
+		printf("Incorrect number of arguments specified (%d expected, %d found)\n", 4, argc);
 		return 0;
+	}
 
 	dirName = argv[1];
 	fileFilter = argv[2];
