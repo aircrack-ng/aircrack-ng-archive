@@ -4,6 +4,8 @@ include $(AC_ROOT)/common.mak
 TEST_DIR	= $(AC_ROOT)/test
 
 CFLAGS		+= -Iinclude
+CFLAGS      += -c -g
+LDFLAGS     += -lcurl
 
 iCC             = $(shell find /opt/intel/cc/*/bin/icc)
 iCFLAGS         = -w -mcpu=pentiumpro -march=pentiumpro $(COMMON_CFLAGS)
