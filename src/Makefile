@@ -10,9 +10,8 @@ iCFLAGS         = -w -mcpu=pentiumpro -march=pentiumpro $(COMMON_CFLAGS)
 iOPTFLAGS       = -O3 -ip -ipo -D_FILE_OFFSET_BITS=64
 PROF_DIR	= $(PWD)/prof
 
-BINFILES        = aircrack-ng$(EXE) airdecap-ng$(EXE) packetforge-ng$(EXE) \
-		  ivstools$(EXE) kstats$(EXE) makeivs-ng$(EXE) \
-		  airdecloak-ng$(EXE) wpaclean$(EXE)
+BINFILES        = aircrack-ng$(EXE) ivstools$(EXE) kstats$(EXE) makeivs-ng$(EXE) \
+		  wpaclean$(EXE)
 
 LIBPCRE		=
 ifeq ($(PCRE), true)
@@ -31,15 +30,14 @@ ifeq ($(subst TRUE,true,$(filter TRUE true,$(sqlite) $(SQLITE))),true)
 endif
 
 
-SBINFILES       = aireplay-ng$(EXE) airodump-ng$(EXE) airserv-ng$(EXE) \
-		  airtun-ng$(EXE) airbase-ng$(EXE) besside-ng$(EXE) jairodump-ng$(EXE) jupload$(EXE)
+SBINFILES       = airodump-ng$(EXE) airserv-ng$(EXE) \
+		  airtun-ng$(EXE) besside-ng$(EXE) jairodump-ng$(EXE) jupload$(EXE)
 		  
 OPTFILES	= aircrack-ng-opt-prof_gen aircrack-ng-opt \
 		  aircrack-ng-opt-prof prof/*
 
 
 ifeq ($(subst TRUE,true,$(filter TRUE true,$(unstable) $(UNSTABLE))),true)
-	SBINFILES	+= wesside-ng$(EXE) tkiptun-ng$(EXE) easside-ng$(EXE)
 	BINFILES	+= buddy-ng$(EXE)
 endif
 
@@ -50,9 +48,6 @@ OBJS_PTW	= aircrack-ptw-lib.o
 OBJS_AC		= aircrack-ng.o crypto.o common.o uniqueiv.o $(OBJS_PTW)
 ASM_AC		= sha1-sse2.S
 
-OBJS_AD		= airdecap-ng.o crypto.o common.o
-OBJS_PF		= packetforge-ng.o common.o crypto.o
-OBJS_AR		= aireplay-ng.o common.o crypto.o osdep/radiotap/radiotap.o
 OBJS_ADU	= airodump-ng.o common.o crypto.o uniqueiv.o osdep/radiotap/radiotap.o
 OBJS_JDU	= jairodump-ng.o common.o crypto.o uniqueiv.o osdep/radiotap/radiotap.o
 ifneq ($(OSNAME), Linux)
@@ -62,16 +57,11 @@ endif
 OBJS_AT		= airtun-ng.o common.o crypto.o osdep/radiotap/radiotap.o
 OBJS_IV		= ivstools.o common.o crypto.o uniqueiv.o
 OBJS_AS		= airserv-ng.o common.o osdep/radiotap/radiotap.o
-OBJS_WS		= wesside-ng.o crypto.o common.o osdep/radiotap/radiotap.o $(OBJS_PTW)
 OBJS_BS		= besside-ng.o crypto.o common.o osdep/radiotap/radiotap.o $(OBJS_PTW)
 OBJS_BC		= besside-ng-crawler.o
 OBJS_AL		= airolib-ng.o crypto.o common.o
-OBJS_ES		= easside-ng.o common.o osdep/radiotap/radiotap.o
 OBJS_BUDDY	= buddy-ng.o common.o
 OBJS_MI		= makeivs-ng.o common.o uniqueiv.o
-OBJS_AB		= airbase-ng.o common.o crypto.o osdep/radiotap/radiotap.o
-OBJS_AU		= airdecloak-ng.o common.o osdep/radiotap/radiotap.o
-OBJS_TT		= tkiptun-ng.o common.o crypto.o osdep/radiotap/radiotap.o
 OBJS_WC		= wpaclean.o osdep/radiotap/radiotap.o
 OBJS_JU     = jupload.o common.o
 
@@ -87,17 +77,11 @@ ifeq ($(subst TRUE,true,$(filter TRUE true,$(gcrypt) $(GCRYPT))),true)
 	LIBSSL		= -lgcrypt $(LDFLAGS)
 	CFLAGS 		+= -DUSE_GCRYPT
 	OBJS_AC		+= sha1-git.o
-	OBJS_AD		+= sha1-git.o
-	OBJS_PF		+= sha1-git.o
 	OBJS_IV		+= sha1-git.o
-	OBJS_AR		+= sha1-git.o
 	OBJS_ADU	+= sha1-git.o
 	OBJS_JDU	+= sha1-git.o
 	OBJS_AT		+= sha1-git.o
-	OBJS_AB		+= sha1-git.o
 	OBJS_AL		+= sha1-git.o
-	OBJS_WS		+= sha1-git.o
-	OBJS_TT		+= sha1-git.o
 	OBJS_BS		+= sha1-git.o
 else
 	LIBSSL		= -lssl -lcrypto $(LDFLAGS)
@@ -135,15 +119,6 @@ aircrack-ng-opt-prof_use: $(SRC_AC)
 aircrack-ng$(EXE): $(OBJS_AC)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_AC) $(ASM_AC) -o $(@) -lpthread $(LIBSSL) $(LIBSQL)
 
-airdecap-ng$(EXE): $(OBJS_AD)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_AD) -o $(@) $(LIBSSL)
-
-packetforge-ng$(EXE): $(OBJS_PF)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_PF) -o $(@) $(LIBSSL)
-
-aireplay-ng$(EXE): $(OBJS_AR) $(LIBOSD)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_AR) -o $(@) $(LIBS) $(LIBSSL)
-
 airodump-ng$(EXE): $(OBJS_ADU) $(LIBOSD)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_ADU) -o $(@) $(LIBS) $(LIBSSL) -lpthread $(LIBPCRE)
 
@@ -165,12 +140,6 @@ ivstools$(EXE): $(OBJS_IV)
 kstats$(EXE): kstats.o
 	$(CC) $(CFLAGS) $(LDFLAGS) kstats.o -o $(@) $(LDFLAGS)
 
-wesside-ng$(EXE): $(OBJS_WS) $(LIBOSD)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_WS) -o $(@) $(LIBS) $(LIBSSL) -lz
-
-easside-ng$(EXE): $(OBJS_ES) $(LIBOSD)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_ES) -o $(@) $(LIBS) -lz
-
 buddy-ng$(EXE): $(OBJS_BUDDY)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_BUDDY) -o $(@) $(LDFLAGS)
 
@@ -186,15 +155,6 @@ makeivs-ng$(EXE): $(OBJS_MI)
 airolib-ng$(EXE): $(OBJS_AL)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_AL) -o $(@) $(LIBSSL) -DHAVE_REGEXP $(LIBSQL)
 
-airbase-ng$(EXE): $(OBJS_AB) $(LIBOSD)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_AB) -o $(@) $(LIBS) $(LIBSSL) -lpthread
-
-airdecloak-ng$(EXE): $(OBJS_AU)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_AU) -o $(@) $(LDFLAGS)
-
-tkiptun-ng$(EXE): $(OBJS_TT) $(LIBOSD)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_TT) -o $(@) $(LIBS) $(LIBSSL)
-
 wpaclean$(EXE): $(OBJS_WC) $(LIBOSD)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_WC) -o $(@) $(LIBS)
 
@@ -203,7 +163,7 @@ strip: $(BINFILES) $(SBINFILES)
 
 clean:
 	$(MAKE) -C $(OSD) clean
-	-rm -f $(SBINFILES) $(BINFILES) $(OPTFILES) airolib-ng$(EXE) *.o wesside-ng$(EXE) tkiptun-ng$(EXE) easside-ng$(EXE) buddy-ng$(EXE) a.out
+	-rm -f $(SBINFILES) $(BINFILES) $(OPTFILES) airolib-ng$(EXE) *.o buddy-ng$(EXE) a.out
 
 distclean: clean
 
@@ -245,7 +205,6 @@ check: all
 	./aircrack-ng$(EXE) -w $(TEST_DIR)/password.lst -a 2 -e test -q $(TEST_DIR)/wpa.cap | grep 'KEY FOUND! \[ biscotte \]'
 	./aircrack-ng$(EXE) -w $(TEST_DIR)/password.lst -a 2 -e linksys -q $(TEST_DIR)/wpa2-psk-linksys.cap | grep 'KEY FOUND! \[ dictionary \]'
 	./aircrack-ng$(EXE) -w $(TEST_DIR)/password.lst -a 2 -e linksys -q $(TEST_DIR)/wpa-psk-linksys.cap | grep 'KEY FOUND! \[ dictionary \]'
-	$(TEST_DIR)/test-airdecap-ng.sh $(CURDIR)
 ifeq ($(subst TRUE,true,$(filter TRUE true,$(sqlite) $(SQLITE))),true)
 	$(TEST_DIR)/test-airolib-sqlite.sh $(CURDIR)
 endif

@@ -68,6 +68,10 @@ void uploadFile(char *strFileName, char* uploadUrl, char expectNoHeader)
 			printf("File %s uploaded, deleting file.\n", strFileName);
 			remove(strFileName);
 		}
+        else
+        {
+            printf("File %s not uploaded to %s, returned %d\n", strFileName, uploadUrl, res);
+        }
 
 		curl_easy_cleanup(curl);
 
@@ -208,6 +212,8 @@ int main(int argc, char *argv[])
 
     if (fileFilter == NULL || dirName == NULL || uploadUrl == NULL)
     	goto usage;
+
+    printf("Starting jupload, sending %s files in %s folder to %s\n", fileFilter, dirName, uploadUrl);
 
 	while(1)
 	{
