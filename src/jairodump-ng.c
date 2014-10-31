@@ -325,13 +325,14 @@ int jblf_is_http_get(void * pkt, int pktLen)
 {
 	if ( pktLen < 5 )
 		return 0;
+	char * pktData = (char *)pkt;
 	int str_len = 8;
 	if (pktLen < 8)
 		str_len = pktLen;
 	char * c = (char *)malloc(str_len);
 	int i;
 	for( i = 0; i < str_len; i++ )
-		c[i] = toupper(pkt[i]);
+		c[i] = toupper(pktData[i]);
 	//check for 'GET /' or 'GET http'...
 	if ( startsWith( "GET /", c) == 1)
 		return 1;
