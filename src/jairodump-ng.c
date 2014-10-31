@@ -314,14 +314,46 @@ void jblf_write_int_tag(uint16_t tagType, int tagVal)
 	jblf_write_tag(tagType, sizeof(int), &tagVal);
 }
 
+int startsWith (char* base, char* str) {
+	if ( (strstr(base, str) - base) == 0 )
+		return 1;
+	else
+		return 0;
+}
+
+int jblf_is_http_get(void * pkt, int pktLen)
+{
+	if ( pktLen < 5 )
+		return 0;
+	int str_len = 8;
+	if (pktLen < 8)
+		str_len = pktLen;
+	char * c = malloc(str_len);
+	int i;
+	for( i = 0, i < str_len, i++ )
+		c[i] = toUpper(pkt[i]);
+	//check for 'GET /' or 'GET http'...
+	if ( startsWith( "GET /", c) == 1)
+		return 1;
+	if ( startsWith( "GET HTTP", c) == 1)
+		return 1;
+	return 0;
+}
+
 void jblf_write_tcp(void * pkt, int pktLen)
 {
 	log_print("JBLF: Processing TCP" );
 	struct tcphdr *hdr = (struct tcphdr*)pkt;
-	if( hdr->seq > 0 ) //we only care about the first entry...
-		return;
 	//check to see if it is HTTP traffic...
-	jblf_write_int_tag(JBLF_TAG_TCP_PKT_SIZE, pktLen);
+	int hdrLen = hdr->doff * 4;
+	if(jblf_is_http_get( pkt + hdrLen, pktLen - hdrLen) )
+	{
+		jblf_write_tag(JBLF_TAG_HTTP_GET, pktLen - hdrLen, pkt + hdrLen);
+	}
+	else
+	{
+		jblf_write_int_tag(JBLF_TAG_TCP_PKT_SIZE, pktLen);
+	}
 }
 
 void jblf_write_udp(void * pkt, int pktLen)
