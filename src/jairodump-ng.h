@@ -32,6 +32,7 @@
 #ifndef _AIRODUMP_NG_H_
 #define _AIRODUMP_NG_H_
 
+#include <stdint.h>
 #include "eapol.h"
 
 /* some constants */
@@ -120,21 +121,21 @@
 extern char * getVersion(char * progname, int maj, int min, int submin, int svnrev, int beta, int rc);
 extern unsigned char * getmac(char * macAddress, int strict, unsigned char * mac);
 extern int get_ram_size(void);
-char *get_manufacturer(unsigned char mac0, unsigned char mac1, unsigned char mac2);
 
 #define PCAP_ROLLOVER_TIME 5 * 60
+#define JBLF_MAX_RECORD_COUNT 5000
 
 #define AIRODUMP_NG_CSV_EXT "csv"
-#define KISMET_CSV_EXT "kismet.csv"
-#define KISMET_NETXML_EXT "kismet.netxml"
 #define AIRODUMP_NG_GPS_EXT "gps"
 #define AIRODUMP_NG_CAP_EXT "cap"
 #define AIRODUMP_NG_PCAP_EXT "pcap"
+#define JAIRODUMP_NG_JBLF_EXT "jblf"
+#define JAIRODUMP_NG_TJBLF_EXT "tjblf" //temporary JBLF file, used while writing the output. Extension is changed to JAIRODUMP_NG_JBLF_EXT on log rollover
 
-#define NB_EXTENSIONS 7
+#define NB_EXTENSIONS 6
 
 const unsigned char llcnull[4] = {0, 0, 0, 0};
-char *f_ext[NB_EXTENSIONS] = { AIRODUMP_NG_CSV_EXT, AIRODUMP_NG_GPS_EXT, AIRODUMP_NG_CAP_EXT, IVS2_EXTENSION, KISMET_CSV_EXT, KISMET_NETXML_EXT, AIRODUMP_NG_PCAP_EXT };
+char *f_ext[NB_EXTENSIONS] = { AIRODUMP_NG_CSV_EXT, AIRODUMP_NG_GPS_EXT, AIRODUMP_NG_CAP_EXT, AIRODUMP_NG_PCAP_EXT, JAIRODUMP_NG_JBLF_EXT, JAIRODUMP_NG_TJBLF_EXT };
 
 extern const unsigned long int crc_tbl[256];
 extern const unsigned char crc_chop_tbl[256][4];
@@ -144,12 +145,6 @@ static unsigned char ZERO[32] =
 "\x00\x00\x00\x00\x00\x00\x00\x00"
 "\x00\x00\x00\x00\x00\x00\x00\x00"
 "\x00\x00\x00\x00\x00\x00\x00\x00";
-
-#define OUI_PATH0 "/etc/aircrack-ng/airodump-ng-oui.txt"
-#define OUI_PATH1 "/usr/local/etc/aircrack-ng/airodump-ng-oui.txt"
-#define OUI_PATH2 "/usr/share/aircrack-ng/airodump-ng-oui.txt"
-#define OUI_PATH3 "/usr/share/misc/oui.txt"
-#define MIN_RAM_SIZE_LOAD_OUI_RAM 32768
 
 int read_pkts=0;
 
@@ -186,13 +181,6 @@ struct pkt_buf
     struct timeval  ctime;      /* capture time */
 };
 
-/* oui struct for list management */
-struct oui {
-	char id[9]; /* TODO: Don't use ASCII chars to compare, use unsigned char[3] (later) with the value (hex ascii will have to be converted) */
-	char manuf[128]; /* TODO: Switch to a char * later to improve memory usage */
-	struct oui *next;
-};
-
 /* linked list of detected access points */
 struct AP_info
 {
@@ -225,7 +213,6 @@ struct AP_info
     struct timeval tv;        /* time for data per second */
 
     unsigned char bssid[6];   /* the access point's MAC   */
-    char *manuf;              /* the access point's manufacturer */
     unsigned char essid[MAX_IE_ELEMENT_SIZE];
                               /* ascii network identifier */
     unsigned long long timestamp;
@@ -246,7 +233,6 @@ struct AP_info
     struct timeval ftimer;    /* time of restart             */
 
     char *key;		      /* if wep-key found by dict */
-    int essid_stored;         /* essid stored in ivs file? */
 
     char decloak_detect;      /* run decloak detection? */
     struct pkt_buf *packets;  /* list of captured packets (last few seconds) */
@@ -274,7 +260,6 @@ struct ST_info
     time_t tinit, tlast;     /* first and last time seen  */
     unsigned long nb_pkt;    /* total number of packets   */
     unsigned char stmac[6];  /* the client's MAC address  */
-    char *manuf;             /* the client's manufacturer */
     int probe_index;         /* probed ESSIDs ring index  */
     char probes[NB_PRB][MAX_IE_ELEMENT_SIZE];
                              /* probed ESSIDs ring buffer */
@@ -316,8 +301,7 @@ struct globals
     struct AP_info *ap_1st, *ap_end;
     struct ST_info *st_1st, *st_end;
     struct NA_info *na_1st, *na_end;
-    struct oui *manufList;
-
+    
     unsigned char prev_bssid[6];
     unsigned char f_bssid[6];
     unsigned char f_netmask[6];
@@ -329,14 +313,14 @@ struct globals
     char *dump_prefix;
     char *keyout;
     char *f_cap_name;
+    char *f_jblf_name;
 
     int f_index;            /* outfiles index       */
     FILE *f_txt;            /* output csv file      */
-    FILE *f_kis;            /* output kismet csv file      */
-    FILE *f_kis_xml;        /* output kismet netxml file */
     FILE *f_gps;            /* output gps file      */
     FILE *f_cap;            /* output cap file      */
-    FILE *f_ivs;            /* output ivs file      */
+    FILE *f_jblf;           /* output jblf file     */
+    FILE *f_debug_log;      /* output errors */
     FILE *f_xor;            /* output prga file     */
 
     char * batt;            /* Battery string       */
@@ -413,9 +397,7 @@ struct globals
 
     int hopfreq;
 
-    char*   s_file;         /* source file to read packets */
     char*   s_iface;        /* source interface to read from */
-    FILE *f_cap_in;
     struct pcap_file_header pfh_in;
     int detect_anomaly;     /* Detect WIPS protecting WEP in action */
 
@@ -424,17 +406,18 @@ struct globals
     int chanoption;
     int active_scan_sim;    /* simulates an active scan, sending probe requests */
 
-    /* Airodump-ng start time: for kismet netxml file */
-    char * airodump_start_time;
-
     time_t dump_cap_start;
     int roll_cap_files;
     int roll_cap_files_time;
 
+    int jblf_output_cnt;
+    int jblf_output_max_cnt;
+    char * jblf_empty_tag_flush;
+
+    int output_debug_log;
     int output_format_pcap;
+    int output_format_jblf;
     int output_format_csv;
-    int output_format_kismet_csv;
-    int output_format_kismet_netxml;
     pthread_t input_tid;
     int sort_by;
     int sort_inv;
@@ -449,6 +432,8 @@ struct globals
     int skip_columns;
     int do_pause;
     int do_sort_always;
+
+    int jblf_gps_data_available;
     
     pthread_mutex_t mx_print;			 /* lock write access to ap LL   */
     pthread_mutex_t mx_sort;			 /* lock write access to ap LL   */
@@ -457,9 +442,89 @@ struct globals
 
     int ignore_negative_one;
     u_int maxsize_essid_seen;
-    int show_manufacturer;
     int show_uptime;
 }
 G;
+
+/* JBLF (Joe's Binary Log File) defines */
+#define JBLF_VERSION_MAJOR      1
+#define JBLF_VERSION_MINOR      1
+
+#define JBLF_PKT_TYPE_IP        0x00
+#define JBLF_PKT_TYPE_GPS       0x01
+
+#define JBLF_TAG_FILTER_SIZE    0x8000
+
+#define JBLF_TAG_EMPTY          0x0000
+#define JBLF_TAG_RX_INFO        0x0001
+#define JBLF_TAG_ETHER_TYPE     0x0002
+#define JBLF_TAG_LOCATION       0x0003
+#define JBLF_TAG_SSID_NAME      0x0004
+#define JBLF_TAG_DNS_NAME       0x0005
+#define JBLF_TAG_URL            0x0006
+#define JBLF_TAG_USER_AGENT     0x0007
+#define JBLF_TAG_UDP_PKT_SIZE   0x0008
+#define JBLF_TAG_TCP_PKT_SIZE   0x0009
+#define JBLF_TAG_HTTP_GET       0x000a
+
+#define JBLF_GPS_INTERVAL       60 * 3 /* 3-second max time check */
+
+#define JBLF_EMPTY_TAG_FLUSH    "\xFF\xAA\xFF\xAA\xEE\xBB\xEE\xBB"
+
+/* Misc network protocol structures */
+struct dns_hdr
+{
+    unsigned short id; // identification number
+ 
+    unsigned char rd :1; // recursion desired
+    unsigned char tc :1; // truncated message
+    unsigned char aa :1; // authoritive answer
+    unsigned char opcode :4; // purpose of message
+    unsigned char qr :1; // query/response flag
+ 
+    unsigned char rcode :4; // response code
+    unsigned char cd :1; // checking disabled
+    unsigned char ad :1; // authenticated data
+    unsigned char z :1; // its z! reserved
+    unsigned char ra :1; // recursion available
+ 
+    unsigned short q_count; // number of question entries
+    unsigned short ans_count; // number of answer entries
+    unsigned short auth_count; // number of authority entries
+    unsigned short add_count; // number of resource entries
+};
+
+//Constant sized fields of query structure
+struct dns_question
+{
+    unsigned short qtype;
+    unsigned short qclass;
+};
+ 
+//Constant sized fields of the resource record structure
+#pragma pack(push, 1)
+struct dns_r_data
+{
+    unsigned short type;
+    unsigned short _class;
+    unsigned int ttl;
+    unsigned short data_len;
+};
+#pragma pack(pop)
+ 
+//Pointers to resource record contents
+struct dns_res_record
+{
+    unsigned char *name;
+    struct R_DATA *resource;
+    unsigned char *rdata;
+};
+ 
+//Structure of a Query
+typedef struct
+{
+    unsigned char *name;
+    struct dns_question *ques;
+} dns_query;
 
 #endif
