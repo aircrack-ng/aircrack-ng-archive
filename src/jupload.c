@@ -111,6 +111,9 @@ int main(int argc, char *argv[])
     int num_opts = 0;
     int option = 0;
     int option_index = 0;
+    int i = 0;
+    int j = 0;
+    int found = 0;
 
     int sleep_seconds = 5 * 60;
 	char* dirName = NULL;

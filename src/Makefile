@@ -5,11 +5,6 @@ TEST_DIR	= $(AC_ROOT)/test
 
 CFLAGS		+= -Iinclude
 
-JU_CFLAGS	= $(CFLAGS)
-JU_LDFLAGS  = $(LDFLAGS)
-
-JU_LDFLAGS  += -lcurl
-
 iCC             = $(shell find /opt/intel/cc/*/bin/icc)
 iCFLAGS         = -w -mcpu=pentiumpro -march=pentiumpro $(COMMON_CFLAGS)
 iOPTFLAGS       = -O3 -ip -ipo -D_FILE_OFFSET_BITS=64
@@ -78,7 +73,7 @@ OBJS_AB		= airbase-ng.o common.o crypto.o osdep/radiotap/radiotap.o
 OBJS_AU		= airdecloak-ng.o common.o osdep/radiotap/radiotap.o
 OBJS_TT		= tkiptun-ng.o common.o crypto.o osdep/radiotap/radiotap.o
 OBJS_WC		= wpaclean.o osdep/radiotap/radiotap.o
-OBJS_JU     = jupload.o
+OBJS_JU     = jupload.o common.o
 
 OSD		= osdep
 LIBS		:= -L$(OSD) -l$(OSD) $(LIBS)
@@ -156,7 +151,7 @@ jairodump-ng$(EXE): $(OBJS_JDU) $(LIBOSD)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_JDU) -o $(@) $(LIBS) $(LIBSSL) -lpthread $(LIBPCRE)
 
 jupload$(EXE): $(OBJS_JU) $(LIBOSD)
-	$(CC) $(JU_CFLAGS) $(JU_LDFLAGS) $(OBJS_JU) -o $(@) $(LIBS) -lpthread $(LIBPCRE)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_JU) -o $(@) $(LIBS) -lpthread $(LIBPCRE) -lcurl
 
 airserv-ng$(EXE): $(OBJS_AS) $(LIBOSD)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_AS) -o $(@) $(LIBS)
