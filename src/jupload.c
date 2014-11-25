@@ -31,12 +31,17 @@ char usage[] =
 "      --help                : Displays this usage screen\n"
 "\n";
 
-void uploadFile(char *strFileName, char* uploadUrl, char expectNoHeader)
+void uploadFile(char *dirName, char *strFileName, char* uploadUrl, char expectNoHeader)
 {
 	printf("Uploading file %s\n", strFileName);
 
 	CURL *curl;
 	CURLcode res;
+
+	int ofn_len = strlen(dirName) + strlen(strFileName) + 2;
+	char * ofn = (char *)calloc(1, ofn_len);
+	memset(ofn, 0, ofn_len);
+	snprintf( ofn,  ofn_len, "%s/%s", dirName, strFileName );
 
 	struct curl_httppost *formpost = NULL;
 	struct curl_httppost *lastptr = NULL;
@@ -46,7 +51,7 @@ void uploadFile(char *strFileName, char* uploadUrl, char expectNoHeader)
 	curl_global_init(CURL_GLOBAL_ALL);
 
 	curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "sendfile", CURLFORM_FILE, strFileName, CURLFORM_END);
-	curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "filename", CURLFORM_COPYCONTENTS, strFileName, CURLFORM_END);
+	curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "filename", CURLFORM_COPYCONTENTS, ofn, CURLFORM_END);
 	curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "submit", CURLFORM_COPYCONTENTS, "send", CURLFORM_END);
 
 	curl = curl_easy_init();
@@ -66,7 +71,7 @@ void uploadFile(char *strFileName, char* uploadUrl, char expectNoHeader)
 		{
 			//delete the file...
 			printf("File %s uploaded, deleting file.\n", strFileName);
-			remove(strFileName);
+			remove(ofn);
 		}
         else
         {
@@ -79,6 +84,8 @@ void uploadFile(char *strFileName, char* uploadUrl, char expectNoHeader)
 
 		curl_slist_free_all(headerlist);
 	}
+
+	free ( ofn );
 }
 
 void doProcessingLoop(char *dirName, char *fileFilter, char *uploadUrl)
@@ -94,7 +101,7 @@ void doProcessingLoop(char *dirName, char *fileFilter, char *uploadUrl)
 		while ( n-- ) {
 			if (fnmatch(fileFilter, namelist[n]->d_name, FNM_PATHNAME) == 0)
 			{
-				uploadFile(namelist[n]->d_name, uploadUrl, 0);
+				uploadFile(dirName, namelist[n]->d_name, uploadUrl, 0);
 			}
             free(namelist[n]);
 		}
