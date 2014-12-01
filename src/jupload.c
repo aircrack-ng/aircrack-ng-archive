@@ -31,6 +31,38 @@ char usage[] =
 "      --help                : Displays this usage screen\n"
 "\n";
 
+void combineFilePath(char *destination, const char *path1, const char *path2)
+{
+	if(path1 == NULL && path2 == NULL)
+	{
+		strcpy(destination, "");
+	}
+	else if (path2 == NULL || strlen(path2) == 0)
+	{
+		strcpy(destination, path1);
+	}
+	else if (path1 == NULL || strlen(path1) == 0)
+	{
+		strcpy(destination, path2);
+	}
+	else
+	{
+		char directory_separator[] = "/";
+		const char *last_char = path1;
+		while(*last_char != '\0')
+			last_char++;
+		int append_directory_separator = 0;
+		if (strcmp(last_char, directory_separator) != 0)
+		{
+			append_directory_separator = 1;
+		}
+		strcpy(destination, path1);
+		if(append_directory_separator)
+			strcat(destination, directory_separator);
+		strcat(destination, path2);
+	}
+}
+
 void uploadFile(char *dirName, char *strFileName, char* uploadUrl, char expectNoHeader)
 {
 	printf("Uploading file %s\n", strFileName);
@@ -41,7 +73,7 @@ void uploadFile(char *dirName, char *strFileName, char* uploadUrl, char expectNo
 	int ofn_len = strlen(dirName) + strlen(strFileName) + 2;
 	char * ofn = (char *)calloc(1, ofn_len);
 	memset(ofn, 0, ofn_len);
-	snprintf( ofn,  ofn_len, "%s/%s", dirName, strFileName );
+	combineFilePath(ofn, dirName, strFileName);
 
 	struct curl_httppost *formpost = NULL;
 	struct curl_httppost *lastptr = NULL;
