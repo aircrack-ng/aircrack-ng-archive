@@ -1189,7 +1189,9 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
     if (G.output_debug_log) {
 	    if( ( G.f_debug_log = fopen(ofn, "wb+" ) ) == NULL )
 	    {
+#ifdef USE_PERROR
 	    	perror("fopen failed");
+#endif
 	    	free ( ofn );
 	    	return ( 1 );
 	    }
@@ -1204,7 +1206,9 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
 
 		if( ( G.f_txt = fopen( ofn, "wb+" ) ) == NULL )
 		{
+#ifdef USE_PERROR
 			perror( "fopen failed" );
+#endif
 			fprintf( stderr, "Could not create \"%s\".\n", ofn );
 			free( ofn );
 			return( 1 );
@@ -1221,7 +1225,9 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
 
         if( ( G.f_gps = fopen( ofn, "wb+" ) ) == NULL )
         {
+#ifdef USE_PERROR
             perror( "fopen failed" );
+#endif
             fprintf( stderr, "Could not create \"%s\".\n", ofn );
             free( ofn );
             return( 1 );
@@ -1239,7 +1245,9 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
 
         if( ( G.f_cap = fopen( ofn, "wb+" ) ) == NULL )
         {
+#ifdef USE_PERROR
             perror( "fopen failed" );
+#endif
             fprintf( stderr, "Could not create \"%s\".\n", ofn );
             free( ofn );
             return( 1 );
@@ -1259,7 +1267,9 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
         if( fwrite( &pfh, 1, sizeof( pfh ), G.f_cap ) !=
                     (size_t) sizeof( pfh ) )
         {
+#ifdef USE_PERROR
             perror( "fwrite(pcap file header) failed" );
+#endif
             return( 1 );
         }
     }
@@ -1273,7 +1283,9 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
     	log_print("JGLF: Creating log file: %s", ofn);
     	if( ( G.f_jblf = fopen( ofn, "wb+" ) ) == NULL)
     	{
+#ifdef USE_PERROR
     		perror( "fopen failed" );
+#endif
     		fprintf( stderr, "Could not create \"%s\".\n", ofn );
     		free( ofn );
     		return( 1 );
@@ -1606,7 +1618,9 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
         if( ! ( ap_cur = (struct AP_info *) malloc(
                          sizeof( struct AP_info ) ) ) )
         {
+#ifdef USE_PERROR
             perror( "malloc failed" );
+#endif
             return( 1 );
         }
 
@@ -1809,7 +1823,9 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
         if( ! ( st_cur = (struct ST_info *) malloc(
                          sizeof( struct ST_info ) ) ) )
         {
+#ifdef USE_PERROR
             perror( "malloc failed" );
+#endif
             return( 1 );
         }
 
@@ -2576,7 +2592,9 @@ write_packet:
                     if( ! ( na_cur = (struct NA_info *) malloc(
                                     sizeof( struct NA_info ) ) ) )
                     {
+#ifdef USE_PERROR
                         perror( "malloc failed" );
+#endif
                         return( 1 );
                     }
 
@@ -2652,7 +2670,9 @@ write_packet:
 
         if( fwrite( &pkh, 1, n, G.f_cap ) != (size_t) n )
         {
+#ifdef USE_PERROR
             perror( "fwrite(packet header) failed" );
+#endif
             return( 1 );
         }
 
@@ -2662,7 +2682,9 @@ write_packet:
 
         if( fwrite( h80211, 1, n, G.f_cap ) != (size_t) n )
         {
+#ifdef USE_PERROR
             perror( "fwrite(packet data) failed" );
+#endif
             return( 1 );
         }
 
@@ -4211,8 +4233,9 @@ int send_probe_request(struct wif *wi)
             usleep(10000);
             return 0; /* XXX not sure I like this... -sorbo */
         }
-
+#ifdef USE_PERROR
         perror("wi_write()");
+#endif
         return -1;
     }
 
@@ -5665,7 +5688,9 @@ usage:
 
 					/* Drop privileges */
 					if (setuid( getuid() ) == -1) {
+#ifdef USE_PERROR
 						perror("setuid");
+#endif
 					}
 
                     frequency_hopper(wi, G.num_cards, freq_count);
@@ -5716,7 +5741,9 @@ usage:
 
 					/* Drop privileges */
 					if (setuid( getuid() ) == -1) {
+#ifdef USE_PERROR
 						perror("setuid");
+#endif
 					}
 
                     channel_hopper(wi, G.num_cards, chan_count);
@@ -5737,7 +5764,9 @@ usage:
 
 	/* Drop privileges */
 	if (setuid( getuid() ) == -1) {
+#ifdef USE_PERROR
 		perror("setuid");
+#endif
 	}
 
     /* open or create the output files */
@@ -5787,8 +5816,10 @@ usage:
 
     if( pthread_create( &(G.input_tid), NULL, (void *) input_thread, NULL ) != 0 )
     {
-	perror( "pthread_create failed" );
-	return 1;
+#ifdef USE_PERROR
+		perror( "pthread_create failed" );
+#endif
+		return 1;
     }
 
 
@@ -5903,8 +5934,9 @@ usage:
 
                     continue;
                 }
+#ifdef USE_PERROR
                 perror( "select failed" );
-
+#endif
                 /* Restore terminal */
                 fprintf( stderr, "\33[?25h" );
                 fflush( stdout );
