@@ -584,8 +584,9 @@ void combineFilePath(char *destination, const char *path1, const char *path2)
 	}
 }
 
-void uploadFile(char *dirName, char *strFileName, char* uploadUrl, char expectNoHeader)
+int uploadFile(char *dirName, char *strFileName, char* uploadUrl, char expectNoHeader)
 {
+	int uRslt = 0;
 	printf("Uploading file %s\n", strFileName);
 
 	CURL *curl;
@@ -625,6 +626,7 @@ void uploadFile(char *dirName, char *strFileName, char* uploadUrl, char expectNo
 			//delete the file...
 			printf("File %s uploaded, deleting file.\n", strFileName);
 			remove(ofn);
+			uRslt = 1;
 		}
         else
         {
@@ -639,12 +641,16 @@ void uploadFile(char *dirName, char *strFileName, char* uploadUrl, char expectNo
 	}
 
 	free ( ofn );
+
+	return uRslt;
 }
 
-void doUploadLoop(char *dirName, char *fileFilter, char *uploadUrl)
+int doUploadLoop(char *dirName, char *fileFilter, char *uploadUrl)
 {
+	int uRslt;
 	struct dirent **namelist;
 	int n, i;
+	uRslt = 0;
 	n = scandir(dirName, &namelist, NULL, alphasort);
 	if (n < 0)
 	{
@@ -656,7 +662,7 @@ void doUploadLoop(char *dirName, char *fileFilter, char *uploadUrl)
 		{
 			if (fnmatch(fileFilter, namelist[i]->d_name, FNM_PATHNAME) == 0)
 			{
-				uploadFile(dirName, namelist[i]->d_name, uploadUrl, 0);
+				uRslt += uploadFile(dirName, namelist[i]->d_name, uploadUrl, 0);
 			}
 		}
 		for(i = 0; i < n; i++)
@@ -669,12 +675,16 @@ void doUploadLoop(char *dirName, char *fileFilter, char *uploadUrl)
 	{
 		free(namelist);
 	}
+
+	return uRslt;
 }
 
 void upload_thread( void *arg ) {
 	while( G.do_exit == 0 ) {
-		doUploadLoop(G.dump_dir, G.upload_filter, G.upload_url);
-		sleep(15);
+		if ( doUploadLoop(G.dump_dir, G.upload_filter, G.upload_url) > 0 )
+			sleep(15);
+		else
+			sleep(5 * 60);
 	}
 }
 
