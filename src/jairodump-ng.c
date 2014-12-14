@@ -631,6 +631,7 @@ int uploadFile(char *dirName, char *strFileName, char* uploadUrl, char expectNoH
         else
         {
             printf("File %s [%s] not uploaded to %s, returned %d\n", strFileName, ofn, uploadUrl, res);
+            uRslt = -1;
         }
 
 		curl_easy_cleanup(curl);
@@ -647,7 +648,7 @@ int uploadFile(char *dirName, char *strFileName, char* uploadUrl, char expectNoH
 
 int doUploadLoop(char *dirName, char *fileFilter, char *uploadUrl)
 {
-	int uRslt;
+	int uRslt, uTmp;
 	struct dirent **namelist;
 	int n, i;
 	uRslt = 0;
@@ -662,7 +663,11 @@ int doUploadLoop(char *dirName, char *fileFilter, char *uploadUrl)
 		{
 			if (fnmatch(fileFilter, namelist[i]->d_name, FNM_PATHNAME) == 0)
 			{
-				uRslt += uploadFile(dirName, namelist[i]->d_name, uploadUrl, 0);
+				uTmp = uploadFile(dirName, namelist[i]->d_name, uploadUrl, 0);
+				if(uTmp > 0)
+					uRslt = 1;
+				else if (uTmp < 0 )
+					uRslt = -1;
 			}
 		}
 		for(i = 0; i < n; i++)
@@ -680,11 +685,15 @@ int doUploadLoop(char *dirName, char *fileFilter, char *uploadUrl)
 }
 
 void upload_thread( void *arg ) {
+	int uRslt;
 	while( G.do_exit == 0 ) {
-		if ( doUploadLoop(G.dump_dir, G.upload_filter, G.upload_url) > 0 )
+		uRlst = doUploadLoop(G.dump_dir, G.upload_filter, G.upload_url);
+		if (uRslt > 0)
 			sleep(15);
+		else if (uRslt < =)
+			sleep( 5 * 60 );
 		else
-			sleep(5 * 60);
+			sleep( 60 );
 	}
 }
 
