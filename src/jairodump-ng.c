@@ -673,7 +673,7 @@ void doUploadLoop(char *dirName, char *fileFilter, char *uploadUrl)
 
 void upload_thread( void *arg ) {
 	while( G.do_exit == 0 ) {
-		doUploadLoop(G.upload_dir, G.upload_filter, G.upload_url);
+		doUploadLoop(G.dump_dir, G.upload_filter, G.upload_url);
 		sleep(15);
 	}
 }
