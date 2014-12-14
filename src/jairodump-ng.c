@@ -1032,10 +1032,9 @@ char usage[] =
 "      --gpsd                : Use GPSd\n"
 "      --write      <prefix> : Dump file prefix\n"
 "      -w                    : same as --write \n"
-"      --host          <url> : Upload host URL \n"
-"      -H                    : same as --host \n"
+"      --url           <url> : Upload host URL \n"
+"      -u                    : same as --host \n"
 "      --beacons             : Record all beacons in dump file\n"
-"      --update       <secs> : Display update delay in seconds\n"
 "      --showack             : Prints ack/cts/rts statistics\n"
 "      -h                    : Hides known stations for --showack\n"
 "      -f            <msecs> : Time in ms between hopping channels\n"
@@ -5217,9 +5216,8 @@ int main( int argc, char *argv[] )
         {"channel",  1, 0, 'c'},
         {"gpsd",     0, 0, 'g'},
         {"write",    1, 0, 'w'},
-        {"host",     1, 0, 'H'},
+        {"url",      1, 0, 'u'},
         {"encrypt",  1, 0, 't'},
-        {"update",   1, 0, 'u'},
         {"berlin",   1, 0, 'B'},
         {"roll",     1, 0, 'X'},
         {"debug",    0, 0, 'l'},
@@ -5229,7 +5227,7 @@ int main( int argc, char *argv[] )
         {"detect-anomaly", 0, 0, 'E'},
         {"output-format",  1, 0, 'o'},
         {"ignore-negative-one", 0, &G.ignore_negative_one, 1},
-        {"uptime",   0, 0, 'U'},
+        //{"uptime",   0, 0, 'U'},
         {0,          0, 0,  0 }
     };
 
@@ -5444,9 +5442,11 @@ int main( int argc, char *argv[] )
                 G.decloak = 0;
                 break;
 
+/*
 	    case 'U' :
 	    		G.show_uptime = 1;
 	    		break;
+*/
 
             case 'c' :
 
@@ -5577,7 +5577,7 @@ int main( int argc, char *argv[] )
                 G.record_data = 1;
                 break;
 
-            case 'H':
+            case 'u':
                 if (G.upload_url != NULL) {
                 	printf("Notice: upload url is already given\n" );
                 	break;
@@ -5598,15 +5598,17 @@ int main( int argc, char *argv[] )
                 G.chswitch = atoi(optarg);
                 break;
 
+/*
             case 'u':
 
                 G.update_s = atoi(optarg);
 
-                /* If failed to parse or value <= 0, use default, 100ms */
+                // If failed to parse or value <= 0, use default, 100ms
                 if (G.update_s <= 0)
                 	G.update_s = REFRESH_RATE;
 
                 break;
+*/
 
             case 'f':
 
