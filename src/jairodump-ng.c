@@ -54,6 +54,8 @@
 #include <unistd.h>
 #include <signal.h>
 #include <string.h>
+#include <dirent.h>
+#include <fnmatch.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -64,7 +66,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <termios.h>
-
+#include <curl/curl.h>
 #include <sys/wait.h>
 
 #ifdef HAVE_PCRE
@@ -550,6 +552,132 @@ void resetSelection()
 #define KEY_r		0x72	//realtime sort (de)activate
 #define KEY_s		0x73	//cycle through sorting
 
+void combineFilePath(char *destination, const char *path1, const char *path2)
+{
+	if(path1 == NULL && path2 == NULL)
+	{
+		strcpy(destination, "");
+	}
+	else if (path2 == NULL || strlen(path2) == 0)
+	{
+		strcpy(destination, path1);
+	}
+	else if (path1 == NULL || strlen(path1) == 0)
+	{
+		strcpy(destination, path2);
+	}
+	else
+	{
+		char directory_separator[] = "/";
+		const char *last_char = path1;
+		while(*last_char != '\0')
+			last_char++;
+		int append_directory_separator = 0;
+		if (strcmp(last_char, directory_separator) != 0)
+		{
+			append_directory_separator = 1;
+		}
+		strcpy(destination, path1);
+		if(append_directory_separator && strcmp(path2, directory_separator) != 0)
+			strcat(destination, directory_separator);
+		strcat(destination, path2);
+	}
+}
+
+void uploadFile(char *dirName, char *strFileName, char* uploadUrl, char expectNoHeader)
+{
+	printf("Uploading file %s\n", strFileName);
+
+	CURL *curl;
+	CURLcode res;
+
+	int ofn_len = strlen(dirName) + strlen(strFileName) + 2;
+	char * ofn = (char *)calloc(1, ofn_len);
+	memset(ofn, 0, ofn_len);
+	combineFilePath(ofn, dirName, strFileName);
+
+	struct curl_httppost *formpost = NULL;
+	struct curl_httppost *lastptr = NULL;
+	struct curl_slist *headerlist = NULL;
+	static const char buff[] = "Expect:";
+
+	curl_global_init(CURL_GLOBAL_ALL);
+
+	curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "sendfile", CURLFORM_FILE, ofn, CURLFORM_END);
+	curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "filename", CURLFORM_COPYCONTENTS, ofn, CURLFORM_END);
+	curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "submit", CURLFORM_COPYCONTENTS, "send", CURLFORM_END);
+
+	curl = curl_easy_init();
+
+	headerlist = curl_slist_append(headerlist, buff);
+
+	if(curl){
+		curl_easy_setopt(curl, CURLOPT_URL, uploadUrl);
+
+		if ( expectNoHeader )
+			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headerlist);
+		curl_easy_setopt(curl, CURLOPT_HTTPPOST, formpost);
+
+		res = curl_easy_perform(curl);
+
+		if(res == CURLE_OK)
+		{
+			//delete the file...
+			printf("File %s uploaded, deleting file.\n", strFileName);
+			remove(ofn);
+		}
+        else
+        {
+            printf("File %s [%s] not uploaded to %s, returned %d\n", strFileName, ofn, uploadUrl, res);
+        }
+
+		curl_easy_cleanup(curl);
+
+		curl_formfree(formpost);
+
+		curl_slist_free_all(headerlist);
+	}
+
+	free ( ofn );
+}
+
+void doUploadLoop(char *dirName, char *fileFilter, char *uploadUrl)
+{
+	struct dirent **namelist;
+	int n, i;
+	n = scandir(dirName, &namelist, NULL, alphasort);
+	if (n < 0)
+	{
+		printf("Unable to search for %s files in %s\n", fileFilter, dirName);
+	}
+	else if (n > 0) {
+		printf("%d files found to upload.", n);
+		for (i = 0; i < n; i ++)
+		{
+			if (fnmatch(fileFilter, namelist[i]->d_name, FNM_PATHNAME) == 0)
+			{
+				uploadFile(dirName, namelist[i]->d_name, uploadUrl, 0);
+			}
+		}
+		for(i = 0; i < n; i++)
+		{
+			free(namelist[i]);
+		}
+	}
+
+	if (namelist)
+	{
+		free(namelist);
+	}
+}
+
+void upload_thread( void *arg ) {
+	while( G.do_exit == 0 ) {
+		doUploadLoop(G.upload_dir, G.upload_filter, G.upload_url);
+		sleep(15);
+	}
+}
+
 void input_thread( void *arg) {
 
     if(!arg){}
@@ -904,6 +1032,8 @@ char usage[] =
 "      --gpsd                : Use GPSd\n"
 "      --write      <prefix> : Dump file prefix\n"
 "      -w                    : same as --write \n"
+"      --host          <url> : Upload host URL \n"
+"      -U                    : same as --host \n"
 "      --beacons             : Record all beacons in dump file\n"
 "      --update       <secs> : Display update delay in seconds\n"
 "      --showack             : Prints ack/cts/rts statistics\n"
@@ -5031,6 +5161,9 @@ int main( int argc, char *argv[] )
 {
     long time_slept, cycle_time, cycle_time2;
     char * output_format_string;
+    char * tmp_dir;
+    int dir_last;
+    int dir_pos;
     int caplen=0, i, j, fdh, fd_is_set, chan_count, freq_count, unused;
     int fd_raw[MAX_CARDS], arptype[MAX_CARDS];
     int found;
@@ -5084,6 +5217,7 @@ int main( int argc, char *argv[] )
         {"channel",  1, 0, 'c'},
         {"gpsd",     0, 0, 'g'},
         {"write",    1, 0, 'w'},
+        {"host",     1, 0, 'H'},
         {"encrypt",  1, 0, 't'},
         {"update",   1, 0, 'u'},
         {"berlin",   1, 0, 'B'},
@@ -5135,7 +5269,11 @@ int main( int argc, char *argv[] )
     G.singlechan   =  0;
     G.singlefreq   =  0;
     G.dump_prefix  =  NULL;
+    G.dump_dir	   =  NULL;
+    G.upload_url   =  NULL;
+    G.upload_filter= "*.jblf";
     G.record_data  =  0;
+    G.upload_data  =  0;
     G.f_index      =  0; //JG 2014/10/09 - Added for log rolling support.
     G.f_cap        =  NULL;
     G.f_txt        =  NULL;
@@ -5426,8 +5564,32 @@ int main( int argc, char *argv[] )
                 }
                 /* Write prefix */
                 G.dump_prefix   = optarg;
+
+                dir_last = 0;
+                dir_pos = 0;
+                tmp_dir = optarg;
+                while(*tmp_dir != '\0')
+                {
+                	if (*tmp_dir == '/')
+                		dir_last = dir_pos;
+                	dir_pos++;
+                	tmp_dir++;
+                }
+                G.dump_dir = (char *)calloc(1, dir_last + 1);
+                strncpy(G.dump_dir, optarg, dir_last);
+                G.dump_dir[dir_last]='\0';
+
                 G.record_data = 1;
                 break;
+
+            case 'U':
+                if (G.upload_url != NULL) {
+                	printf("Notice: upload url is already given\n" );
+                	break;
+                }
+                G.upload_url = optarg;
+            	G.upload_data = 1;
+            	break;
 
             case 's':
 
@@ -5817,11 +5979,21 @@ usage:
     if( pthread_create( &(G.input_tid), NULL, (void *) input_thread, NULL ) != 0 )
     {
 #ifdef USE_PERROR
-		perror( "pthread_create failed" );
+		perror( "pthread_create failed (input thread)" );
 #endif
 		return 1;
     }
 
+    if ( G.upload_data )
+    {
+    	if( pthread_create( &(G.upload_tid), NULL, (void *) upload_thread, NULL ) != 0 )
+    	{
+#ifdef USE_PERROR
+    		perror( "pthread_create failed (upload thread)");
+#endif
+    		return 1;
+    	}
+    }
 
     while( 1 )
     {
@@ -6130,6 +6302,11 @@ usage:
         na_next = na_cur->next;
         free(na_cur);
         na_cur = na_next;
+    }
+
+    if (G.dump_dir)
+    {
+    	free(G.dump_dir);
     }
 
     fprintf( stderr, "\33[?25h" );

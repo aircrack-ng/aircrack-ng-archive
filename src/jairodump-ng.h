@@ -311,6 +311,9 @@ struct globals
     pcre *f_essid_regex;
 #endif
     char *dump_prefix;
+    char *dump_dir;
+    char *upload_url;
+    char *upload_filter;
     char *keyout;
     char *f_cap_name;
     char *f_jblf_name;
@@ -362,6 +365,7 @@ struct globals
     int * own_frequencies;	    /* custom frequency list  */
 
     int record_data;		/* do we record data?   */
+    int upload_data;        /* do we upload data?   */
     int asso_client;        /* only show associated clients */
 
     char * iwpriv;
@@ -419,6 +423,7 @@ struct globals
     int output_format_jblf;
     int output_format_csv;
     pthread_t input_tid;
+    pthread_t upload_tid;
     int sort_by;
     int sort_inv;
     int start_print_ap;

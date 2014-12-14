@@ -123,7 +123,7 @@ airodump-ng$(EXE): $(OBJS_ADU) $(LIBOSD)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_ADU) -o $(@) $(LIBS) $(LIBSSL) -lpthread $(LIBPCRE)
 
 jairodump-ng$(EXE): $(OBJS_JDU) $(LIBOSD)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_JDU) -o $(@) $(LIBS) $(LIBSSL) -lpthread $(LIBPCRE)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_JDU) -o $(@) $(LIBS) $(LIBSSL) -lpthread $(LIBPCRE) -lcurl
 
 jupload$(EXE): $(OBJS_JU) $(LIBOSD)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_JU) -o $(@) $(LIBS) -lpthread $(LIBPCRE) -lcurl
