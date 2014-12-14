@@ -1033,7 +1033,7 @@ char usage[] =
 "      --write      <prefix> : Dump file prefix\n"
 "      -w                    : same as --write \n"
 "      --host          <url> : Upload host URL \n"
-"      -U                    : same as --host \n"
+"      -H                    : same as --host \n"
 "      --beacons             : Record all beacons in dump file\n"
 "      --update       <secs> : Display update delay in seconds\n"
 "      --showack             : Prints ack/cts/rts statistics\n"
@@ -5223,7 +5223,7 @@ int main( int argc, char *argv[] )
         {"berlin",   1, 0, 'B'},
         {"roll",     1, 0, 'X'},
         {"debug",    0, 0, 'l'},
-        {"help",     0, 0, 'H'},
+        {"help",     0, 0, 'h'},
         {"nodecloak",0, 0, 'D'},
         {"showack",  0, 0, 'A'},
         {"detect-anomaly", 0, 0, 'E'},
@@ -5439,11 +5439,6 @@ int main( int argc, char *argv[] )
                 G.show_ack = 1;
                 break;
 
-            case 'h':
-
-                G.hide_known = 1;
-                break;
-
             case 'D':
 
                 G.decloak = 0;
@@ -5582,7 +5577,7 @@ int main( int argc, char *argv[] )
                 G.record_data = 1;
                 break;
 
-            case 'U':
+            case 'H':
                 if (G.upload_url != NULL) {
                 	printf("Notice: upload url is already given\n" );
                 	break;
@@ -5745,7 +5740,7 @@ int main( int argc, char *argv[] )
 
 				break;
 
-            case 'H':
+            case 'h':
 
                 printf( usage, getVersion("jAirodump-ng", _MAJ, _MIN, _SUB_MIN, _REVISION, _BETA, _RC)  );
                 return( 1 );
