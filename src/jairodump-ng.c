@@ -687,10 +687,10 @@ int doUploadLoop(char *dirName, char *fileFilter, char *uploadUrl)
 void upload_thread( void *arg ) {
 	int uRslt;
 	while( G.do_exit == 0 ) {
-		uRlst = doUploadLoop(G.dump_dir, G.upload_filter, G.upload_url);
+		uRslt = doUploadLoop(G.dump_dir, G.upload_filter, G.upload_url);
 		if (uRslt > 0)
 			sleep(15);
-		else if (uRslt < =)
+		else if (uRslt < 0)
 			sleep( 5 * 60 );
 		else
 			sleep( 60 );
