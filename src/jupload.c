@@ -57,7 +57,7 @@ void combineFilePath(char *destination, const char *path1, const char *path2)
 			append_directory_separator = 1;
 		}
 		strcpy(destination, path1);
-		if(append_directory_separator)
+		if(append_directory_separator && strcmp(path2, directory_separator) != 0)
 			strcat(destination, directory_separator);
 		strcat(destination, path2);
 	}
@@ -82,7 +82,7 @@ void uploadFile(char *dirName, char *strFileName, char* uploadUrl, char expectNo
 
 	curl_global_init(CURL_GLOBAL_ALL);
 
-	curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "sendfile", CURLFORM_FILE, strFileName, CURLFORM_END);
+	curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "sendfile", CURLFORM_FILE, ofn, CURLFORM_END);
 	curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "filename", CURLFORM_COPYCONTENTS, ofn, CURLFORM_END);
 	curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "submit", CURLFORM_COPYCONTENTS, "send", CURLFORM_END);
 
@@ -107,7 +107,7 @@ void uploadFile(char *dirName, char *strFileName, char* uploadUrl, char expectNo
 		}
         else
         {
-            printf("File %s not uploaded to %s, returned %d\n", strFileName, uploadUrl, res);
+            printf("File %s [%s] not uploaded to %s, returned %d\n", strFileName, ofn, uploadUrl, res);
         }
 
 		curl_easy_cleanup(curl);
