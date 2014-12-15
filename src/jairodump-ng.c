@@ -1011,7 +1011,7 @@ int check_shared_key(unsigned char *h80211, int caplen)
         G.f_xor = NULL;
     }
 
-    snprintf( ofn, sizeof( ofn ) - 1, "%s-%02d-%02X-%02X-%02X-%02X-%02X-%02X.%s", G.prefix, G.f_index,
+    snprintf( ofn, sizeof( ofn ) - 1, "%s-%08d-%02X-%02X-%02X-%02X-%02X-%02X.%s", G.prefix, G.f_index,
               *(G.sharedkey[0]+m_bmac), *(G.sharedkey[0]+m_bmac+1), *(G.sharedkey[0]+m_bmac+2),
               *(G.sharedkey[0]+m_bmac+3), *(G.sharedkey[0]+m_bmac+4), *(G.sharedkey[0]+m_bmac+5), "xor" );
 
@@ -1227,7 +1227,7 @@ void dump_cleanup( char *prefix )
 		ofn = (char *)calloc(1, ofn_len);
 
 		memset(ofn, 0, ofn_len);
-        snprintf( ofn,  ofn_len, "%s-%04d.%s", prefix, G.f_index, AIRODUMP_NG_PCAP_EXT );
+        snprintf( ofn,  ofn_len, "%s-%08d.%s", prefix, G.f_index, AIRODUMP_NG_PCAP_EXT );
 
         fflush( G.f_cap );
         fclose( G.f_cap );
@@ -1246,7 +1246,7 @@ void dump_cleanup( char *prefix )
     	ofn = (char *)calloc(1, ofn_len);
 
     	memset(ofn, 0, ofn_len);
-    	snprintf( ofn, ofn_len, "%s-%04d.%s", prefix, G.f_index, JAIRODUMP_NG_JBLF_EXT );
+    	snprintf( ofn, ofn_len, "%s-%08d.%s", prefix, G.f_index, JAIRODUMP_NG_JBLF_EXT );
 
     	fflush( G.f_jblf );
     	fclose( G.f_jblf );
@@ -1279,6 +1279,18 @@ void dump_rollover( char *prefix, struct wif *wi[], int cards )
 	}
 }
 
+void inc_f_index()
+{
+	if ( G.f_index == 0 )
+		G.f_index = 1;
+	else
+		G.f_index++;
+
+	if (G.f_index > 99999999) {
+		G.f_index = 1;
+	}
+}
+
 /* setup the output files */
 
 int dump_initialize( char *prefix, struct wif *wi[], int cards )
@@ -1300,12 +1312,7 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
 	ofn_len = strlen(prefix) + 1 + 4 + 1 + 13 + 1;
 	ofn = (char *)calloc(1, ofn_len);
 
-    if ( G.f_index == 0) {
-        G.f_index = 1;
-    } else {
-    	G.f_index++;
-    }
-
+    inc_f_index();
 
 	/* Make sure no file with the same name & all possible file extensions. */
     do
@@ -1313,13 +1320,13 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
         for( i = 0; i < NB_EXTENSIONS; i++ )
         {
 			memset(ofn, 0, ofn_len);
-            snprintf( ofn,  ofn_len, "%s-%04d.%s",
+            snprintf( ofn,  ofn_len, "%s-%08d.%s",
                       prefix, G.f_index, f_ext[i] );
 
             if( ( f = fopen( ofn, "rb+" ) ) != NULL )
             {
                 fclose( f );
-                G.f_index++;
+                inc_f_index();
                 break;
             }
         }
@@ -1333,7 +1340,7 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
 
     /* create the error log file */
     memset(ofn, 0, ofn_len);
-    snprintf(ofn, ofn_len, "%s-%04d.%s", prefix, G.f_index, "LOG");
+    snprintf(ofn, ofn_len, "%s-%08d.%s", prefix, G.f_index, "LOG");
     if (G.output_debug_log) {
 	    if( ( G.f_debug_log = fopen(ofn, "wb+" ) ) == NULL )
 	    {
@@ -1349,7 +1356,7 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
 
 	if (G.output_format_csv) {
 		memset(ofn, 0, ofn_len);
-		snprintf( ofn,  ofn_len, "%s-%04d.%s",
+		snprintf( ofn,  ofn_len, "%s-%08d.%s",
 				  prefix, G.f_index, AIRODUMP_NG_CSV_EXT );
 
 		if( ( G.f_txt = fopen( ofn, "wb+" ) ) == NULL )
@@ -1368,7 +1375,7 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
     if (G.usegpsd)
     {
         memset(ofn, 0, ofn_len);
-        snprintf( ofn,  ofn_len, "%s-%04d.%s",
+        snprintf( ofn,  ofn_len, "%s-%08d.%s",
                   prefix, G.f_index, AIRODUMP_NG_GPS_EXT );
 
         if( ( G.f_gps = fopen( ofn, "wb+" ) ) == NULL )
@@ -1388,7 +1395,7 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
         struct pcap_file_header pfh;
 
         memset(ofn, 0, ofn_len);
-        snprintf( ofn,  ofn_len, "%s-%04d.%s",
+        snprintf( ofn,  ofn_len, "%s-%08d.%s",
                   prefix, G.f_index, AIRODUMP_NG_CAP_EXT );
 
         if( ( G.f_cap = fopen( ofn, "wb+" ) ) == NULL )
@@ -1426,7 +1433,7 @@ int dump_initialize( char *prefix, struct wif *wi[], int cards )
     if( G.output_format_jblf )
     {
     	memset(ofn, 0, ofn_len);
-    	snprintf( ofn,  ofn_len, "%s-%04d.%s",
+    	snprintf( ofn,  ofn_len, "%s-%08d.%s",
                   prefix, G.f_index, JAIRODUMP_NG_TJBLF_EXT );
     	log_print("JGLF: Creating log file: %s", ofn);
     	if( ( G.f_jblf = fopen( ofn, "wb+" ) ) == NULL)
@@ -6266,7 +6273,7 @@ usage:
 
     if( ! G.save_gps )
     {
-        snprintf( (char *) buffer, 4096, "%s-%04d.gps", argv[2], G.f_index );
+        snprintf( (char *) buffer, 4096, "%s-%08d.gps", argv[2], G.f_index );
         unlink(  (char *) buffer );
     }
 
