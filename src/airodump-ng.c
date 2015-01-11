@@ -4053,7 +4053,12 @@ int dump_write_kismet_netxml( void )
 						 st_cur->stmac[4], st_cur->stmac[5] );
 
 			/* Manufacturer, if set using standard oui list */
-			fprintf(G.f_kis_xml, "\t\t\t<client-manuf>%s</client-manuf>\n", (st_cur->manuf != NULL) ? st_cur->manuf : "Unknown");
+			manuf = NULL;
+			if (st_cur->manuf != NULL)
+				manuf = sanitize_xml((unsigned char *)st_cur->manuf, strlen(st_cur->manuf));
+			fprintf(G.f_kis_xml, "\t\t\t<client-manuf>%s</client-manuf>\n", (manuf != NULL) ? manuf : "Unknown");
+			if (manuf)
+				free(manuf);
 
 			/* Channel
 			   FIXME: Take G.freqoption in account */
@@ -6722,6 +6727,8 @@ usage:
         if ( G.output_format_pcap ||  G.f_cap != NULL ) fclose( G.f_cap );
         if ( G.f_ivs != NULL ) fclose( G.f_ivs );
     }
+    else
+        free(G.airodump_start_time);
 
     if( ! G.save_gps )
     {
