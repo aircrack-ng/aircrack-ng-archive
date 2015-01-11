@@ -646,6 +646,7 @@ char usage[] =
 "      -x            <msecs> : Active Scanning Simulation\n"
 "      --manufacturer        : Display manufacturer from IEEE OUI list\n"
 "      --uptime              : Display AP Uptime from Beacon Timestamp\n"
+"      --wps                 : Display WPS information (if any)\n"
 "      --output-format\n"
 "                  <formats> : Output format. Possible values:\n"
 "                              pcap, ivs, csv, gps, kismet, netxml\n"
@@ -1417,9 +1418,15 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
 //         if(ap_cur->fcapt >= QLT_COUNT) update_rx_quality();
     }
 
-    if( h80211[0] == 0x80 )
+    switch( h80211[0] )
     {
-        ap_cur->nb_bcn++;
+        case  0x80:
+            ap_cur->nb_bcn++;
+        case  0x50:
+            /* reset the WPS state */
+            ap_cur->wps.state = 0xFF;
+            ap_cur->wps.ap_setup_locked = 0;
+            break;
     }
 
     ap_cur->nb_pkt++;
@@ -1829,6 +1836,54 @@ skip_probe:
             {
                 ap_cur->security |= STD_QOS;
                 p += length+2;
+            }
+            else if( (type == 0xDD && (length >= 4) && (memcmp(p+2, "\x00\x50\xF2\x04", 4) == 0)))
+            {
+                org_p = p;
+                p+=6;
+                int len = length, subtype = 0, sublen = 0;
+                while(len >= 4)
+                {
+                    subtype = (p[0] << 8) + p[1];
+                    sublen = (p[2] << 8) + p[3];
+                    if(sublen > len)
+                        break;
+                    switch(subtype)
+                    {
+                    case 0x104a: // WPS Version
+                        ap_cur->wps.version = p[4];
+                        break;
+                    case 0x1011: // Device Name
+                    case 0x1012: // Device Password ID
+                    case 0x1021: // Manufacturer
+                    case 0x1023: // Model
+                    case 0x1024: // Model Number
+                    case 0x103b: // Response Type
+                    case 0x103c: // RF Bands
+                    case 0x1041: // Selected Registrar
+                    case 0x1042: // Serial Number
+                        break;
+                    case 0x1044: // WPS State
+                        ap_cur->wps.state = p[4];
+                        break;
+                    case 0x1047: // UUID Enrollee
+                    case 0x1049: // Vendor Extension
+                    case 0x1054: // Primary Device Type
+                        break;
+                    case 0x1057: // AP Setup Locked
+                        ap_cur->wps.ap_setup_locked = p[4];
+                        break;
+                    case 0x1008: // Config Methods
+                    case 0x1053: // Selected Registrar Config Methods
+                        ap_cur->wps.meth = (p[4] << 8) + p[5];
+                        break;
+                    default:     // Unknown type-length-value
+                        break;
+                    }
+                    p += sublen+4;
+                    len -= sublen+4;
+                }
+                p = org_p + length+2;
             }
             else p += length+2;
         }
@@ -3091,6 +3146,22 @@ void dump_print( int ws_row, int ws_col, int if_num )
     if (G.show_uptime)
     	strcat(strbuf, "       UPTIME  ");
 
+    if (G.show_wps)
+    {
+        strcat(strbuf, "WPS   ");
+        if ( ws_col > (columns_ap - 4) )
+        {
+            memset(strbuf+columns_ap, 32, G.maxsize_wps_seen - 6 );
+            snprintf(strbuf+columns_ap+G.maxsize_wps_seen-6, 9,"%s","   ESSID");
+            if ( G.show_manufacturer  )
+            {
+                memset(strbuf+columns_ap+G.maxsize_wps_seen+2, 32, G.maxsize_essid_seen-5 );
+                snprintf(strbuf+columns_ap+G.maxsize_essid_seen-5, 15,"%s","  MANUFACTURER");
+            }
+        }
+    }
+    else
+    {
     strcat(strbuf, "ESSID");
 
 	if ( G.show_manufacturer && ( ws_col > (columns_ap - 4) ) ) {
@@ -3098,6 +3169,7 @@ void dump_print( int ws_row, int ws_col, int if_num )
 		memset(strbuf+columns_ap, 32, G.maxsize_essid_seen - 5 ); // 5 is the len of "ESSID"
 		snprintf(strbuf+columns_ap+G.maxsize_essid_seen-5, 15,"%s","  MANUFACTURER");
 	}
+    }
 
 	strbuf[ws_col - 1] = '\0';
 	fprintf( stderr, "%s\n", strbuf );
@@ -3269,13 +3341,64 @@ void dump_print( int ws_row, int ws_col, int if_num )
 	    if( ws_col > (columns_ap - 4) )
 	    {
 		memset( strbuf, 0, sizeof( strbuf ) );
+		if (G.show_wps)
+		{
+		    if (ap_cur->wps.state != 0xFF)
+		    {
+		        if (ap_cur->wps.ap_setup_locked) // AP setup locked
+		            snprintf(strbuf, sizeof(strbuf)-1, "Locked");
+		        else
+		        {
+		            snprintf(strbuf, sizeof(strbuf)-1, "%d.%d", ap_cur->wps.version >> 4, ap_cur->wps.version & 0xF); // Version
+		            if (ap_cur->wps.meth) // WPS Config Methods
+		            {
+		                char tbuf[64];
+		                memset( tbuf, '\0', sizeof(tbuf) );
+		                int sep = 0;
+#define T(bit, name) do {                       \
+    if (ap_cur->wps.meth & (1<<bit)) {          \
+        if (sep)                                \
+            strcat(tbuf, ",");                  \
+        sep = 1;                                \
+        strncat(tbuf, name, (64-strlen(tbuf))); \
+    } } while (0)
+		                T(0, "USB");     // USB method
+		                T(1, "ETHER");   // Ethernet
+		                T(2, "LAB");     // Label
+		                T(3, "DISP");    // Display
+		                T(4, "EXTNFC");  // Ext. NFC Token
+		                T(5, "INTNFC");  // Int. NFC Token
+		                T(6, "NFCINTF"); // NFC Interface
+		                T(7, "PBC");     // Push Button
+		                T(8, "KPAD");    // Keypad
+		                snprintf(strbuf+strlen(strbuf), sizeof(strbuf)-strlen(strbuf), " %s", tbuf);
+#undef T
+		            }
+		        }
+		    }
+		    else
+		        snprintf(strbuf, sizeof(strbuf)-1, " ");
+
+			if (G.maxsize_wps_seen <= strlen(strbuf))
+				G.maxsize_wps_seen = strlen(strbuf);
+			else // write spaces (32)
+				memset( strbuf+strlen(strbuf), 32,  (G.maxsize_wps_seen - strlen(strbuf))  );
+		}
 		if(ap_cur->essid[0] != 0x00)
 		{
+		    if (G.show_wps)
+		    snprintf( strbuf + G.maxsize_wps_seen, sizeof(strbuf)-G.maxsize_wps_seen,
+			    "  %s", ap_cur->essid );
+		    else
 		    snprintf( strbuf,  sizeof( strbuf ) - 1,
 			    "%s", ap_cur->essid );
 		}
 		else
 		{
+		    if (G.show_wps)
+		    snprintf( strbuf + G.maxsize_wps_seen, sizeof(strbuf)-G.maxsize_wps_seen,
+			    "  <length:%3d>%s", ap_cur->ssid_length, "\x00" );
+		    else
 		    snprintf( strbuf,  sizeof( strbuf ) - 1,
 			    "<length:%3d>%s", ap_cur->ssid_length, "\x00" );
 		}
@@ -5563,6 +5686,7 @@ int main( int argc, char *argv[] )
         {"ignore-negative-one", 0, &G.ignore_negative_one, 1},
         {"manufacturer",  0, 0, 'M'},
         {"uptime",   0, 0, 'U'},
+        {"wps",  0, 0, 'W'},
         {0,          0, 0,  0 }
     };
 
@@ -5632,8 +5756,10 @@ int main( int argc, char *argv[] )
     G.show_ack     =  0;
     G.hide_known   =  0;
     G.maxsize_essid_seen  =  5; // Initial value: length of "ESSID"
+    G.maxsize_wps_seen  =  6;
     G.show_manufacturer = 0;
     G.show_uptime  = 0;
+    G.show_wps     = 0;
     G.hopfreq      =  DEFAULT_HOPFREQ;
     G.s_file       =  NULL;
     G.s_iface      =  NULL;
@@ -5728,7 +5854,7 @@ int main( int argc, char *argv[] )
         option_index = 0;
 
         option = getopt_long( argc, argv,
-                        "b:c:egiw:s:t:u:m:d:N:R:aHDB:Ahf:r:EC:o:x:MU",
+                        "b:c:egiw:s:t:u:m:d:N:R:aHDB:Ahf:r:EC:o:x:MUW",
                         long_options, &option_index );
 
         if( option < 0 ) break;
@@ -5786,6 +5912,11 @@ int main( int argc, char *argv[] )
 	    case 'U' :
 	    		G.show_uptime = 1;
 	    		break;
+
+            case 'W':
+
+                G.show_wps = 1;
+                break;
 
             case 'c' :
 
@@ -6139,6 +6270,9 @@ usage:
         printf("\"%s --help\" for help.\n", argv[0]);
         return( 1 );
     }
+
+    if (G.show_wps && G.show_manufacturer)
+        G.maxsize_essid_seen += G.maxsize_wps_seen;
 
     if(G.s_iface != NULL)
     {
