@@ -158,6 +158,9 @@ const char *OUI_PATHS[] = {
 
 #define MIN_RAM_SIZE_LOAD_OUI_RAM 32768
 
+#define MAC_LEN 18
+// MAC address in hex colon representation and the additional \0.
+
 int read_pkts=0;
 
 int abg_chans [] =
@@ -198,6 +201,12 @@ struct oui {
 	char id[9]; /* TODO: Don't use ASCII chars to compare, use unsigned char[3] (later) with the value (hex ascii will have to be converted) */
 	char manuf[128]; /* TODO: Switch to a char * later to improve memory usage */
 	struct oui *next;
+};
+
+struct ethers_names {
+    unsigned char mac[6];
+    char name[MAC_LEN]; /* Name for the MAC address or device. */
+    struct ethers_names *next;
 };
 
 /* WPS_info struct */
@@ -314,6 +323,7 @@ struct NA_info
     struct NA_info *next;    /* the next client in list   */
     time_t tinit, tlast;     /* first and last time seen  */
     unsigned char namac[6];  /* the stations MAC address  */
+    char *manuf;             /* the stations manufacturer */
     int power;               /* last signal power         */
     int channel;             /* captured on channel       */
     int ack;                 /* number of ACK frames      */
@@ -333,6 +343,7 @@ struct globals
     struct ST_info *st_1st, *st_end;
     struct NA_info *na_1st, *na_end;
     struct oui *manufList;
+    struct ethers_names *ethersList;
 
     unsigned char prev_bssid[6];
     unsigned char f_bssid[6];
@@ -429,6 +440,8 @@ struct globals
 
     int hopfreq;
 
+    char*   s_ethers;       /* source file to define mappings from MAC to name
+                             * like /etc/ethers */
     char*   s_file;         /* source file to read packets */
     char*   s_iface;        /* source interface to read from */
     FILE *f_cap_in;
@@ -471,7 +484,9 @@ struct globals
     u_int maxsize_essid_seen;
     u_int maxsize_wps_seen;
     int show_manufacturer;
+    int show_ethers_name;
     int show_uptime;
+    int show_manufacturer_prefix;
     int show_wps;
 }
 G;

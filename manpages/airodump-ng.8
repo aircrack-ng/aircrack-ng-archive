@@ -107,6 +107,9 @@ Invert sorting algorithm
 .I m
 Mark the selected AP or cycle through different colors if the selected AP is already marked
 .TP
+.I o
+Display manufacturer prefix on BSSID and STATION
+.TP
 .I r
 (De-)Activate realtime sorting - applies sorting algorithm everytime the display will be redrawn
 .TP
@@ -206,6 +209,9 @@ The so-called "SSID", which can be empty if SSID hiding is activated. In this ca
 .TP
 .I MANUFACTURER
 This is only displayed when --manufacturer (or -M) is specified.
+.TP
+.I -n, --ethers
+Map MAC addresses of APs and clients to names using the given ethers file. See ethers(5) for the file format. Note that only the first 17 characters of the name are shown (which is the size of a MAC address in the normal human readable form).
 .TP
 .I STATION
 MAC address of each associated station or stations searching for an AP to connect with. Clients not currently associated with an AP have a BSSID of "(not associated)".

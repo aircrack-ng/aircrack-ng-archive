@@ -188,6 +188,7 @@ void resetSelection()
     G.skip_columns=0;
     G.do_pause=0;
     G.do_sort_always=0;
+    G.show_manufacturer_prefix=0;
     memset(G.selected_bssid, '\x00', 6);
 }
 
@@ -203,6 +204,7 @@ void resetSelection()
 #define KEY_i		0x69	//inverse sorting
 #define KEY_m		0x6D	//mark current AP
 #define KEY_n		0x6E	//?
+#define KEY_o		0x6F	//display manufacturer prefix
 #define KEY_r		0x72	//realtime sort (de)activate
 #define KEY_s		0x73	//cycle through sorting
 
@@ -216,6 +218,7 @@ void input_thread( void *arg) {
 	keycode=mygetch();
 
 	if(keycode == KEY_s) {
+	    memset(G.message, 32, sizeof(G.message)); // write spaces (32).
 	    G.sort_by++;
 	    G.selection_ap = 0;
 	    G.selection_sta = 0;
@@ -269,6 +272,7 @@ void input_thread( void *arg) {
 	}
 
 	if(keycode == KEY_SPACE) {
+	    memset(G.message, 32, sizeof(G.message)); // write spaces (32).
 	    G.do_pause = (G.do_pause+1)%2;
 	    if(G.do_pause) {
 		snprintf(G.message, sizeof(G.message), "][ paused output");
@@ -286,6 +290,7 @@ void input_thread( void *arg) {
 	}
 
 	if(keycode == KEY_r) {
+	    memset(G.message, 32, sizeof(G.message)); // write spaces (32).
 	    G.do_sort_always = (G.do_sort_always+1)%2;
 	    if(G.do_sort_always)
 		snprintf(G.message, sizeof(G.message), "][ realtime sorting activated");
@@ -320,6 +325,7 @@ void input_thread( void *arg) {
 	}
 
 	if(keycode == KEY_i) {
+	    memset(G.message, 32, sizeof(G.message)); // write spaces (32).
 	    G.sort_inv*=-1;
 	    if(G.sort_inv < 0)
 		snprintf(G.message, sizeof(G.message), "][ inverted sorting order");
@@ -328,6 +334,7 @@ void input_thread( void *arg) {
 	}
 
 	if(keycode == KEY_TAB) {
+	    memset(G.message, 32, sizeof(G.message)); // write spaces (32).
 	    if(G.selection_ap == 0) {
 		G.selection_ap = 1;
 		G.selected_ap = 1;
@@ -341,6 +348,7 @@ void input_thread( void *arg) {
 	}
 
 	if(keycode == KEY_a) {
+	    memset(G.message, 32, sizeof(G.message)); // write spaces (32).
 	    if(G.show_ap == 1 && G.show_sta == 1 && G.show_ack == 0) {
 		G.show_ap = 1;
 		G.show_sta = 1;
@@ -364,7 +372,30 @@ void input_thread( void *arg) {
 	    }
 	}
 
+	if (keycode == KEY_o) {
+		memset(G.message, 32, sizeof(G.message)); // write spaces (32).
+		if (!G.ethersList) {
+			G.show_manufacturer_prefix = (G.show_manufacturer_prefix+1)%2;
+			if (G.show_manufacturer_prefix)
+				snprintf(G.message, sizeof(G.message), "][ display manufacturer prefix");
+		} else {
+			if (G.show_manufacturer_prefix == 0 && G.show_ethers_name == 1) {
+				G.show_manufacturer_prefix = 0;
+				G.show_ethers_name = 0;
+				snprintf(G.message, sizeof(G.message), "][ display MAC address");
+			} else if (G.show_manufacturer_prefix == 0 && G.show_ethers_name == 0) {
+				G.show_manufacturer_prefix = 1;
+				G.show_ethers_name = 0;
+				snprintf(G.message, sizeof(G.message), "][ display manufacturer prefix");
+			} else if (G.show_manufacturer_prefix == 1 && G.show_ethers_name == 0) { // display ethers name
+				G.show_manufacturer_prefix = 0;
+				G.show_ethers_name = 1;
+			}
+		}
+	}
+
 	if (keycode == KEY_d) {
+	    memset(G.message, 32, sizeof(G.message)); // write spaces (32).
 		resetSelection();
 		snprintf(G.message, sizeof(G.message), "][ reset selection to default");
 	}
@@ -467,6 +498,217 @@ struct oui * load_oui_file(void) {
 
 	fclose(fp);
 	return oui_head;
+}
+
+int get_string_for_hex_mac(char * mac_address_string, size_t buflen, unsigned char * mac_address) {
+    return (snprintf(
+            mac_address_string, buflen,
+            "%02X:%02X:%02X:%02X:%02X:%02X",
+            mac_address[0], mac_address[1], mac_address[2], mac_address[3], mac_address[4], mac_address[5]
+        ) == MAC_LEN - 1) ? 1 : 0;
+}
+
+void print_ethers_file(struct ethers_names * ether_ptr) {
+    char mac_address_string[MAC_LEN];
+
+    while (ether_ptr != NULL) {
+        get_string_for_hex_mac(mac_address_string, sizeof(mac_address_string), ether_ptr->mac);
+        printf("MAC: %s -> Name: %s\n", mac_address_string, ether_ptr->name);
+
+        ether_ptr = ether_ptr->next;
+    }
+}
+
+char * find_name_for_mac_address(unsigned char * mac_address, struct ethers_names * ether_ptr) {
+    while (ether_ptr != NULL) {
+
+        if (memcmp(ether_ptr->mac, mac_address, 6) == 0)
+            return ether_ptr->name;
+
+        ether_ptr = ether_ptr->next;
+    }
+
+    return NULL;
+}
+
+void get_name_or_mac_string(char * mac_address_string, size_t buflen, unsigned char * mac_address, struct ethers_names * ether_head) {
+    char * name;
+
+    name = find_name_for_mac_address(mac_address, ether_head);
+    if (name != NULL) {
+        memcpy( mac_address_string, name, buflen);
+    } else {
+        get_string_for_hex_mac(mac_address_string, buflen, mac_address);
+    }
+}
+
+unsigned char hex_to_char(char * hex_string) {
+    char *endptr;
+
+    return (unsigned char)strtol(hex_string, &endptr, 16);
+}
+
+struct ethers_names * load_ethers_file(void) {
+    FILE *fp;
+    char line[60];
+    char * line_pos;
+    unsigned char a[2];
+    unsigned char b[2];
+    unsigned char c[2];
+    unsigned char d[2];
+    unsigned char e[2];
+    unsigned char f[2];
+    char x[MAC_LEN];
+    char mac_address_string[MAC_LEN];
+    struct ethers_names *ether_cur, *ether_next;
+    struct ethers_names *ether_ptr  = NULL,
+                        *ether_head = NULL;
+
+    if (!G.s_ethers)
+        return NULL;
+
+    if ( ( fp = fopen( G.s_ethers, "r" ) ) != NULL ) {
+        while (fgets(line, sizeof(line), fp) != NULL) {
+            line_pos = strrchr(line, '\n');
+            if (line_pos != NULL)
+                *line_pos = '\0';
+            line_pos = line;
+
+            if (sscanf(line, "%2c:%2c:%2c:%2c:%2c:%2c", a, b, c, d, e, f) == 6) {
+                if (ether_ptr == NULL) {
+                    if (!(ether_ptr = (struct ethers_names *)calloc(1, sizeof(struct ethers_names)))) {
+                        fclose(fp);
+                        perror("malloc failed");
+                        return NULL;
+                    }
+                } else if (ether_ptr->name[0] != '\0') {
+                    if (!(ether_ptr->next = (struct ethers_names *)calloc(1, sizeof(struct ethers_names)))) {
+                        fclose(fp);
+                        perror("malloc failed");
+                        return NULL;
+                    }
+                    ether_ptr = ether_ptr->next;
+                }
+                if (ether_head == NULL) {
+                    ether_head = ether_ptr;
+                }
+
+                line_pos += MAC_LEN - 1; // Jump to last character of MAC address
+                while (*line_pos == '\t' || *line_pos == ' ') {
+                    line_pos++;
+                }
+
+                if (line_pos == NULL)
+                    continue;
+
+                memset(ether_ptr->mac, 0x00, sizeof(ether_ptr->mac));
+                snprintf(x, sizeof(x),"%c%c:%c%c:%c%c:%c%c:%c%c:%c%c", a[0], a[1], b[0], b[1], c[0], c[1], d[0], d[1], e[0], e[1], f[0], f[1]);
+                getmac(x, 1, ether_ptr->mac);
+
+                if (find_name_for_mac_address(ether_ptr->mac, ether_head) != NULL
+                        && strlen(find_name_for_mac_address(ether_ptr->mac, ether_head)) > 0) {
+
+                    get_string_for_hex_mac(mac_address_string, sizeof(mac_address_string), ether_ptr->mac);
+
+                    fprintf( stderr, "Found duplicate entry for the same MAC address in ethers file: %s = %s (old name %s).\n",
+                        mac_address_string, line_pos, find_name_for_mac_address(ether_ptr->mac, ether_head)
+                    );
+                    ether_cur = ether_head;
+                    while (ether_cur != NULL) {
+                        ether_next = ether_cur->next;
+                        free(ether_cur);
+                        ether_cur = ether_next;
+                    }
+                    fclose(fp);
+                    //exit(1);
+                    return NULL;
+                }
+
+                memcpy(ether_ptr->name, line_pos, sizeof(ether_ptr->name) - 1);
+            }
+        }
+        /* print_ethers_file(ether_head); */
+
+        fclose(fp);
+    } else {
+        perror( "fopen failed" );
+        fprintf( stderr, "Could not open \"%s\".\n", G.s_ethers );
+    }
+
+    return ether_head;
+}
+
+void trim2(char *buffer, size_t buflen, char *str)
+{
+    char *buffer_ptr = str;
+    size_t i = 0;
+
+    if (buflen < 1)
+        return;
+    while(*buffer_ptr != '\0' && i < buflen-1)
+    {
+        if(*buffer_ptr != ' ' && *buffer_ptr != '\t')
+            buffer[i++] = *buffer_ptr;
+        buffer_ptr++;
+    }
+    buffer[i] = '\0'; // Null terminate string
+}
+
+void consistent_case(char *str)
+{
+    char *buffer_ptr;
+    int i;
+
+    for (i = 0; i < (int) strlen(str); i++)
+        if (str[i] >= 'A' && str[i] <= 'Z')
+            str[i] += 'a' - 'A';
+    if (str[0] >= 'a' && str[0] <= 'z')
+        str[0] -= 'a' - 'A';
+    buffer_ptr = str;
+    while ((buffer_ptr = strchr(buffer_ptr,' '))) {
+        buffer_ptr++;
+        if (*buffer_ptr >= 'a' && *buffer_ptr <= 'z')
+            *buffer_ptr -= 'a' - 'A';
+    }
+}
+
+void strip_chars(char *buffer, char *str, char *chars)
+{
+    int i = 0;
+
+    for (; *str; str++)
+        buffer[i++] = ( !strchr(chars, *str) ) ? *str : ' ';
+    buffer[i] = '\0'; // Null terminate string
+}
+
+int do_manuf_mac_string(char * manuf_mac_string, size_t buflen, unsigned char * mac_address, char * manuf)
+{
+    char buffer[128], new_manuf[128];
+    int ret;
+
+    if (manuf == NULL || memcmp(manuf, "Unknown", 7) == 0)
+        return -1;
+
+    memset(new_manuf, 0, sizeof(new_manuf));
+    // Replace any ',.()& to a space
+    strip_chars(buffer, manuf, "',.()&");
+    // Convert to consistent case
+    consistent_case(buffer);
+    // Remove white spaces
+    trim2(new_manuf, sizeof(new_manuf), buffer);
+    // Truncate manufacturer string to 8 characters
+    ret = snprintf(manuf_mac_string, buflen, "%.*s_%02X:%02X:%02X", 8, new_manuf, mac_address[3], mac_address[4], mac_address[5]);
+    return (ret == MAC_LEN - 1) ? 1 : 0;
+}
+
+void get_manuf_mac_string(char * mac_address_string, size_t buflen, unsigned char * mac_address, char * manuf) {
+    char manuf_mac_string[MAC_LEN];
+    int ret = do_manuf_mac_string(manuf_mac_string, sizeof(manuf_mac_string), mac_address, manuf);
+
+    if (ret != -1)
+        memcpy(mac_address_string, manuf_mac_string, buflen);
+    else
+        get_string_for_hex_mac(mac_address_string, buflen, mac_address);
 }
 
 int check_shared_key(unsigned char *h80211, int caplen)
@@ -645,6 +887,8 @@ char usage[] =
 "      -r             <file> : Read packets from that file\n"
 "      -x            <msecs> : Active Scanning Simulation\n"
 "      --manufacturer        : Display manufacturer from IEEE OUI list\n"
+"      --ethers              : Map MAC addresses to names using\n"
+"                              provided ethers file\n"
 "      --uptime              : Display AP Uptime from Beacon Timestamp\n"
 "      --wps                 : Display WPS information (if any)\n"
 "      --output-format\n"
@@ -2998,6 +3242,7 @@ void dump_print( int ws_row, int ws_col, int if_num )
     int nlines, i, n, len;
     char strbuf[512];
     char buffer[512];
+    char mac_address_string[MAC_LEN];
     char ssid_list[512];
     struct AP_info *ap_cur;
     struct ST_info *st_cur;
@@ -3240,10 +3485,14 @@ void dump_print( int ws_row, int ws_col, int if_num )
 
 	    memset(strbuf, '\0', sizeof(strbuf));
 
-	    snprintf( strbuf, sizeof(strbuf), " %02X:%02X:%02X:%02X:%02X:%02X",
-		    ap_cur->bssid[0], ap_cur->bssid[1],
-		    ap_cur->bssid[2], ap_cur->bssid[3],
-		    ap_cur->bssid[4], ap_cur->bssid[5] );
+	    get_string_for_hex_mac(mac_address_string, sizeof(mac_address_string), ap_cur->bssid);
+	    if (G.show_ethers_name)
+	        get_name_or_mac_string(mac_address_string, sizeof(mac_address_string), ap_cur->bssid, G.ethersList);
+	    if (G.show_manufacturer_prefix)
+	        get_manuf_mac_string(mac_address_string, sizeof(mac_address_string), ap_cur->bssid, ap_cur->manuf);
+	    snprintf( strbuf, sizeof(strbuf), " %s", mac_address_string );
+	    if (strlen(mac_address_string) < MAC_LEN) // write spaces (32)
+	        memset( strbuf+strlen(strbuf), 32, (MAC_LEN-strlen(mac_address_string)+1-1-1) );
 
 	    len = strlen(strbuf);
 
@@ -3520,18 +3769,30 @@ void dump_print( int ws_row, int ws_col, int if_num )
 		if( ws_row != 0 && nlines >= ws_row )
 		    return;
 
+		memset(strbuf, '\0', sizeof(strbuf));
 		if( ! memcmp( ap_cur->bssid, BROADCAST, 6 ) )
-		    fprintf( stderr, " (not associated) " );
+		    snprintf( strbuf, sizeof(strbuf), " (not associated) " );
 		else
-		    fprintf( stderr, " %02X:%02X:%02X:%02X:%02X:%02X",
-			    ap_cur->bssid[0], ap_cur->bssid[1],
-			    ap_cur->bssid[2], ap_cur->bssid[3],
-			    ap_cur->bssid[4], ap_cur->bssid[5] );
+		{
+		    get_string_for_hex_mac(mac_address_string, sizeof(mac_address_string), ap_cur->bssid);
+		    if (G.show_ethers_name)
+		        get_name_or_mac_string(mac_address_string, sizeof(mac_address_string), ap_cur->bssid, G.ethersList);
+		    if (G.show_manufacturer_prefix)
+		        get_manuf_mac_string(mac_address_string, sizeof(mac_address_string), ap_cur->bssid, ap_cur->manuf);
+		    snprintf( strbuf, sizeof(strbuf), " %s", mac_address_string );
+		    if (strlen(mac_address_string) < MAC_LEN) // write spaces (32)
+		        memset( strbuf+strlen(strbuf), 32, (MAC_LEN-strlen(mac_address_string)+1-1-1) );
+		}
 
-		fprintf( stderr, "  %02X:%02X:%02X:%02X:%02X:%02X",
-			st_cur->stmac[0], st_cur->stmac[1],
-			st_cur->stmac[2], st_cur->stmac[3],
-			st_cur->stmac[4], st_cur->stmac[5] );
+		get_string_for_hex_mac(mac_address_string, sizeof(mac_address_string), st_cur->stmac);
+		if (G.show_ethers_name)
+		    get_name_or_mac_string(mac_address_string, sizeof(mac_address_string), st_cur->stmac, G.ethersList);
+		if (G.show_manufacturer_prefix)
+		    get_manuf_mac_string(mac_address_string, sizeof(mac_address_string), st_cur->stmac, st_cur->manuf);
+		snprintf( strbuf+strlen(strbuf), sizeof(strbuf)-strlen(strbuf), "  %s", mac_address_string );
+		if (strlen(mac_address_string) < MAC_LEN) // write spaces (32)
+		    memset( strbuf+strlen(strbuf), 32, (MAC_LEN-strlen(mac_address_string)+1-1-1) );
+		fprintf( stderr, "%s", strbuf );
 
 		fprintf( stderr, "  %3d ", st_cur->power    );
 		fprintf( stderr, "  %2d", st_cur->rate_to/1000000  );
@@ -3620,10 +3881,19 @@ void dump_print( int ws_row, int ws_col, int if_num )
             if( ws_row != 0 && nlines >= ws_row )
                 return;
 
-            fprintf( stderr, " %02X:%02X:%02X:%02X:%02X:%02X",
-                    na_cur->namac[0], na_cur->namac[1],
-                    na_cur->namac[2], na_cur->namac[3],
-                    na_cur->namac[4], na_cur->namac[5] );
+            memset(strbuf, '\0', sizeof(strbuf));
+            get_string_for_hex_mac(mac_address_string, sizeof(mac_address_string), na_cur->namac);
+            if (G.show_ethers_name)
+                get_name_or_mac_string(mac_address_string, sizeof(mac_address_string), na_cur->namac, G.ethersList);
+            if (G.show_manufacturer_prefix) {
+                if (na_cur->manuf == NULL)
+                    na_cur->manuf = get_manufacturer(na_cur->namac[0], na_cur->namac[1], na_cur->namac[2]);
+                get_manuf_mac_string(mac_address_string, sizeof(mac_address_string), na_cur->namac, na_cur->manuf);
+            }
+            snprintf( strbuf, sizeof(strbuf), " %s", mac_address_string );
+            if (strlen(mac_address_string) < MAC_LEN) // write spaces (32)
+                memset( strbuf+strlen(strbuf), 32, (MAC_LEN-strlen(mac_address_string)+1-1-1) );
+            fprintf( stderr, "%s", strbuf );
 
             fprintf( stderr, "  %3d", na_cur->channel  );
             fprintf( stderr, " %3d", na_cur->power  );
@@ -5637,7 +5907,7 @@ int main( int argc, char *argv[] )
     struct ST_info *st_cur, *st_next;
     struct NA_info *na_cur, *na_next;
     struct oui *oui_cur, *oui_next;
-
+    struct ethers_names *ether_cur, *ether_next;
     struct pcap_pkthdr pkh;
 
     time_t tt1, tt2, tt3, start_time;
@@ -5672,6 +5942,7 @@ int main( int argc, char *argv[] )
         {"essid",    1, 0, 'N'},
         {"essid-regex", 1, 0, 'R'},
         {"channel",  1, 0, 'c'},
+        {"ethers",   1, 0, 'n'},
         {"gpsd",     0, 0, 'g'},
         {"ivs",      0, 0, 'i'},
         {"write",    1, 0, 'w'},
@@ -5758,9 +6029,12 @@ int main( int argc, char *argv[] )
     G.maxsize_essid_seen  =  5; // Initial value: length of "ESSID"
     G.maxsize_wps_seen  =  6;
     G.show_manufacturer = 0;
+    G.show_ethers_name  = 0;
     G.show_uptime  = 0;
     G.show_wps     = 0;
+    G.show_manufacturer_prefix = 0;
     G.hopfreq      =  DEFAULT_HOPFREQ;
+    G.s_ethers     =  NULL;
     G.s_file       =  NULL;
     G.s_iface      =  NULL;
     G.f_cap_in     =  NULL;
@@ -5854,7 +6128,7 @@ int main( int argc, char *argv[] )
         option_index = 0;
 
         option = getopt_long( argc, argv,
-                        "b:c:egiw:s:t:u:m:d:N:R:aHDB:Ahf:r:EC:o:x:MUW",
+                        "b:c:egiw:s:t:u:m:d:N:R:aHDB:Ahf:r:EC:o:x:MUn:W",
                         long_options, &option_index );
 
         if( option < 0 ) break;
@@ -5962,6 +6236,16 @@ int main( int argc, char *argv[] )
 
                 G.freqoption = 1;
 
+                break;
+
+            case 'n':
+
+                    if ( G.s_ethers ) {
+                        printf( "Configuration file already specified.\n" );
+                        printf("\"%s --help\" for help.\n", argv[0]);
+                    }
+                G.s_ethers = optarg;
+                G.show_ethers_name = 1;
                 break;
 
             case 'b' :
@@ -6465,6 +6749,7 @@ usage:
 
     /* fill oui struct if ram is greater than 32 MB */
     if (get_ram_size()  > MIN_RAM_SIZE_LOAD_OUI_RAM) {
+        G.ethersList = load_ethers_file();
         G.manufList = load_oui_file();
 	}
 
@@ -6921,6 +7206,9 @@ usage:
     while(na_cur != NULL)
     {
         na_next = na_cur->next;
+	if (G.manufList)
+		if (na_cur->manuf)
+			free(na_cur->manuf);
         free(na_cur);
         na_cur = na_next;
     }
@@ -6931,6 +7219,15 @@ usage:
             oui_next = oui_cur->next;
 	    free(oui_cur);
 	    oui_cur = oui_next;
+        }
+    }
+
+    if (G.ethersList) {
+        ether_cur = G.ethersList;
+        while (ether_cur != NULL) {
+            ether_next = ether_cur->next;
+            free(ether_cur);
+            ether_cur = ether_next;
         }
     }
 
