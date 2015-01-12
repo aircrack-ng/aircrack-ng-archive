@@ -7,17 +7,28 @@ OUI_DOWNLOAD_URL="http://standards.ieee.org/develop/regauth/oui/oui.txt"
 OUI_PATH0="/etc/aircrack-ng"
 OUI_PATH1="/usr/local/etc/aircrack-ng"
 OUI_PATH2="/usr/share/aircrack-ng"
-if [ -d "$OUI_PATH0" ]; then
-	OUI_PATH="$OUI_PATH0"
-elif [ -d "$OUI_PATH1" ]; then
-	OUI_PATH="$OUI_PATH1"
-elif [ -d "$OUI_PATH2" ]; then
-	OUI_PATH="$OUI_PATH2"
-else
-	# default
-	OUI_PATH="$OUI_PATH0"
-fi
+for OUI in \
+    "/etc/aircrack-ng/airodump-ng-oui.txt" \
+    "/usr/local/etc/aircrack-ng/airodump-ng-oui.txt" \
+    "/usr/share/aircrack-ng/airodump-ng-oui.txt" \
+    "/var/lib/misc/oui.txt" \
+    "/usr/share/misc/oui.txt" \
+    "/var/lib/ieee-data/oui.txt" \
+    "/usr/share/ieee-data/oui.txt" \
+    "/etc/manuf/oui.txt" \
+    "/usr/share/wireshark/wireshark/manuf/oui.txt" \
+    "/usr/share/wireshark/manuf/oui.txt" \
+    "NULL"
+do
+	if [ -d "$(dirname "$OUI")" ]; then
+		break
+	fi
+done
 
+if [ "$OUI" = "NULL" ]; then
+	OUI="${OUI_PATH0}/airodump-ng-oui.txt"
+fi
+OUI_PATH="$(dirname "$OUI")"
 AIRODUMP_NG_OUI="${OUI_PATH}/airodump-ng-oui.txt"
 OUI_IEEE="${OUI_PATH}/oui.txt"
 USERID=""
@@ -40,9 +51,7 @@ then
 fi
 
 
-if [ ! -d "${OUI_PATH}" ]; then
-	mkdir -p ${OUI_PATH}
-fi
+mkdir -p ${OUI_PATH}
 
 if [ ${CURL} ] || [ ${WGET} ]; then
 	# Delete previous partially downloaded file (if the script was aborted)
@@ -66,19 +75,30 @@ if [ ${CURL} ] || [ ${WGET} ]; then
 	echo "[*] Parsing OUI file..."
 
 	# Keep the previous file
-	if [ -f "${OUI_DOWNLOADED}" ]; then
-		mv ${AIRODUMP_NG_OUI} ${OUI}-old
+	if [ -f "${AIRODUMP_NG_OUI}" ]; then
+		mv ${AIRODUMP_NG_OUI} ${AIRODUMP_NG_OUI}-old
 	fi
 
 	# Parse it
 	grep "(hex)" ${OUI_IEEE} | sed 's/^[ \t]*//g;s/[ \t]*$//g' > ${AIRODUMP_NG_OUI}
-	if [ "${?}" -ne 0 ]; then
+	if [ ! -s "${AIRODUMP_NG_OUI}" ]; then
+		if [ -f "${AIRODUMP_NG_OUI}-old" ]; then
+			mv ${AIRODUMP_NG_OUI}-old ${AIRODUMP_NG_OUI}
+		fi
 		echo "[*] Error: Failed to parse OUI, aborting..."
 		exit 1
 	fi
 
+	case "${OUI_PATH}" in
+	"${OUI_PATH0}" | "${OUI_PATH1}" | "${OUI_PATH2}") ;;
+	*)
+		if [ ! -d "${OUI_PATH0}" ]; then
+			ln -s ${OUI_PATH} ${OUI_PATH0}
+		fi ;;
+	esac
+
 	# Cleanup
-	rm -f ${OUI_IEEE}
+	rm -f ${AIRODUMP_NG_OUI}-old
 
 	echo "[*] Airodump-ng OUI file successfully updated"
 else
