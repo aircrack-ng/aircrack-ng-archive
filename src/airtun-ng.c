@@ -2038,7 +2038,7 @@ usage:
                 send_packet(h80211, caplen);
             }
 
-            packet_recv( h80211, caplen); // TODO: also pass pkh.len?
+            packet_recv( h80211, caplen);
             msleep( 1000/opt.r_nbpps );
             continue;
         }
