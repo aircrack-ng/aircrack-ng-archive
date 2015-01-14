@@ -91,6 +91,7 @@ struct WPA_ST_info
     unsigned long t_crc;        /* last ToDS   frame CRC        */
     unsigned long f_crc;        /* last FromDS frame CRC        */
     int keyver, valid_ptk;
+    unsigned char pn[6];                /* Packet Number (WPA-CCMP) */
 };
 
 struct Michael

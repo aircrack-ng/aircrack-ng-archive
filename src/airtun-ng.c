@@ -870,6 +870,7 @@ int packet_xmit(unsigned char* packet, int length)
 {
     unsigned char K[64];
     unsigned char buf[4096];
+    struct WPA_ST_info *st_cur;
     int data_begin = 24;
     int dest_net;
 
@@ -938,6 +939,45 @@ int packet_xmit(unsigned char* packet, int length)
         encrypt_wep( h80211 + data_begin + 4, length - data_begin - 4, K, opt.weplen + 3 );
 
         h80211[1] = h80211[1] | 0x40;
+    }
+    else if( opt.crypt == CRYPT_WPA )
+    {
+        /* Add QoS */
+        /*   Doesn't seem to be needed -> commented out */
+        // memmove( h80211 + data_begin + 2, h80211 + data_begin, length - data_begin );
+        // memset( h80211 + data_begin, 0, 2 );
+        // data_begin += 2;
+        // length += 2;
+        // h80211[0] |= 0x80; // Set QoS
+
+        /* Find station */
+        st_cur = st_1st;
+        while( st_cur != NULL )
+        {
+            // STA -> AP
+            if( opt.tods == 1 && memcmp( st_cur->stmac, packet+6, 6 ) == 0 )
+                break;
+
+            // AP -> STA
+            if( opt.tods == 0 && memcmp( st_cur->stmac, packet, 6 ) == 0 )
+                break;
+
+            st_cur = st_cur->next;
+        }
+        if( st_cur == NULL )
+        {
+            printf( "Cannot inject: handshake not captured yet.\n" );
+            return 1;
+        }
+
+        // Todo: overflow to higher bits (pn is 6 bytes wide)
+        st_cur->pn[5] += 1;
+
+        h80211[1] = h80211[1] | 0x40; // Set Protected Frame flag
+
+        encrypt_ccmp( h80211, length, st_cur->ptk + 32, st_cur->pn );
+        length += 16;
+        data_begin += 8;
     }
     else if( opt.prgalen > 0 )
     {
@@ -1156,7 +1196,7 @@ int packet_recv(unsigned char* packet, int length)
                     if( decrypt_tkip( packet, length,
                                       st_cur->ptk + 32 ) == 0 )
                     {
-                        printf("ICV check failed!\n");
+                        printf("ICV check failed (WPA-TKIP)!\n");
                         return 1;
                     }
 
@@ -1164,10 +1204,21 @@ int packet_recv(unsigned char* packet, int length)
                 }
                 else
                 {
+                    buffer = malloc( length );
+                    memcpy( buffer, packet, length );
+                    if ( memcmp( smac, st_cur->stmac, 6 ) == 0 ) {
+                        st_cur->pn[0] = packet[z + 7];
+                        st_cur->pn[1] = packet[z + 6];
+                        st_cur->pn[2] = packet[z + 5];
+                        st_cur->pn[3] = packet[z + 4];
+                        st_cur->pn[4] = packet[z + 1];
+                        st_cur->pn[5] = packet[z + 0];
+                    }
+
                     if( decrypt_ccmp( packet, length,
                                       st_cur->ptk + 32 ) == 0 )
                     {
-                        printf("ICV check failed!\n");
+                        printf("ICV check failed (WPA-CCMP)!\n");
                         return 1;
                     }
 
