@@ -2,7 +2,7 @@
  *  802.11 WEP network connection tunneling
  *  based on aireplay-ng
  *
- *  Copyright (C) 2006-2013 Thomas d'Otreppe
+ *  Copyright (C) 2006-2014 Thomas d'Otreppe
  *  Copyright (C) 2006, 2007, 2008, 2009 Martin Beck
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -83,7 +83,7 @@ extern const unsigned char crc_chop_tbl[256][4];
 
 char usage[] =
 "\n"
-"  %s - (C) 2006-2013 Thomas d'Otreppe\n"
+"  %s - (C) 2006-2014 Thomas d'Otreppe\n"
 "  Original work: Martin Beck\n"
 "  http://www.aircrack-ng.org\n"
 "\n"
@@ -400,7 +400,7 @@ int timeoutFrag()
     while(cur->next != NULL)
     {
         old = cur->next;
-        timediff = (tv.tv_sec - old->access.tv_sec)*1000000 + (tv.tv_usec - old->access.tv_usec);
+        timediff = (tv.tv_sec - old->access.tv_sec)*1000000UL + (tv.tv_usec - old->access.tv_usec);
         if(timediff > FRAG_TIMEOUT)
         {
             //remove captured fragments

@@ -1,7 +1,7 @@
 /*
  *  pcap-compatible 802.11 packet sniffer
  *
- *  Copyright (C) 2006-2013 Thomas d'Otreppe
+ *  Copyright (C) 2006-2014 Thomas d'Otreppe
  *  Copyright (C) 2004, 2005 Christophe Devine
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -396,6 +396,20 @@ void trim(char *str)
     str[i - begin] = '\0'; // Null terminate string.
 }
 
+FILE *open_oui_file(void) {
+	int i;
+	FILE *fp = NULL;
+
+	for (i=0; OUI_PATHS[i] != NULL; i++) {
+		fp = fopen(OUI_PATHS[i], "r");
+		if ( fp != NULL ) {
+			break;
+		}
+	}
+
+	return fp;
+}
+
 struct oui * load_oui_file(void) {
 	FILE *fp;
 	char * manuf;
@@ -404,15 +418,10 @@ struct oui * load_oui_file(void) {
 	unsigned char b[2];
 	unsigned char c[2];
 	struct oui *oui_ptr = NULL, *oui_head = NULL;
-
-	if (!(fp = fopen(OUI_PATH0, "r"))) {
-		if (!(fp = fopen(OUI_PATH1, "r"))) {
-			if (!(fp = fopen(OUI_PATH2, "r"))) {
-				if (!(fp = fopen(OUI_PATH3, "r"))) {
-					return NULL;
-				}
-			}
-		}
+	
+	fp = open_oui_file();
+	if (!fp) {
+		return NULL;
 	}
 
 	memset(buffer, 0x00, sizeof(buffer));
@@ -615,7 +624,7 @@ int check_shared_key(unsigned char *h80211, int caplen)
 char usage[] =
 
 "\n"
-"  %s - (C) 2006-2013 Thomas d\'Otreppe\n"
+"  %s - (C) 2006-2014 Thomas d\'Otreppe\n"
 "  http://www.aircrack-ng.org\n"
 "\n"
 "  usage: airodump-ng <options> <interface>[,<interface>,...]\n"
@@ -754,7 +763,7 @@ void update_rx_quality( )
     /* accesspoints */
     while( ap_cur != NULL )
     {
-        time_diff = 1000000 * (cur_time.tv_sec  - ap_cur->ftimer.tv_sec )
+        time_diff = 1000000UL * (cur_time.tv_sec  - ap_cur->ftimer.tv_sec )
                             + (cur_time.tv_usec - ap_cur->ftimer.tv_usec);
 
         /* update every `QLT_TIME`seconds if the rate is low, or every 500ms otherwise */
@@ -763,12 +772,12 @@ void update_rx_quality( )
             /* at least one frame captured */
             if(ap_cur->fcapt > 1)
             {
-                capt_time =   ( 1000000 * (ap_cur->ftimel.tv_sec  - ap_cur->ftimef.tv_sec )    //time between first and last captured frame
+                capt_time =   ( 1000000UL * (ap_cur->ftimel.tv_sec  - ap_cur->ftimef.tv_sec )    //time between first and last captured frame
                                         + (ap_cur->ftimel.tv_usec - ap_cur->ftimef.tv_usec) );
 
-                miss_time =   ( 1000000 * (ap_cur->ftimef.tv_sec  - ap_cur->ftimer.tv_sec )    //time between timer reset and first frame
+                miss_time =   ( 1000000UL * (ap_cur->ftimef.tv_sec  - ap_cur->ftimer.tv_sec )    //time between timer reset and first frame
                                         + (ap_cur->ftimef.tv_usec - ap_cur->ftimer.tv_usec) )
-                            + ( 1000000 * (cur_time.tv_sec  - ap_cur->ftimel.tv_sec )          //time between last frame and this moment
+                            + ( 1000000UL * (cur_time.tv_sec  - ap_cur->ftimel.tv_sec )          //time between last frame and this moment
                                         + (cur_time.tv_usec - ap_cur->ftimel.tv_usec) );
 
                 //number of frames missed at the time where no frames were captured; extrapolated by assuming a constant framerate
@@ -797,7 +806,7 @@ void update_rx_quality( )
     /* stations */
     while( st_cur != NULL )
     {
-        time_diff = 1000000 * (cur_time.tv_sec  - st_cur->ftimer.tv_sec )
+        time_diff = 1000000UL * (cur_time.tv_sec  - st_cur->ftimer.tv_sec )
                             + (cur_time.tv_usec - st_cur->ftimer.tv_usec);
 
         if( time_diff > 10000000 )
@@ -1111,7 +1120,7 @@ int list_check_decloak(struct pkt_buf **list, int length, unsigned char* packet)
 
     gettimeofday(&tv1, NULL);
 
-    timediff = (((tv1.tv_sec - ((*list)->ctime.tv_sec)) * 1000000) + (tv1.tv_usec - ((*list)->ctime.tv_usec))) / 1000;
+    timediff = (((tv1.tv_sec - ((*list)->ctime.tv_sec)) * 1000000UL) + (tv1.tv_usec - ((*list)->ctime.tv_usec))) / 1000;
     if( timediff > BUFFER_TIME )
     {
         list_tail_free(list);
@@ -1122,7 +1131,7 @@ int list_check_decloak(struct pkt_buf **list, int length, unsigned char* packet)
     {
         if(next->next != NULL)
         {
-            timediff = (((tv1.tv_sec - (next->next->ctime.tv_sec)) * 1000000) + (tv1.tv_usec - (next->next->ctime.tv_usec))) / 1000;
+            timediff = (((tv1.tv_sec - (next->next->ctime.tv_sec)) * 1000000UL) + (tv1.tv_usec - (next->next->ctime.tv_usec))) / 1000;
             if( timediff > BUFFER_TIME )
             {
                 list_tail_free(&(next->next));
@@ -3752,12 +3761,11 @@ int dump_write_csv( void )
 char * sanitize_xml(unsigned char * text, int length)
 {
 	int i;
-	size_t len;
+	size_t len, current_text_len;
 	unsigned char * pos;
-	char * newpos;
 	char * newtext = NULL;
 	if (text != NULL && length > 0) {
-		len = 6 * length;
+		len = 8 * length;
 		newtext = (char *)calloc(1, (len + 1) * sizeof(char)); // Make sure we have enough space
 		pos = text;
 		for (i = 0; i < length; ++i, ++pos) {
@@ -3777,13 +3785,20 @@ char * sanitize_xml(unsigned char * text, int length)
 				case '"':
 					strncat(newtext, "&quot;", len);
 					break;
+				case '\r':
+					strncat(newtext, "&#xD;", len);
+					break;
+				case '\n':
+					strncat(newtext, "&#xA;", len);
+					break;
 				default:
-					if ( isprint((int)(*pos)) || (*pos)>127 ) {
+					if ( isprint((int)(*pos)) ) {
 						newtext[strlen(newtext)] = *pos;
 					} else {
-						newtext[strlen(newtext)] = '\\';
-						newpos = newtext + strlen(newtext);
-						snprintf(newpos, strlen(newpos) + 1, "%3u", *pos);
+						strncat(newtext, "&#x", len);
+						current_text_len = strlen(newtext);
+						snprintf(newtext + current_text_len, len - current_text_len + 1, "%4x", *pos);
+						strncat(newtext, ";", len);
 					}
 					break;
 			}
@@ -3798,7 +3813,6 @@ char * sanitize_xml(unsigned char * text, int length)
 #define OUI_STR_SIZE 8
 #define MANUF_SIZE 128
 char *get_manufacturer(unsigned char mac0, unsigned char mac1, unsigned char mac2) {
-	static char * oui_location = NULL;
 	char oui[OUI_STR_SIZE + 1];
 	char *manuf;
 	//char *buffer_manuf;
@@ -3832,24 +3846,7 @@ char *get_manufacturer(unsigned char mac0, unsigned char mac1, unsigned char mac
 		}
 	} else {
 		// If the file exist, then query it each time we need to get a manufacturer.
-		if (oui_location == NULL) {
-			fp = fopen(OUI_PATH0, "r");
-			if (fp == NULL) {
-				fp = fopen(OUI_PATH1, "r");
-				if (fp == NULL) {
-				    fp = fopen(OUI_PATH2, "r");
-				    if (fp != NULL) {
-					oui_location = OUI_PATH2;
-				    }
-				} else {
-				    oui_location = OUI_PATH1;
-				}
-			} else {
-				oui_location = OUI_PATH0;
-			}
-		} else {
-			fp = fopen(oui_location, "r");
-		}
+		fp = open_oui_file();
 
 		if (fp != NULL) {
 
@@ -4526,7 +4523,7 @@ void gps_tracker( void )
         	}
 
         	// New version, JSON
-        	if( recv( gpsd_sock, line + pos, sizeof( line ) - 1, 0 ) <= 0 )
+        	if( recv( gpsd_sock, line + pos, sizeof( line ) - pos - 1, 0 ) <= 0 )
         		return;
 
         	// search for TPV class: {"class":"TPV"
@@ -6478,10 +6475,10 @@ usage:
 
         gettimeofday( &tv1, NULL );
 
-        cycle_time = 1000000 * ( tv1.tv_sec  - tv3.tv_sec  )
+        cycle_time = 1000000UL * ( tv1.tv_sec  - tv3.tv_sec  )
                              + ( tv1.tv_usec - tv3.tv_usec );
 
-        cycle_time2 = 1000000 * ( tv1.tv_sec  - tv4.tv_sec  )
+        cycle_time2 = 1000000UL * ( tv1.tv_sec  - tv4.tv_sec  )
                               + ( tv1.tv_usec - tv4.tv_usec );
 
         if( G.active_scan_sim > 0 && cycle_time2 > G.active_scan_sim*1000 )
@@ -6619,7 +6616,7 @@ usage:
                 {
                     gettimeofday( &tv2, NULL );
 
-                    time_slept += 1000000 * ( tv2.tv_sec  - tv1.tv_sec  )
+                    time_slept += 1000000UL * ( tv2.tv_sec  - tv1.tv_sec  )
                                         + ( tv2.tv_usec - tv1.tv_usec );
 
                     continue;
@@ -6638,7 +6635,7 @@ usage:
 
         gettimeofday( &tv2, NULL );
 
-        time_slept += 1000000 * ( tv2.tv_sec  - tv1.tv_sec  )
+        time_slept += 1000000UL * ( tv2.tv_sec  - tv1.tv_sec  )
                               + ( tv2.tv_usec - tv1.tv_usec );
 
         if( time_slept > REFRESH_RATE && time_slept > G.update_s * 1000000)
@@ -6740,7 +6737,7 @@ usage:
 
     if(G.own_channels)
         free(G.own_channels);
-    
+
     if(G.f_essid)
         free(G.f_essid);
 
