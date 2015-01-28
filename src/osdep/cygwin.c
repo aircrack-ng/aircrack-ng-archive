@@ -306,7 +306,7 @@ int cygwin_read_reader(int fd, int plen, void *dst, int len)
 	/* packet */
 	if (len > plen)
 		len = plen;
-	if (net_read_exact(fd, dst, len) == -1)
+	if (read(fd, dst, len) <= 0)
 		return -1;
 	plen -= len;
 
@@ -318,7 +318,7 @@ int cygwin_read_reader(int fd, int plen, void *dst, int len)
 		if (rd > plen)
 			rd = plen;
 
-		if (net_read_exact(fd, lame, rd) == -1)
+		if (read(fd, lame, rd) <= 0)
 			return -1;
 
 		plen -= rd;
@@ -343,11 +343,11 @@ static int cygwin_read(struct wif *wi, unsigned char *h80211, int len,
 		ri = &tmp;
 
 	/* length */
-	if (net_read_exact(pc->pc_pipe[0], &plen, sizeof(plen)) == -1)
+	if (read(pc->pc_pipe[0], &plen, sizeof(plen)) <= 0)
 		return -1;
 
 	/* ri */
-	if (net_read_exact(pc->pc_pipe[0], ri, sizeof(*ri)) == -1)
+	if (read(pc->pc_pipe[0], ri, sizeof(*ri)) <= 0)
 		return -1;
 	plen -= sizeof(*ri);
 	assert(plen > 0);
