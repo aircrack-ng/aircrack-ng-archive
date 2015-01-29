@@ -1,4 +1,4 @@
-/* 
+/*
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -143,6 +143,7 @@ static unsigned char ZERO[32] =
 "\x00\x00\x00\x00\x00\x00\x00\x00";
 
 const char *OUI_PATHS[] = {
+    "./airodump-ng-oui.txt",
     "/etc/aircrack-ng/airodump-ng-oui.txt",
     "/usr/local/etc/aircrack-ng/airodump-ng-oui.txt",
     "/usr/share/aircrack-ng/airodump-ng-oui.txt",
@@ -266,7 +267,7 @@ struct AP_info
     						  /* detecting WEP cloak	  */
     						  /* + one byte to indicate   */
     						  /* (in)existence of the IV  */
-					  
+
     int marked;
     int marked_color;
 };
@@ -452,10 +453,10 @@ struct globals
     int skip_columns;
     int do_pause;
     int do_sort_always;
-    
+
     pthread_mutex_t mx_print;			 /* lock write access to ap LL   */
     pthread_mutex_t mx_sort;			 /* lock write access to ap LL   */
-    
+
     unsigned char selected_bssid[6];	/* bssid that is selected */
 
     int ignore_negative_one;
