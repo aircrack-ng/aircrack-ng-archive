@@ -438,6 +438,7 @@ static void handle_card(struct sstate *ss)
 	ri->ri_power = __cpu_to_be32(ri->ri_power);
 	ri->ri_noise = __cpu_to_be32(ri->ri_noise);
 	ri->ri_channel = __cpu_to_be32(ri->ri_channel);
+	ri->ri_freq = __cpu_to_be32(ri->ri_freq);
 	ri->ri_rate = __cpu_to_be32(ri->ri_rate);
 	ri->ri_antenna = __cpu_to_be32(ri->ri_antenna);
 
