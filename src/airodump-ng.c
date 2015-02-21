@@ -645,6 +645,7 @@ char usage[] =
 "      -r             <file> : Read packets from that file\n"
 "      -x            <msecs> : Active Scanning Simulation\n"
 "      --manufacturer        : Display manufacturer from IEEE OUI list\n"
+"      --wps                 : Display whether WPS is supported\n"
 "      --uptime              : Display AP Uptime from Beacon Timestamp\n"
 "      --output-format\n"
 "                  <formats> : Output format. Possible values:\n"
@@ -1368,12 +1369,14 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
         ap_cur->essid_stored = 0;
         ap_cur->timestamp = 0;
 
+        ap_cur->wps_supported = 0;
+
         ap_cur->decloak_detect=G.decloak;
         ap_cur->is_decloak = 0;
         ap_cur->packets = NULL;
 
-	ap_cur->marked = 0;
-	ap_cur->marked_color = 1;
+        ap_cur->marked = 0;
+        ap_cur->marked_color = 1;
 
         ap_cur->data_root = NULL;
         ap_cur->EAP_detected = 0;
@@ -1857,6 +1860,11 @@ skip_probe:
             else if( (type == 0xDD && (length >= 8) && (memcmp(p+2, "\x00\x50\xF2\x02\x01\x01", 6) == 0)))
             {
                 ap_cur->security |= STD_QOS;
+                p += length+2;
+            }
+	    else if( (type == 0xDD && (length >= 4) && (memcmp(p+2, "\x00\x50\xF2\x04", 4) == 0)))
+            {
+                ap_cur->wps_supported = 1;
                 p += length+2;
             }
             else p += length+2;
@@ -2985,6 +2993,7 @@ void dump_print( int ws_row, int ws_col, int if_num )
 
     if(!G.singlechan) columns_ap -= 4; //no RXQ in scan mode
     if(G.show_uptime) columns_ap += 15; //show uptime needs more space
+    if(G.show_wps) columns_ap += 5; //show wps needs more space
 
     nlines = 2;
 
@@ -3119,6 +3128,9 @@ void dump_print( int ws_row, int ws_col, int if_num )
 
     if (G.show_uptime)
     	strcat(strbuf, "       UPTIME  ");
+
+    if (G.show_wps)
+        strcat(strbuf, "WPS  ");
 
     strcat(strbuf, "ESSID");
 
@@ -3266,6 +3278,11 @@ void dump_print( int ws_row, int ws_col, int if_num )
 
 	    if (G.show_uptime) {
 	    	snprintf(strbuf+len, sizeof(strbuf)-len, " %14s", parse_timestamp(ap_cur->timestamp));
+	    	len = strlen(strbuf);
+	    }
+
+            if (G.show_wps) {
+	    	snprintf(strbuf+len, sizeof(strbuf)-len, "   %c ", (ap_cur->wps_supported) ? 'Y' : ' ');
 	    	len = strlen(strbuf);
 	    }
 
@@ -5587,6 +5604,7 @@ int main( int argc, char *argv[] )
         {"output-format",  1, 0, 'o'},
         {"ignore-negative-one", 0, &G.ignore_negative_one, 1},
         {"manufacturer",  0, 0, 'M'},
+        {"wps",  0, 0, 'W'},
         {"uptime",   0, 0, 'U'},
         {0,          0, 0,  0 }
     };
@@ -5660,6 +5678,7 @@ int main( int argc, char *argv[] )
     G.hide_known   =  0;
     G.maxsize_essid_seen  =  5; // Initial value: length of "ESSID"
     G.show_manufacturer = 0;
+    G.show_wps     =  0;
     G.show_uptime  = 0;
     G.hopfreq      =  DEFAULT_HOPFREQ;
     G.s_file       =  NULL;
@@ -5755,7 +5774,7 @@ int main( int argc, char *argv[] )
         option_index = 0;
 
         option = getopt_long( argc, argv,
-                        "b:c:egiw:s:t:u:m:d:X:N:R:aHDB:Ahf:r:EC:o:x:MU",
+                        "b:c:egiw:s:t:u:m:d:X:N:R:aHDB:Ahf:r:EC:o:x:WMU",
                         long_options, &option_index );
 
         if( option < 0 ) break;
@@ -5807,15 +5826,20 @@ int main( int argc, char *argv[] )
 
                 G.decloak = 0;
                 break;
+			
+            case 'W':
 
-	    case 'M':
+                G.show_wps = 1;
+                break;
+			
+            case 'M':
 
                 G.show_manufacturer = 1;
                 break;
 
-	    case 'U' :
-	    		G.show_uptime = 1;
-	    		break;
+            case 'U' :
+                G.show_uptime = 1;
+                break;
 
             case 'c' :
 
