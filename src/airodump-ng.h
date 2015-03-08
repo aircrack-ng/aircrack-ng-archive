@@ -269,6 +269,8 @@ struct AP_info
 					  
     int marked;
     int marked_color;
+
+    int wps_supported;         /* wps is supported? */
 };
 
 /* linked list of detected clients */
@@ -332,6 +334,8 @@ struct globals
     unsigned char f_netmask[6];
     char **f_essid;
     int f_essid_count;
+    unsigned char *f_skipbssid;
+    int f_skipbssid_count;
 #ifdef HAVE_PCRE
     pcre *f_essid_regex;
 #endif
@@ -418,6 +422,7 @@ struct globals
     int show_ap;
     int show_sta;
     int show_ack;
+    int show_wps;
     int hide_known;
 
     int hopfreq;
