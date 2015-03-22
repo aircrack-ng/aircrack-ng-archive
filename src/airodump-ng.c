@@ -188,7 +188,6 @@ void resetSelection()
     G.skip_columns=0;
     G.do_pause=0;
     G.do_sort_always=0;
-    G.show_manufacturer_prefix=0;
     memset(G.selected_bssid, '\x00', 6);
 }
 
@@ -204,7 +203,6 @@ void resetSelection()
 #define KEY_i		0x69	//inverse sorting
 #define KEY_m		0x6D	//mark current AP
 #define KEY_n		0x6E	//?
-#define KEY_o		0x6F	//display manufacturer prefix
 #define KEY_r		0x72	//realtime sort (de)activate
 #define KEY_s		0x73	//cycle through sorting
 
@@ -218,7 +216,6 @@ void input_thread( void *arg) {
 	keycode=mygetch();
 
 	if(keycode == KEY_s) {
-	    memset(G.message, 32, sizeof(G.message)); // write spaces (32).
 	    G.sort_by++;
 	    G.selection_ap = 0;
 	    G.selection_sta = 0;
@@ -272,7 +269,6 @@ void input_thread( void *arg) {
 	}
 
 	if(keycode == KEY_SPACE) {
-	    memset(G.message, 32, sizeof(G.message)); // write spaces (32).
 	    G.do_pause = (G.do_pause+1)%2;
 	    if(G.do_pause) {
 		snprintf(G.message, sizeof(G.message), "][ paused output");
@@ -290,7 +286,6 @@ void input_thread( void *arg) {
 	}
 
 	if(keycode == KEY_r) {
-	    memset(G.message, 32, sizeof(G.message)); // write spaces (32).
 	    G.do_sort_always = (G.do_sort_always+1)%2;
 	    if(G.do_sort_always)
 		snprintf(G.message, sizeof(G.message), "][ realtime sorting activated");
@@ -325,7 +320,6 @@ void input_thread( void *arg) {
 	}
 
 	if(keycode == KEY_i) {
-	    memset(G.message, 32, sizeof(G.message)); // write spaces (32).
 	    G.sort_inv*=-1;
 	    if(G.sort_inv < 0)
 		snprintf(G.message, sizeof(G.message), "][ inverted sorting order");
@@ -334,7 +328,6 @@ void input_thread( void *arg) {
 	}
 
 	if(keycode == KEY_TAB) {
-	    memset(G.message, 32, sizeof(G.message)); // write spaces (32).
 	    if(G.selection_ap == 0) {
 		G.selection_ap = 1;
 		G.selected_ap = 1;
@@ -348,7 +341,6 @@ void input_thread( void *arg) {
 	}
 
 	if(keycode == KEY_a) {
-	    memset(G.message, 32, sizeof(G.message)); // write spaces (32).
 	    if(G.show_ap == 1 && G.show_sta == 1 && G.show_ack == 0) {
 		G.show_ap = 1;
 		G.show_sta = 1;
@@ -372,30 +364,7 @@ void input_thread( void *arg) {
 	    }
 	}
 
-	if (keycode == KEY_o) {
-		memset(G.message, 32, sizeof(G.message)); // write spaces (32).
-		if (!G.ethersList) {
-			G.show_manufacturer_prefix = (G.show_manufacturer_prefix+1)%2;
-			if (G.show_manufacturer_prefix)
-				snprintf(G.message, sizeof(G.message), "][ display manufacturer prefix");
-		} else {
-			if (G.show_manufacturer_prefix == 0 && G.show_ethers_name == 1) {
-				G.show_manufacturer_prefix = 0;
-				G.show_ethers_name = 0;
-				snprintf(G.message, sizeof(G.message), "][ display MAC address");
-			} else if (G.show_manufacturer_prefix == 0 && G.show_ethers_name == 0) {
-				G.show_manufacturer_prefix = 1;
-				G.show_ethers_name = 0;
-				snprintf(G.message, sizeof(G.message), "][ display manufacturer prefix");
-			} else if (G.show_manufacturer_prefix == 1 && G.show_ethers_name == 0) { // display ethers name
-				G.show_manufacturer_prefix = 0;
-				G.show_ethers_name = 1;
-			}
-		}
-	}
-
 	if (keycode == KEY_d) {
-	    memset(G.message, 32, sizeof(G.message)); // write spaces (32).
 		resetSelection();
 		snprintf(G.message, sizeof(G.message), "][ reset selection to default");
 	}
@@ -498,217 +467,6 @@ struct oui * load_oui_file(void) {
 
 	fclose(fp);
 	return oui_head;
-}
-
-int get_string_for_hex_mac(char * mac_address_string, size_t buflen, unsigned char * mac_address) {
-    return (snprintf(
-            mac_address_string, buflen,
-            "%02X:%02X:%02X:%02X:%02X:%02X",
-            mac_address[0], mac_address[1], mac_address[2], mac_address[3], mac_address[4], mac_address[5]
-        ) == MAC_LEN - 1) ? 1 : 0;
-}
-
-void print_ethers_file(struct ethers_names * ether_ptr) {
-    char mac_address_string[MAC_LEN];
-
-    while (ether_ptr != NULL) {
-        get_string_for_hex_mac(mac_address_string, sizeof(mac_address_string), ether_ptr->mac);
-        printf("MAC: %s -> Name: %s\n", mac_address_string, ether_ptr->name);
-
-        ether_ptr = ether_ptr->next;
-    }
-}
-
-char * find_name_for_mac_address(unsigned char * mac_address, struct ethers_names * ether_ptr) {
-    while (ether_ptr != NULL) {
-
-        if (memcmp(ether_ptr->mac, mac_address, 6) == 0)
-            return ether_ptr->name;
-
-        ether_ptr = ether_ptr->next;
-    }
-
-    return NULL;
-}
-
-void get_name_or_mac_string(char * mac_address_string, size_t buflen, unsigned char * mac_address, struct ethers_names * ether_head) {
-    char * name;
-
-    name = find_name_for_mac_address(mac_address, ether_head);
-    if (name != NULL) {
-        memcpy( mac_address_string, name, buflen);
-    } else {
-        get_string_for_hex_mac(mac_address_string, buflen, mac_address);
-    }
-}
-
-unsigned char hex_to_char(char * hex_string) {
-    char *endptr;
-
-    return (unsigned char)strtol(hex_string, &endptr, 16);
-}
-
-struct ethers_names * load_ethers_file(void) {
-    FILE *fp;
-    char line[60];
-    char * line_pos;
-    unsigned char a[2];
-    unsigned char b[2];
-    unsigned char c[2];
-    unsigned char d[2];
-    unsigned char e[2];
-    unsigned char f[2];
-    char x[MAC_LEN];
-    char mac_address_string[MAC_LEN];
-    struct ethers_names *ether_cur, *ether_next;
-    struct ethers_names *ether_ptr  = NULL,
-                        *ether_head = NULL;
-
-    if (!G.s_ethers)
-        return NULL;
-
-    if ( ( fp = fopen( G.s_ethers, "r" ) ) != NULL ) {
-        while (fgets(line, sizeof(line), fp) != NULL) {
-            line_pos = strrchr(line, '\n');
-            if (line_pos != NULL)
-                *line_pos = '\0';
-            line_pos = line;
-
-            if (sscanf(line, "%2c:%2c:%2c:%2c:%2c:%2c", a, b, c, d, e, f) == 6) {
-                if (ether_ptr == NULL) {
-                    if (!(ether_ptr = (struct ethers_names *)calloc(1, sizeof(struct ethers_names)))) {
-                        fclose(fp);
-                        perror("malloc failed");
-                        return NULL;
-                    }
-                } else if (ether_ptr->name[0] != '\0') {
-                    if (!(ether_ptr->next = (struct ethers_names *)calloc(1, sizeof(struct ethers_names)))) {
-                        fclose(fp);
-                        perror("malloc failed");
-                        return NULL;
-                    }
-                    ether_ptr = ether_ptr->next;
-                }
-                if (ether_head == NULL) {
-                    ether_head = ether_ptr;
-                }
-
-                line_pos += MAC_LEN - 1; // Jump to last character of MAC address
-                while (*line_pos == '\t' || *line_pos == ' ') {
-                    line_pos++;
-                }
-
-                if (line_pos == NULL)
-                    continue;
-
-                memset(ether_ptr->mac, 0x00, sizeof(ether_ptr->mac));
-                snprintf(x, sizeof(x),"%c%c:%c%c:%c%c:%c%c:%c%c:%c%c", a[0], a[1], b[0], b[1], c[0], c[1], d[0], d[1], e[0], e[1], f[0], f[1]);
-                getmac(x, 1, ether_ptr->mac);
-
-                if (find_name_for_mac_address(ether_ptr->mac, ether_head) != NULL
-                        && strlen(find_name_for_mac_address(ether_ptr->mac, ether_head)) > 0) {
-
-                    get_string_for_hex_mac(mac_address_string, sizeof(mac_address_string), ether_ptr->mac);
-
-                    fprintf( stderr, "Found duplicate entry for the same MAC address in ethers file: %s = %s (old name %s).\n",
-                        mac_address_string, line_pos, find_name_for_mac_address(ether_ptr->mac, ether_head)
-                    );
-                    ether_cur = ether_head;
-                    while (ether_cur != NULL) {
-                        ether_next = ether_cur->next;
-                        free(ether_cur);
-                        ether_cur = ether_next;
-                    }
-                    fclose(fp);
-                    //exit(1);
-                    return NULL;
-                }
-
-                memcpy(ether_ptr->name, line_pos, sizeof(ether_ptr->name) - 1);
-            }
-        }
-        /* print_ethers_file(ether_head); */
-
-        fclose(fp);
-    } else {
-        perror( "fopen failed" );
-        fprintf( stderr, "Could not open \"%s\".\n", G.s_ethers );
-    }
-
-    return ether_head;
-}
-
-void trim2(char *buffer, size_t buflen, char *str)
-{
-    char *buffer_ptr = str;
-    size_t i = 0;
-
-    if (buflen < 1)
-        return;
-    while(*buffer_ptr != '\0' && i < buflen-1)
-    {
-        if(*buffer_ptr != ' ' && *buffer_ptr != '\t')
-            buffer[i++] = *buffer_ptr;
-        buffer_ptr++;
-    }
-    buffer[i] = '\0'; // Null terminate string
-}
-
-void consistent_case(char *str)
-{
-    char *buffer_ptr;
-    int i;
-
-    for (i = 0; i < (int) strlen(str); i++)
-        if (str[i] >= 'A' && str[i] <= 'Z')
-            str[i] += 'a' - 'A';
-    if (str[0] >= 'a' && str[0] <= 'z')
-        str[0] -= 'a' - 'A';
-    buffer_ptr = str;
-    while ((buffer_ptr = strchr(buffer_ptr,' '))) {
-        buffer_ptr++;
-        if (*buffer_ptr >= 'a' && *buffer_ptr <= 'z')
-            *buffer_ptr -= 'a' - 'A';
-    }
-}
-
-void strip_chars(char *buffer, char *str, char *chars)
-{
-    int i = 0;
-
-    for (; *str; str++)
-        buffer[i++] = ( !strchr(chars, *str) ) ? *str : ' ';
-    buffer[i] = '\0'; // Null terminate string
-}
-
-int do_manuf_mac_string(char * manuf_mac_string, size_t buflen, unsigned char * mac_address, char * manuf)
-{
-    char buffer[128], new_manuf[128];
-    int ret;
-
-    if (manuf == NULL || memcmp(manuf, "Unknown", 7) == 0)
-        return -1;
-
-    memset(new_manuf, 0, sizeof(new_manuf));
-    // Replace any ',.()& to a space
-    strip_chars(buffer, manuf, "',.()&");
-    // Convert to consistent case
-    consistent_case(buffer);
-    // Remove white spaces
-    trim2(new_manuf, sizeof(new_manuf), buffer);
-    // Truncate manufacturer string to 8 characters
-    ret = snprintf(manuf_mac_string, buflen, "%.*s_%02X:%02X:%02X", 8, new_manuf, mac_address[3], mac_address[4], mac_address[5]);
-    return (ret == MAC_LEN - 1) ? 1 : 0;
-}
-
-void get_manuf_mac_string(char * mac_address_string, size_t buflen, unsigned char * mac_address, char * manuf) {
-    char manuf_mac_string[MAC_LEN];
-    int ret = do_manuf_mac_string(manuf_mac_string, sizeof(manuf_mac_string), mac_address, manuf);
-
-    if (ret != -1)
-        memcpy(mac_address_string, manuf_mac_string, buflen);
-    else
-        get_string_for_hex_mac(mac_address_string, buflen, mac_address);
 }
 
 int check_shared_key(unsigned char *h80211, int caplen)
@@ -887,15 +645,14 @@ char usage[] =
 "      -r             <file> : Read packets from that file\n"
 "      -x            <msecs> : Active Scanning Simulation\n"
 "      --manufacturer        : Display manufacturer from IEEE OUI list\n"
-"      --ethers              : Map MAC addresses to names using\n"
-"                              provided ethers file\n"
 "      --uptime              : Display AP Uptime from Beacon Timestamp\n"
-"      --wps                 : Display WPS information (if any)\n"
 "      --output-format\n"
 "                  <formats> : Output format. Possible values:\n"
 "                              pcap, ivs, csv, gps, kismet, netxml\n"
 "      --ignore-negative-one : Removes the message that says\n"
 "                              fixed channel <interface>: -1\n"
+"      --write-interval\n"
+"                  <seconds> : Output file(s) write interval in seconds\n"
 "\n"
 "  Filter options:\n"
 "      --encrypt   <suite>   : Filter APs by cipher suite\n"
@@ -1542,6 +1299,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
 			ap_cur->manuf = get_manufacturer(ap_cur->bssid[0], ap_cur->bssid[1], ap_cur->bssid[2]);
 		}
 
+	ap_cur->nb_pkt = 0;
         ap_cur->prev = ap_prv;
 
         ap_cur->tinit = time( NULL );
@@ -1560,6 +1318,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
 
         ap_cur->uiv_root = uniqueiv_init();
 
+	ap_cur->nb_data = 0;
         ap_cur->nb_dataps = 0;
         ap_cur->nb_data_old = 0;
         gettimeofday(&(ap_cur->tv), NULL);
@@ -1582,6 +1341,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
 
         ap_cur->ssid_length = 0;
         ap_cur->essid_stored = 0;
+        memset( ap_cur->essid, 0, MAX_IE_ELEMENT_SIZE );
         ap_cur->timestamp = 0;
 
         ap_cur->decloak_detect=G.decloak;
@@ -1757,6 +1517,8 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
 			st_cur->manuf = get_manufacturer(st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2]);
 		}
 
+	st_cur->nb_pkt = 0;
+
         st_cur->prev = st_prv;
 
         st_cur->tinit = time( NULL );
@@ -1771,6 +1533,8 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
         st_cur->lastseq = 0;
         st_cur->qos_fr_ds = 0;
         st_cur->qos_to_ds = 0;
+	st_cur->channel = 0;
+
         gettimeofday( &(st_cur->ftimer), NULL);
 
         for( i = 0; i < NB_PRB; i++ )
@@ -1805,6 +1569,12 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
     {
         st_cur->power = ri->ri_power;
         st_cur->rate_from = ri->ri_rate;
+	// XXX: Why 'ri->ri_channel < 167'?
+	// TODO: Also addd explanation
+	if(ri->ri_channel > 0 && ri->ri_channel < 167)
+		st_cur->channel = ri->ri_channel;
+	else
+		st_cur->channel = G.channel[cardnum];
 
         if(st_cur->lastseq != 0)
         {
@@ -3242,7 +3012,6 @@ void dump_print( int ws_row, int ws_col, int if_num )
     int nlines, i, n, len;
     char strbuf[512];
     char buffer[512];
-    char mac_address_string[MAC_LEN];
     char ssid_list[512];
     struct AP_info *ap_cur;
     struct ST_info *st_cur;
@@ -3415,7 +3184,6 @@ void dump_print( int ws_row, int ws_col, int if_num )
 		snprintf(strbuf+columns_ap+G.maxsize_essid_seen-5, 15,"%s","  MANUFACTURER");
 	}
     }
-
 	strbuf[ws_col - 1] = '\0';
 	fprintf( stderr, "%s\n", strbuf );
 
@@ -3485,14 +3253,10 @@ void dump_print( int ws_row, int ws_col, int if_num )
 
 	    memset(strbuf, '\0', sizeof(strbuf));
 
-	    get_string_for_hex_mac(mac_address_string, sizeof(mac_address_string), ap_cur->bssid);
-	    if (G.show_ethers_name)
-	        get_name_or_mac_string(mac_address_string, sizeof(mac_address_string), ap_cur->bssid, G.ethersList);
-	    if (G.show_manufacturer_prefix)
-	        get_manuf_mac_string(mac_address_string, sizeof(mac_address_string), ap_cur->bssid, ap_cur->manuf);
-	    snprintf( strbuf, sizeof(strbuf), " %s", mac_address_string );
-	    if (strlen(mac_address_string) < MAC_LEN) // write spaces (32)
-	        memset( strbuf+strlen(strbuf), 32, (MAC_LEN-strlen(mac_address_string)+1-1-1) );
+	    snprintf( strbuf, sizeof(strbuf), " %02X:%02X:%02X:%02X:%02X:%02X",
+		    ap_cur->bssid[0], ap_cur->bssid[1],
+		    ap_cur->bssid[2], ap_cur->bssid[3],
+		    ap_cur->bssid[4], ap_cur->bssid[5] );
 
 	    len = strlen(strbuf);
 
@@ -3769,30 +3533,18 @@ void dump_print( int ws_row, int ws_col, int if_num )
 		if( ws_row != 0 && nlines >= ws_row )
 		    return;
 
-		memset(strbuf, '\0', sizeof(strbuf));
 		if( ! memcmp( ap_cur->bssid, BROADCAST, 6 ) )
-		    snprintf( strbuf, sizeof(strbuf), " (not associated) " );
+		    fprintf( stderr, " (not associated) " );
 		else
-		{
-		    get_string_for_hex_mac(mac_address_string, sizeof(mac_address_string), ap_cur->bssid);
-		    if (G.show_ethers_name)
-		        get_name_or_mac_string(mac_address_string, sizeof(mac_address_string), ap_cur->bssid, G.ethersList);
-		    if (G.show_manufacturer_prefix)
-		        get_manuf_mac_string(mac_address_string, sizeof(mac_address_string), ap_cur->bssid, ap_cur->manuf);
-		    snprintf( strbuf, sizeof(strbuf), " %s", mac_address_string );
-		    if (strlen(mac_address_string) < MAC_LEN) // write spaces (32)
-		        memset( strbuf+strlen(strbuf), 32, (MAC_LEN-strlen(mac_address_string)+1-1-1) );
-		}
+		    fprintf( stderr, " %02X:%02X:%02X:%02X:%02X:%02X",
+			    ap_cur->bssid[0], ap_cur->bssid[1],
+			    ap_cur->bssid[2], ap_cur->bssid[3],
+			    ap_cur->bssid[4], ap_cur->bssid[5] );
 
-		get_string_for_hex_mac(mac_address_string, sizeof(mac_address_string), st_cur->stmac);
-		if (G.show_ethers_name)
-		    get_name_or_mac_string(mac_address_string, sizeof(mac_address_string), st_cur->stmac, G.ethersList);
-		if (G.show_manufacturer_prefix)
-		    get_manuf_mac_string(mac_address_string, sizeof(mac_address_string), st_cur->stmac, st_cur->manuf);
-		snprintf( strbuf+strlen(strbuf), sizeof(strbuf)-strlen(strbuf), "  %s", mac_address_string );
-		if (strlen(mac_address_string) < MAC_LEN) // write spaces (32)
-		    memset( strbuf+strlen(strbuf), 32, (MAC_LEN-strlen(mac_address_string)+1-1-1) );
-		fprintf( stderr, "%s", strbuf );
+		fprintf( stderr, "  %02X:%02X:%02X:%02X:%02X:%02X",
+			st_cur->stmac[0], st_cur->stmac[1],
+			st_cur->stmac[2], st_cur->stmac[3],
+			st_cur->stmac[4], st_cur->stmac[5] );
 
 		fprintf( stderr, "  %3d ", st_cur->power    );
 		fprintf( stderr, "  %2d", st_cur->rate_to/1000000  );
@@ -3881,19 +3633,10 @@ void dump_print( int ws_row, int ws_col, int if_num )
             if( ws_row != 0 && nlines >= ws_row )
                 return;
 
-            memset(strbuf, '\0', sizeof(strbuf));
-            get_string_for_hex_mac(mac_address_string, sizeof(mac_address_string), na_cur->namac);
-            if (G.show_ethers_name)
-                get_name_or_mac_string(mac_address_string, sizeof(mac_address_string), na_cur->namac, G.ethersList);
-            if (G.show_manufacturer_prefix) {
-                if (na_cur->manuf == NULL)
-                    na_cur->manuf = get_manufacturer(na_cur->namac[0], na_cur->namac[1], na_cur->namac[2]);
-                get_manuf_mac_string(mac_address_string, sizeof(mac_address_string), na_cur->namac, na_cur->manuf);
-            }
-            snprintf( strbuf, sizeof(strbuf), " %s", mac_address_string );
-            if (strlen(mac_address_string) < MAC_LEN) // write spaces (32)
-                memset( strbuf+strlen(strbuf), 32, (MAC_LEN-strlen(mac_address_string)+1-1-1) );
-            fprintf( stderr, "%s", strbuf );
+            fprintf( stderr, " %02X:%02X:%02X:%02X:%02X:%02X",
+                    na_cur->namac[0], na_cur->namac[1],
+                    na_cur->namac[2], na_cur->namac[3],
+                    na_cur->namac[4], na_cur->namac[5] );
 
             fprintf( stderr, "  %3d", na_cur->channel  );
             fprintf( stderr, " %3d", na_cur->power  );
@@ -3911,13 +3654,78 @@ void dump_print( int ws_row, int ws_col, int if_num )
     }
 }
 
+char * format_text_for_csv( const unsigned char * input, int len)
+{
+	// Unix style encoding
+	char * ret;
+	int i, pos, contains_space_end;
+	const char * hex_table = "0123456789ABCDEF";
+
+	if (len < 0)
+	{
+		return NULL;
+	}
+
+	if (len == 0 || input == NULL)
+	{
+		ret = (char*)malloc(1);
+		ret[0] = 0;
+		return ret;
+	}
+
+	pos = 0;
+	contains_space_end = (input[0] == ' ') || input[len-1] == ' ';
+
+	// Make sure to have enough memory for all that stuff
+	ret = (char *)malloc((len*4)+1+2);
+
+	if (contains_space_end)
+	{
+		ret[pos++] = '"';
+	}
+
+	for (i=0; i < len; i++)
+	{
+		if (!isprint(input[i]) || input[i] == ',' || input[i] == '\\' || input[i] == '"')
+		{
+			ret[pos++] = '\\';
+		}
+
+		if (isprint(input[i]))
+		{
+			ret[pos++] = input[i];
+		}
+		else if (input[i] == '\n' || input[i] == '\r' || input[i] == '\t')
+		{
+			ret[pos++] = (input[i] == '\n') ? 'n' : (input[i] == '\t') ? 't' : 'r';
+		}
+		else
+		{
+			ret[pos++] = 'x';
+			ret[pos++] = hex_table[input[i]/16];
+			ret[pos++] = hex_table[input[i]%16];
+		}
+	}
+
+	if (contains_space_end)
+	{
+		ret[pos++] = '"';
+	}
+
+	ret[pos++] = '\0';
+
+	ret = realloc(ret, pos);
+
+	return ret;
+}
+
 int dump_write_csv( void )
 {
-    int i, j, n;
+    int i, n, probes_written;
     struct tm *ltime;
-    char ssid_list[512];
     struct AP_info *ap_cur;
     struct ST_info *st_cur;
+    char * temp;
 
     if (! G.record_data || !G.output_format_csv)
     	return 0;
@@ -3944,7 +3752,7 @@ int dump_write_csv( void )
             continue;
         }
 
-        if(is_filtered_essid(ap_cur->essid) || ap_cur->nb_pkt < 2)
+        if(is_filtered_essid(ap_cur->essid))
         {
             ap_cur = ap_cur->next;
             continue;
@@ -3969,22 +3777,22 @@ int dump_write_csv( void )
                  ltime->tm_mday, ltime->tm_hour,
                  ltime->tm_min,  ltime->tm_sec );
 
-        fprintf( G.f_txt, "%2d, %3d, ",
+        fprintf( G.f_txt, "%2d, %3d,",
                  ap_cur->channel,
                  ap_cur->max_speed );
 
-        if( (ap_cur->security & (STD_OPN|STD_WEP|STD_WPA|STD_WPA2)) == 0) fprintf( G.f_txt, "    " );
+        if( (ap_cur->security & (STD_OPN|STD_WEP|STD_WPA|STD_WPA2)) == 0) fprintf( G.f_txt, " " );
         else
         {
-            if( ap_cur->security & STD_WPA2 ) fprintf( G.f_txt, "WPA2" );
-            if( ap_cur->security & STD_WPA  ) fprintf( G.f_txt, "WPA " );
-            if( ap_cur->security & STD_WEP  ) fprintf( G.f_txt, "WEP " );
-            if( ap_cur->security & STD_OPN  ) fprintf( G.f_txt, "OPN " );
+            if( ap_cur->security & STD_WPA2 ) fprintf( G.f_txt, " WPA2" );
+            if( ap_cur->security & STD_WPA  ) fprintf( G.f_txt, " WPA" );
+            if( ap_cur->security & STD_WEP  ) fprintf( G.f_txt, " WEP" );
+            if( ap_cur->security & STD_OPN  ) fprintf( G.f_txt, " OPN" );
         }
 
         fprintf( G.f_txt, ",");
 
-        if( (ap_cur->security & (ENC_WEP|ENC_TKIP|ENC_WRAP|ENC_CCMP|ENC_WEP104|ENC_WEP40)) == 0 ) fprintf( G.f_txt, "       ");
+        if( (ap_cur->security & (ENC_WEP|ENC_TKIP|ENC_WRAP|ENC_CCMP|ENC_WEP104|ENC_WEP40)) == 0 ) fprintf( G.f_txt, " ");
         else
         {
             if( ap_cur->security & ENC_CCMP   ) fprintf( G.f_txt, " CCMP");
@@ -4022,12 +3830,9 @@ int dump_write_csv( void )
 
         fprintf( G.f_txt, "%3d, ", ap_cur->ssid_length);
 
-        for(i=0; i<ap_cur->ssid_length; i++)
-        {
-            fprintf( G.f_txt, "%c", ap_cur->essid[i] );
-        }
-        fprintf( G.f_txt, ", " );
-
+	temp = format_text_for_csv(ap_cur->essid, ap_cur->ssid_length);
+        fprintf( G.f_txt, "%s, ", temp );
+	free(temp);
 
         if(ap_cur->key != NULL)
         {
@@ -4091,28 +3896,30 @@ int dump_write_csv( void )
                      ap_cur->bssid[2], ap_cur->bssid[3],
                      ap_cur->bssid[4], ap_cur->bssid[5] );
 
-        memset( ssid_list, 0, sizeof( ssid_list ) );
+	
 
+	probes_written = 0;
         for( i = 0, n = 0; i < NB_PRB; i++ )
         {
-            if( st_cur->probes[i][0] == '\0' )
+            if( st_cur->ssid_length[i] == 0 )
                 continue;
 
-            snprintf( ssid_list + n, sizeof( ssid_list ) - n - 1,
-                      "%c", ( i > 0 ) ? ',' : ' ' );
+	    temp = format_text_for_csv(st_cur->probes[i], st_cur->ssid_length[i]);
 
-            for(j=0; j<st_cur->ssid_length[i]; j++)
-            {
-                snprintf( ssid_list + n + 1 + j, sizeof( ssid_list ) - n - 2 - j,
-                          "%c", st_cur->probes[i][j]);
-            }
+	    if( probes_written == 0)
+	    {
+		fprintf( G.f_txt, "%s", temp);
+		probes_written = 1;
+	    }
+	    else
+	    {
+		fprintf( G.f_txt, ",%s", temp);
+	    }
 
-            n += ( 1 + st_cur->ssid_length[i] );
-            if( n >= (int) sizeof( ssid_list ) )
-                break;
+	    free(temp);
         }
 
-        fprintf( G.f_txt, "%s\r\n", ssid_list );
+        fprintf( G.f_txt, "\r\n" );
 
         st_cur = st_cur->next;
     }
@@ -4263,10 +4070,154 @@ char *get_manufacturer(unsigned char mac0, unsigned char mac1, unsigned char mac
 #define KISMET_NETXML_TRAILER "</detection-run>"
 
 #define TIME_STR_LENGTH 255
+int dump_write_kismet_netxml_client_info(struct ST_info *client, int client_no)
+{
+	char first_time[TIME_STR_LENGTH];
+	char last_time[TIME_STR_LENGTH];
+	char * manuf;
+	int client_max_rate, average_power, i, nb_probes_written, is_unassociated;
+	char * essid = NULL;
+
+	if (client == NULL || client_no < 1) {
+		return 1;
+	}
+
+	is_unassociated = (client->base == NULL || memcmp(client->base->bssid, BROADCAST, 6) == 0);
+
+	strncpy(first_time, ctime(&client->tinit), TIME_STR_LENGTH - 1);
+	first_time[strlen(first_time) - 1] = 0; // remove new line
+
+	strncpy(last_time, ctime(&client->tlast), TIME_STR_LENGTH - 1);
+	last_time[strlen(last_time) - 1] = 0; // remove new line
+
+	fprintf(G.f_kis_xml, "\t\t<wireless-client number=\"%d\" "
+				 "type=\"%s\" first-time=\"%s\""
+				 " last-time=\"%s\">\n",
+				 client_no, (is_unassociated) ? "tods" : "established",
+				 first_time, last_time );
+
+	fprintf( G.f_kis_xml, "\t\t\t<client-mac>%02X:%02X:%02X:%02X:%02X:%02X</client-mac>\n",
+				 client->stmac[0], client->stmac[1],
+				 client->stmac[2], client->stmac[3],
+				 client->stmac[4], client->stmac[5] );
+
+	/* Manufacturer, if set using standard oui list */
+	manuf = sanitize_xml((unsigned char *)client->manuf, strlen(client->manuf));
+	fprintf(G.f_kis_xml, "\t\t\t<client-manuf>%s</client-manuf>\n", (manuf != NULL) ? manuf : "Unknown");
+	free(manuf);
+
+	/* SSID item, aka Probes */
+	nb_probes_written = 0;
+	for( i = 0; i < NB_PRB; i++ )
+        {
+		if( client->probes[i][0] == '\0' )
+			continue;
+
+		fprintf( G.f_kis_xml, "\t\t\t<SSID first-time=\"%s\" last-time=\"%s\">\n",
+					first_time, last_time);
+		fprintf( G.f_kis_xml, "\t\t\t\t<type>Probe Request</type>\n"
+					"\t\t\t\t<max-rate>54.000000</max-rate>\n"
+					"\t\t\t\t<packets>1</packets>\n"
+					"\t\t\t\t<encryption>None</encryption>\n");
+		essid = sanitize_xml(client->probes[i], client->ssid_length[i]);
+		if (essid != NULL) {
+			fprintf( G.f_kis_xml, "\t\t\t\t<ssid>%s</ssid>\n", essid);
+			free(essid);
+		}
+		
+		fprintf( G.f_kis_xml, "\t\t\t</SSID>\n");
+
+		++nb_probes_written;
+        }
+
+	// Unassociated client with broadcast probes
+	if (is_unassociated && nb_probes_written == 0)
+	{
+		fprintf( G.f_kis_xml, "\t\t\t<SSID first-time=\"%s\" last-time=\"%s\">\n",
+					first_time, last_time);
+		fprintf( G.f_kis_xml, "\t\t\t\t<type>Probe Request</type>\n"
+					"\t\t\t\t<max-rate>54.000000</max-rate>\n"
+					"\t\t\t\t<packets>1</packets>\n"
+					"\t\t\t\t<encryption>None</encryption>\n");
+		fprintf( G.f_kis_xml, "\t\t\t</SSID>\n");
+	}
+
+	/* Channel
+	   FIXME: Take G.freqoption in account */
+	fprintf(G.f_kis_xml, "\t\t\t<channel>%d</channel>\n", client->channel);
+
+	/* Rate: inaccurate because it's the latest rate seen */
+	client_max_rate = ( client->rate_from > client->rate_to ) ? client->rate_from : client->rate_to ;
+	fprintf(G.f_kis_xml, "\t\t\t<maxseenrate>%.6f</maxseenrate>\n", client_max_rate / 1000000.0 );
+
+	/* Those 2 lines always stays the same */
+	fprintf(G.f_kis_xml, "\t\t\t<carrier>IEEE 802.11b+</carrier>\n");
+	fprintf(G.f_kis_xml, "\t\t\t<encoding>CCK</encoding>\n");
+
+	/* Packets */
+	fprintf(G.f_kis_xml, "\t\t\t<packets>\n"
+				"\t\t\t\t<LLC>0</LLC>\n"
+				"\t\t\t\t<data>0</data>\n"
+				"\t\t\t\t<crypt>0</crypt>\n"
+				"\t\t\t\t<total>%ld</total>\n"
+				"\t\t\t\t<fragments>0</fragments>\n"
+				"\t\t\t\t<retries>0</retries>\n"
+				"\t\t\t</packets>\n",
+				client->nb_pkt );
+
+	/* SNR information */
+	average_power = (client->power == -1) ? 0 : client->power;
+	fprintf(G.f_kis_xml, "\t\t\t<snr-info>\n"
+			"\t\t\t\t<last_signal_dbm>%d</last_signal_dbm>\n"
+			"\t\t\t\t<last_noise_dbm>0</last_noise_dbm>\n"
+			"\t\t\t\t<last_signal_rssi>%d</last_signal_rssi>\n"
+			"\t\t\t\t<last_noise_rssi>0</last_noise_rssi>\n"
+			"\t\t\t\t<min_signal_dbm>%d</min_signal_dbm>\n"
+			"\t\t\t\t<min_noise_dbm>0</min_noise_dbm>\n"
+			"\t\t\t\t<min_signal_rssi>1024</min_signal_rssi>\n"
+			"\t\t\t\t<min_noise_rssi>1024</min_noise_rssi>\n"
+			"\t\t\t\t<max_signal_dbm>%d</max_signal_dbm>\n"
+			"\t\t\t\t<max_noise_dbm>0</max_noise_dbm>\n"
+			"\t\t\t\t<max_signal_rssi>%d</max_signal_rssi>\n"
+			"\t\t\t\t<max_noise_rssi>0</max_noise_rssi>\n"
+			 "\t\t\t</snr-info>\n",
+			 average_power, average_power, average_power,
+			 average_power, average_power );
+
+	/* GPS Coordinates
+	   XXX: We don't have GPS coordinates for clients */
+	if (G.usegpsd)
+	{
+		fprintf(G.f_kis_xml, "\t\t\t<gps-info>\n"
+					"\t\t\t\t<min-lat>%.6f</min-lat>\n"
+					"\t\t\t\t<min-lon>%.6f</min-lon>\n"
+					"\t\t\t\t<min-alt>%.6f</min-alt>\n"
+					"\t\t\t\t<min-spd>%.6f</min-spd>\n"
+					"\t\t\t\t<max-lat>%.6f</max-lat>\n"
+					"\t\t\t\t<max-lon>%.6f</max-lon>\n"
+					"\t\t\t\t<max-alt>%.6f</max-alt>\n"
+					"\t\t\t\t<max-spd>%.6f</max-spd>\n"
+					"\t\t\t\t<peak-lat>%.6f</peak-lat>\n"
+					"\t\t\t\t<peak-lon>%.6f</peak-lon>\n"
+					"\t\t\t\t<peak-alt>%.6f</peak-alt>\n"
+					"\t\t\t\t<avg-lat>%.6f</avg-lat>\n"
+					"\t\t\t\t<avg-lon>%.6f</avg-lon>\n"
+					"\t\t\t\t<avg-alt>%.6f</avg-alt>\n"
+					 "\t\t\t</gps-info>\n",
+					 0.0, 0.0, 0.0, 0.0,
+					 0.0, 0.0, 0.0, 0.0,
+					 0.0, 0.0, 0.0,
+					 0.0, 0.0, 0.0 );
+	}
+	fprintf(G.f_kis_xml, "\t\t</wireless-client>\n" );
+
+	return 0;
+}
+
+#define NETXML_ENCRYPTION_TAG "%s<encryption>%s</encryption>\n"
 int dump_write_kismet_netxml( void )
 {
-    int network_number, average_power, client_nbr;
-    int client_max_rate, unused;
+    int network_number, average_power, client_max_rate, max_power, client_nbr, unused;
     struct AP_info *ap_cur;
     struct ST_info *st_cur;
     char first_time[TIME_STR_LENGTH];
@@ -4303,7 +4254,7 @@ int dump_write_kismet_netxml( void )
             continue;
         }
 
-        if(is_filtered_essid(ap_cur->essid) || ap_cur->nb_pkt < 2 /* XXX: Maybe this last check should be removed */ )
+        if(is_filtered_essid(ap_cur->essid))
         {
             ap_cur = ap_cur->next;
             continue;
@@ -4326,26 +4277,20 @@ int dump_write_kismet_netxml( void )
 		fprintf(G.f_kis_xml, "\t\t\t<max-rate>%d.000000</max-rate>\n", ap_cur->max_speed );
 		fprintf(G.f_kis_xml, "\t\t\t<packets>%ld</packets>\n", ap_cur->nb_bcn );
 		fprintf(G.f_kis_xml, "\t\t\t<beaconrate>%d</beaconrate>\n", 10 );
-		fprintf(G.f_kis_xml, "\t\t\t<encryption>");
-		//Encryption
-		if( (ap_cur->security & (STD_OPN|STD_WEP|STD_WPA|STD_WPA2)) != 0)
-		{
-			if( ap_cur->security & STD_WPA2 ) fprintf( G.f_kis_xml, "WPA2 " );
-			if( ap_cur->security & STD_WPA  ) fprintf( G.f_kis_xml, "WPA " );
-			if( ap_cur->security & STD_WEP  ) fprintf( G.f_kis_xml, "WEP " );
-			if( ap_cur->security & STD_OPN  ) fprintf( G.f_kis_xml, "OPN " );
-		}
 
-		if( (ap_cur->security & (ENC_WEP|ENC_TKIP|ENC_WRAP|ENC_CCMP|ENC_WEP104|ENC_WEP40)) != 0 )
+		// Encryption
+		if( ap_cur->security & STD_OPN  ) fprintf( G.f_kis_xml, NETXML_ENCRYPTION_TAG, "\t\t\t", "None" );
+		else if( ap_cur->security & STD_WEP  ) fprintf( G.f_kis_xml, NETXML_ENCRYPTION_TAG, "\t\t\t", "WEP" );
+		else if( ap_cur->security & STD_WPA2 || ap_cur->security & STD_WPA  )
 		{
-			if( ap_cur->security & ENC_CCMP   ) fprintf( G.f_kis_xml, "AES-CCM ");
-			if( ap_cur->security & ENC_WRAP   ) fprintf( G.f_kis_xml, "WRAP ");
-			if( ap_cur->security & ENC_TKIP   ) fprintf( G.f_kis_xml, "TKIP ");
-			if( ap_cur->security & ENC_WEP104 ) fprintf( G.f_kis_xml, "WEP104 ");
-			if( ap_cur->security & ENC_WEP40  ) fprintf( G.f_kis_xml, "WEP40 ");
-/*      	if( ap_cur->security & ENC_WEP    ) fprintf( G.f_kis_xml, "WEP ");*/
+			if( ap_cur->security & ENC_TKIP   ) fprintf( G.f_kis_xml, NETXML_ENCRYPTION_TAG, "\t\t\t", "WPA+TKIP" );
+			if( ap_cur->security & AUTH_MGT   ) fprintf( G.f_kis_xml, NETXML_ENCRYPTION_TAG, "\t\t\t", "WPA+MGT" ); // Not a valid value: NetXML does not have a value for WPA Enterprise
+			if( ap_cur->security & AUTH_PSK   ) fprintf( G.f_kis_xml, NETXML_ENCRYPTION_TAG, "\t\t\t", "WPA+PSK" );
+			if( ap_cur->security & ENC_CCMP   ) fprintf( G.f_kis_xml, NETXML_ENCRYPTION_TAG, "\t\t\t", "WPA+AES-CCM" );
+			if( ap_cur->security & ENC_WRAP   ) fprintf( G.f_kis_xml, NETXML_ENCRYPTION_TAG, "\t\t\t", "WPA+AES-OCB" );
 		}
-		fprintf(G.f_kis_xml, "</encryption>\n");
+		else if( ap_cur->security & ENC_WEP104 ) fprintf( G.f_kis_xml, NETXML_ENCRYPTION_TAG, "\t\t\t", "WEP104" );
+		else if( ap_cur->security & ENC_WEP40  ) fprintf( G.f_kis_xml, NETXML_ENCRYPTION_TAG, "\t\t\t", "WEP40" );
 
 		/* ESSID */
 		fprintf(G.f_kis_xml, "\t\t\t<essid cloaked=\"%s\">",
@@ -4373,17 +4318,21 @@ int dump_write_kismet_netxml( void )
 
 		/* Channel
 		   FIXME: Take G.freqoption in account */
-		fprintf(G.f_kis_xml, "\t\t<channel>%d</channel>\n", ap_cur->channel);
+		fprintf(G.f_kis_xml, "\t\t<channel>%d</channel>\n", (ap_cur->channel) == -1 ? 0 : ap_cur->channel);
 
 		/* Freq (in Mhz) and total number of packet on that frequency
 		   FIXME: Take G.freqoption in account */
 		fprintf(G.f_kis_xml, "\t\t<freqmhz>%d %ld</freqmhz>\n",
-					getFrequencyFromChannel(ap_cur->channel),
+					(ap_cur->channel) == -1 ? 0 : getFrequencyFromChannel(ap_cur->channel),
 					//ap_cur->nb_data + ap_cur->nb_bcn );
 					ap_cur->nb_pkt );
 
 		/* XXX: What about 5.5Mbit */
-		fprintf(G.f_kis_xml, "\t\t<maxseenrate>%d</maxseenrate>\n", ap_cur->max_speed * 1000);
+		fprintf(G.f_kis_xml, "\t\t<maxseenrate>%d</maxseenrate>\n", (ap_cur->max_speed == -1) ? 0 : ap_cur->max_speed * 1000);
+
+		/* Those 2 lines always stays the same */
+		fprintf(G.f_kis_xml, "\t\t<carrier>IEEE 802.11b+</carrier>\n");
+		fprintf(G.f_kis_xml, "\t\t<encoding>CCK</encoding>\n");
 
 		/* Packets */
 		fprintf(G.f_kis_xml, "\t\t<packets>\n"
@@ -4394,15 +4343,12 @@ int dump_write_kismet_netxml( void )
 					"\t\t\t<fragments>0</fragments>\n"
 					"\t\t\t<retries>0</retries>\n"
 					"\t\t</packets>\n",
-					ap_cur->nb_bcn, ap_cur->nb_data,
+					ap_cur->nb_data, ap_cur->nb_data,
 					//ap_cur->nb_data + ap_cur->nb_bcn );
 					ap_cur->nb_pkt );
 
 
-		/*
-		 * XXX: What does that field mean? Is it the total size of data?
-		 *      It seems that 'd' is appended at the end for clients, why?
-		 */
+		/* XXX: What does that field mean? Is it the total size of data? */
 		fprintf(G.f_kis_xml, "\t\t<datasize>0</datasize>\n");
 
 		/* Client information */
@@ -4411,117 +4357,13 @@ int dump_write_kismet_netxml( void )
 
 		while ( st_cur != NULL )
 		{
-			/* If not associated or Broadcast Mac, try next one */
-			if ( st_cur->base == NULL ||
-				 memcmp( st_cur->stmac, BROADCAST, 6 ) == 0  )
+			/* Check if the station is associated to the current AP */
+			if ( memcmp( st_cur->stmac, BROADCAST, 6 ) != 0 &&
+				st_cur->base != NULL &&
+				memcmp( st_cur->base->bssid, ap_cur->bssid, 6 ) == 0 )
 			{
-				st_cur = st_cur->next;
-				continue;
+				dump_write_kismet_netxml_client_info(st_cur, ++client_nbr);
 			}
-
-			/* Compare BSSID */
-			if ( memcmp( st_cur->base->bssid, ap_cur->bssid, 6 ) != 0 )
-			{
-				st_cur = st_cur->next;
-				continue;
-			}
-
-			++client_nbr;
-
-
-			strncpy(first_time, ctime(&st_cur->tinit), TIME_STR_LENGTH - 1);
-			first_time[strlen(first_time) - 1] = 0; // remove new line
-
-			strncpy(last_time, ctime(&st_cur->tlast), TIME_STR_LENGTH - 1);
-			last_time[strlen(last_time) - 1] = 0; // remove new line
-
-			fprintf(G.f_kis_xml, "\t\t<wireless-client number=\"%d\" "
-								 "type=\"established\" first-time=\"%s\""
-								 " last-time=\"%s\">\n",
-								 client_nbr, first_time, last_time );
-
-			fprintf( G.f_kis_xml, "\t\t\t<client-mac>%02X:%02X:%02X:%02X:%02X:%02X</client-mac>\n",
-						 st_cur->stmac[0], st_cur->stmac[1],
-						 st_cur->stmac[2], st_cur->stmac[3],
-						 st_cur->stmac[4], st_cur->stmac[5] );
-
-			/* Manufacturer, if set using standard oui list */
-			manuf = NULL;
-			if (st_cur->manuf != NULL)
-				manuf = sanitize_xml((unsigned char *)st_cur->manuf, strlen(st_cur->manuf));
-			fprintf(G.f_kis_xml, "\t\t\t<client-manuf>%s</client-manuf>\n", (manuf != NULL) ? manuf : "Unknown");
-			if (manuf)
-				free(manuf);
-
-			/* Channel
-			   FIXME: Take G.freqoption in account */
-			fprintf(G.f_kis_xml, "\t\t\t<channel>%d</channel>\n", ap_cur->channel);
-
-			/* Rate: unaccurate because it's the latest rate seen */
-			client_max_rate = ( st_cur->rate_from > st_cur->rate_to ) ? st_cur->rate_from : st_cur->rate_to ;
-			fprintf(G.f_kis_xml, "\t\t\t<maxseenrate>%.6f</maxseenrate>\n", client_max_rate / 1000000.0 );
-
-			/* Packets */
-			fprintf(G.f_kis_xml, "\t\t\t<packets>\n"
-						"\t\t\t\t<LLC>0</LLC>\n"
-						"\t\t\t\t<data>0</data>\n"
-						"\t\t\t\t<crypt>0</crypt>\n"
-						"\t\t\t\t<total>%ld</total>\n"
-						"\t\t\t\t<fragments>0</fragments>\n"
-						"\t\t\t\t<retries>0</retries>\n"
-						"\t\t\t</packets>\n",
-						st_cur->nb_pkt );
-
-			/* SNR information */
-			average_power = (st_cur->power == -1) ? 0 : st_cur->power;
-			fprintf(G.f_kis_xml, "\t\t\t<snr-info>\n"
-					"\t\t\t\t<last_signal_dbm>%d</last_signal_dbm>\n"
-					"\t\t\t\t<last_noise_dbm>0</last_noise_dbm>\n"
-					"\t\t\t\t<last_signal_rssi>%d</last_signal_rssi>\n"
-					"\t\t\t\t<last_noise_rssi>0</last_noise_rssi>\n"
-					"\t\t\t\t<min_signal_dbm>%d</min_signal_dbm>\n"
-					"\t\t\t\t<min_noise_dbm>0</min_noise_dbm>\n"
-					"\t\t\t\t<min_signal_rssi>1024</min_signal_rssi>\n"
-					"\t\t\t\t<min_noise_rssi>1024</min_noise_rssi>\n"
-					"\t\t\t\t<max_signal_dbm>%d</max_signal_dbm>\n"
-					"\t\t\t\t<max_noise_dbm>0</max_noise_dbm>\n"
-					"\t\t\t\t<max_signal_rssi>%d</max_signal_rssi>\n"
-					"\t\t\t\t<max_noise_rssi>0</max_noise_rssi>\n"
-					 "\t\t\t</snr-info>\n",
-					 average_power, average_power, average_power,
-					 average_power, average_power );
-
-			/* GPS Coordinates
-			   XXX: We don't have GPS coordinates for clients */
-			if (G.usegpsd)
-			{
-				fprintf(G.f_kis_xml, "\t\t<gps-info>\n"
-							"\t\t\t<min-lat>%.6f</min-lat>\n"
-							"\t\t\t<min-lon>%.6f</min-lon>\n"
-							"\t\t\t<min-alt>%.6f</min-alt>\n"
-							"\t\t\t<min-spd>%.6f</min-spd>\n"
-							"\t\t\t<max-lat>%.6f</max-lat>\n"
-							"\t\t\t<max-lon>%.6f</max-lon>\n"
-							"\t\t\t<max-alt>%.6f</max-alt>\n"
-							"\t\t\t<max-spd>%.6f</max-spd>\n"
-							"\t\t\t<peak-lat>%.6f</peak-lat>\n"
-							"\t\t\t<peak-lon>%.6f</peak-lon>\n"
-							"\t\t\t<peak-alt>%.6f</peak-alt>\n"
-							"\t\t\t<avg-lat>%.6f</avg-lat>\n"
-							"\t\t\t<avg-lon>%.6f</avg-lon>\n"
-							"\t\t\t<avg-alt>%.6f</avg-alt>\n"
-							 "\t\t</gps-info>\n",
-							 0.0, 0.0, 0.0, 0.0,
-							 0.0, 0.0, 0.0, 0.0,
-							 0.0, 0.0, 0.0,
-							 0.0, 0.0, 0.0 );
-			}
-
-
-			/* Trailing information */
-			fprintf(G.f_kis_xml, "\t\t\t<cdp-device></cdp-device>\n"
-								 "\t\t\t<cdp-portid></cdp-portid>\n");
-			fprintf(G.f_kis_xml, "\t\t</wireless-client>\n" );
 
 			/* Next client */
 			st_cur = st_cur->next;
@@ -4529,6 +4371,7 @@ int dump_write_kismet_netxml( void )
 
 		/* SNR information */
 		average_power = (ap_cur->avg_power == -1) ? 0 : ap_cur->avg_power;
+		max_power = (ap_cur->best_power == -1) ? average_power : ap_cur->best_power;
 		fprintf(G.f_kis_xml, "\t\t<snr-info>\n"
 					"\t\t\t<last_signal_dbm>%d</last_signal_dbm>\n"
 					"\t\t\t<last_noise_dbm>0</last_noise_dbm>\n"
@@ -4544,7 +4387,7 @@ int dump_write_kismet_netxml( void )
 					"\t\t\t<max_noise_rssi>0</max_noise_rssi>\n"
 					 "\t\t</snr-info>\n",
 					 average_power, average_power, average_power,
-					 average_power, average_power );
+					 max_power, max_power );
 
 		/* GPS Coordinates */
 		if (G.usegpsd)
@@ -4582,9 +4425,11 @@ int dump_write_kismet_netxml( void )
 						ap_cur->gps_loc_best[2] );
 		}
 
+		/* BSS Timestamp */
+		fprintf(G.f_kis_xml, "\t\t<bsstimestamp>%llu</bsstimestamp>\n", ap_cur->timestamp);
+
 		/* Trailing information */
-		fprintf(G.f_kis_xml, "\t\t<bsstimestamp>0</bsstimestamp>\n"
-					 "\t\t<cdp-device></cdp-device>\n"
+		fprintf(G.f_kis_xml, "\t\t<cdp-device></cdp-device>\n"
 					 "\t\t<cdp-portid></cdp-portid>\n");
 
 		/* Closing tag for the current wireless network */
@@ -4593,6 +4438,126 @@ int dump_write_kismet_netxml( void )
 
         ap_cur = ap_cur->next;
     }
+
+	/* Write all unassociated stations */
+	st_cur = G.st_1st;
+	while (st_cur != NULL) {
+		/* If not associated and not Broadcast Mac */
+		if ( st_cur->base == NULL || memcmp(st_cur->base->bssid, BROADCAST, 6) == 0 )
+		{
+			++network_number; // Network Number
+
+			/* Write new network information */
+			strncpy(first_time, ctime(&st_cur->tinit), TIME_STR_LENGTH - 1);
+			first_time[strlen(first_time) - 1] = 0; // remove new line
+			
+			strncpy(last_time, ctime(&st_cur->tlast), TIME_STR_LENGTH - 1);
+			last_time[strlen(last_time) - 1] = 0; // remove new line
+			
+			fprintf(G.f_kis_xml, "\t<wireless-network number=\"%d\" type=\"probe\" ",
+				network_number);
+			fprintf(G.f_kis_xml, "first-time=\"%s\" last-time=\"%s\">\n", first_time, last_time);
+
+			/* BSSID */
+			fprintf( G.f_kis_xml, "\t\t<BSSID>%02X:%02X:%02X:%02X:%02X:%02X</BSSID>\n",
+					 st_cur->stmac[0], st_cur->stmac[1],
+					 st_cur->stmac[2], st_cur->stmac[3],
+					 st_cur->stmac[4], st_cur->stmac[5] );
+
+			/* Manufacturer, if set using standard oui list */
+			manuf = sanitize_xml((unsigned char *)st_cur->manuf, strlen(st_cur->manuf));
+			fprintf(G.f_kis_xml, "\t\t<manuf>%s</manuf>\n", (manuf != NULL) ? manuf : "Unknown");
+			free(manuf);
+
+			/* Channel
+			   FIXME: Take G.freqoption in account */
+			fprintf(G.f_kis_xml, "\t\t<channel>%d</channel>\n", st_cur->channel);
+
+			/* Freq (in Mhz) and total number of packet on that frequency
+			   FIXME: Take G.freqoption in account */
+			fprintf(G.f_kis_xml, "\t\t<freqmhz>%d %ld</freqmhz>\n",
+						getFrequencyFromChannel(st_cur->channel),
+						st_cur->nb_pkt );
+
+			/* Rate: inaccurate because it's the latest rate seen */
+			client_max_rate = ( st_cur->rate_from > st_cur->rate_to ) ? st_cur->rate_from : st_cur->rate_to ;
+			fprintf(G.f_kis_xml, "\t\t<maxseenrate>%.6f</maxseenrate>\n", client_max_rate / 1000000.0 );
+
+			fprintf(G.f_kis_xml, "\t\t<carrier>IEEE 802.11b+</carrier>\n");
+			fprintf(G.f_kis_xml, "\t\t<encoding>CCK</encoding>\n");
+
+			/* Packets */
+			fprintf(G.f_kis_xml, "\t\t<packets>\n"
+					"\t\t\t<LLC>0</LLC>\n"
+					"\t\t\t<data>0</data>\n"
+					"\t\t\t<crypt>0</crypt>\n"
+					"\t\t\t<total>%ld</total>\n"
+					"\t\t\t<fragments>0</fragments>\n"
+					"\t\t\t<retries>0</retries>\n"
+					"\t\t</packets>\n",
+					st_cur->nb_pkt);
+
+			/* XXX: What does that field mean? Is it the total size of data? */
+			fprintf(G.f_kis_xml, "\t\t<datasize>0</datasize>\n");
+	
+			/* SNR information */
+			average_power = (st_cur->power == -1) ? 0 : st_cur->power;
+			fprintf(G.f_kis_xml, "\t\t<snr-info>\n"
+						"\t\t\t<last_signal_dbm>%d</last_signal_dbm>\n"
+						"\t\t\t<last_noise_dbm>0</last_noise_dbm>\n"
+						"\t\t\t<last_signal_rssi>%d</last_signal_rssi>\n"
+						"\t\t\t<last_noise_rssi>0</last_noise_rssi>\n"
+						"\t\t\t<min_signal_dbm>%d</min_signal_dbm>\n"
+						"\t\t\t<min_noise_dbm>0</min_noise_dbm>\n"
+						"\t\t\t<min_signal_rssi>1024</min_signal_rssi>\n"
+						"\t\t\t<min_noise_rssi>1024</min_noise_rssi>\n"
+						"\t\t\t<max_signal_dbm>%d</max_signal_dbm>\n"
+						"\t\t\t<max_noise_dbm>0</max_noise_dbm>\n"
+						"\t\t\t<max_signal_rssi>%d</max_signal_rssi>\n"
+						"\t\t\t<max_noise_rssi>0</max_noise_rssi>\n"
+						 "\t\t</snr-info>\n",
+						 average_power, average_power, average_power,
+						 average_power, average_power );
+
+			/* GPS Coordinates
+			   XXX: We don't have GPS coordinates for clients */
+			if (G.usegpsd)
+			{
+				fprintf(G.f_kis_xml, "\t\t<gps-info>\n"
+							"\t\t\t<min-lat>%.6f</min-lat>\n"
+							"\t\t\t<min-lon>%.6f</min-lon>\n"
+							"\t\t\t<min-alt>%.6f</min-alt>\n"
+							"\t\t\t<min-spd>%.6f</min-spd>\n"
+							"\t\t\t<max-lat>%.6f</max-lat>\n"
+							"\t\t\t<max-lon>%.6f</max-lon>\n"
+							"\t\t\t<max-alt>%.6f</max-alt>\n"
+							"\t\t\t<max-spd>%.6f</max-spd>\n"
+							"\t\t\t<peak-lat>%.6f</peak-lat>\n"
+							"\t\t\t<peak-lon>%.6f</peak-lon>\n"
+							"\t\t\t<peak-alt>%.6f</peak-alt>\n"
+							"\t\t\t<avg-lat>%.6f</avg-lat>\n"
+							"\t\t\t<avg-lon>%.6f</avg-lon>\n"
+							"\t\t\t<avg-alt>%.6f</avg-alt>\n"
+							 "\t\t</gps-info>\n",
+							 0.0, 0.0, 0.0, 0.0,
+							 0.0, 0.0, 0.0, 0.0,
+							 0.0, 0.0, 0.0,
+							 0.0, 0.0, 0.0 );
+			}
+
+			fprintf(G.f_kis_xml, "\t\t<bsstimestamp>0</bsstimestamp>\n");
+
+			/* CDP information */
+			fprintf(G.f_kis_xml, "\t\t<cdp-device></cdp-device>\n"
+					 	"\t\t<cdp-portid></cdp-portid>\n");
+
+
+			/* Write client information */
+			dump_write_kismet_netxml_client_info(st_cur, 1);
+		}
+		st_cur = st_cur->next;
+	}
+	/* TODO: Also go through na_1st */
 
 	/* Trailing */
     fprintf( G.f_kis_xml, "%s\n", KISMET_NETXML_TRAILER );
@@ -4804,13 +4769,195 @@ int dump_write_kismet_csv( void )
     return 0;
 }
 
+/* See if a string contains a character in the first "n" bytes.
+ * 
+ * Returns a pointer to the first occurrence of the character, or NULL
+ * if the character is not present in the string.
+ * 
+ * Breaks the str* naming convention to avoid a name collision if we're
+ * compiling on a system that has strnchr()
+ */
+static char *strchr_n(char *str, int c, size_t n)
+{
+	size_t count = 0;
+	while(*str != c && *str != '\0' && count < n)
+	{
+		str++;
+		count++;
+	}
+	if(*str == c)
+	{
+		return str;
+	}
+	else
+	{
+		return NULL;
+	}
+}
+
+/* Read at least one full line from the network.
+ * 
+ * Returns the amount of data in the buffer on success, 0 on connection
+ * closed, or a negative value on error.
+ * 
+ * If the return value is >0, the buffer contains at least one newline
+ * character.  If the return value is <= 0, the contents of the buffer
+ * are undefined.
+ */
+static int read_line(int sock, char *buffer, int pos, int size)
+{
+	int status = 1;
+	if (pos < 0 || size < 1 || pos >= size || buffer == NULL || sock < 0)
+	{
+		return NULL;
+	}
+	while(strchr_n(buffer, 0x0A, pos) == NULL && status > 0  && pos < size )
+	{
+		status = recv(sock, buffer+pos, size-pos, 0);
+		if(status > 0)
+		{
+			pos += status;
+		}
+	}
+
+	if(status <= 0)
+	{
+		return status;
+	}
+	else if(pos == size && strchr_n(buffer, 0x0A, pos) == NULL)
+	{
+		return -1;
+	}
+	
+	return pos;
+}
+
+/* Remove a newline-terminated block of data from a buffer, replacing 
+ * the newline with a '\0'.
+ * 
+ * Returns the number of characters left in the buffer, or -1 if the 
+ * buffer did not contain a newline.
+ */
+static int get_line_from_buffer(char *buffer, int size, char *line)
+{
+	char *cursor = strchr_n(buffer, 0x0A, size);
+	if(NULL != cursor)
+	{
+		*cursor = '\0';
+		cursor++;
+		strcpy(line, buffer);
+		memmove(buffer, cursor, size - (strlen(line) + 1));
+		return size - (strlen(line) + 1);
+	}
+	
+	return -1;
+} 
+
+/* Extract a name:value pair from a null-terminated line of JSON.
+ * 
+ * Returns 1 if the name was found, or 0 otherwise. 
+ * 
+ * The string in "value" is null-terminated if the name was found.  If
+ * the name was not found, the contents of "value" are undefined. 
+ */
+static int json_get_value_for_name( char *buffer, char *name, char *value )
+{
+	char to_find[1537];
+	char *cursor;
+	char *vcursor = value;
+	int ret = 0;
+	
+	if (buffer == NULL || strlen(buffer) == 0 || name == NULL || strlen(name) == 0 || value == NULL)
+	{
+		return 0;
+	}
+	
+	snprintf(to_find, sizeof(to_find), "\"%s\"", name);
+	if((cursor = strcasestr(buffer, to_find)) != NULL)
+	{
+		cursor += strlen(to_find);
+		while(*cursor != ':' && *cursor != '\0')
+		{
+			cursor++;
+		}
+		if(*cursor != '\0')
+		{
+			cursor++;
+			while(isspace(*cursor) && *cursor != '\0')
+			{
+				cursor++;
+			}
+		}
+		if('\0' == *cursor)
+		{
+			return 0;
+		}
+
+		if('"' == *cursor)
+		{
+			/* Quoted string */
+			cursor++;
+			while(*cursor != '"' && *cursor != '\0')
+			{
+				if('\\' == *cursor && '"' == *(cursor+1))
+				{
+					/* Escaped quote */
+					*vcursor = '"';
+					cursor++;
+				}
+				else
+				{
+					*vcursor = *cursor;
+				}
+				vcursor++;
+				cursor++;
+			}
+			*vcursor = '\0';
+			ret = 1;
+		}
+		else if(strncmp(cursor, "true", 4) == 0)
+		{
+			/* Boolean */
+			strcpy(value, "true");
+			ret = 1;
+		}
+		else if(strncmp(cursor, "false", 5) == 0)
+		{
+			/* Boolean */
+			strcpy(value, "false");
+			ret = 1;
+		}
+		else if('{' == *cursor || '[' == *cursor)
+		{
+			/* Object or array.  Too hard to handle and not needed for
+			 * getting coords from GPSD, so pretend we didn't see anything.
+			 */
+			ret = 0;
+		}
+		else
+		{
+			/* Number, supposedly.  Copy as-is. */
+			while(*cursor != ',' && *cursor != '}' && !isspace(*cursor))
+			{
+				*vcursor = *cursor;
+				cursor++; vcursor++;
+			}
+			*vcursor = '\0';
+			ret = 1;
+		}
+	}
+	return ret;
+}
+
 void gps_tracker( void )
 {
 	ssize_t unused;
     int gpsd_sock;
-    char line[256], *temp;
+    char line[1537], buffer[1537], data[1537];
+    char *temp;
     struct sockaddr_in gpsd_addr;
     int ret, is_json, pos;
+    int mode;
     fd_set read_fd;
     struct timeval timeout;
 
@@ -4833,50 +4980,54 @@ void gps_tracker( void )
     }
 
     // Check if it's GPSd < 2.92 or the new one
-    // 2.92+ immediately send stuff
+    // 2.92+ immediately sends version information
     // < 2.92 requires to send PVTAD command
     FD_ZERO(&read_fd);
     FD_SET(gpsd_sock, &read_fd);
     timeout.tv_sec = 1;
     timeout.tv_usec = 0;
     is_json = select(gpsd_sock + 1, &read_fd, NULL, NULL, &timeout);
-    if (is_json) {
-    	/*
-			{"class":"VERSION","release":"2.95","rev":"2010-11-16T21:12:35","proto_major":3,"proto_minor":3}
-			?WATCH={"json":true};
-			{"class":"DEVICES","devices":[]}
-    	 */
+    
+    if (is_json > 0) {
+		/* Probably JSON.  Read the first line and verify it's a version of the protocol we speak. */
 
-
-    	// Get the crap and ignore it: {"class":"VERSION","release":"2.95","rev":"2010-11-16T21:12:35","proto_major":3,"proto_minor":3}
-    	if( recv( gpsd_sock, line, sizeof( line ) - 1, 0 ) <= 0 )
+    	if((pos = read_line(gpsd_sock, buffer, 0, sizeof(buffer))) <= 0)
     		return;
+    	
+    	pos = get_line_from_buffer(buffer, pos, line);
 
-    	is_json = (line[0] == '{');
+    	is_json = (json_get_value_for_name(line, "class", data) &&
+    			   strncmp(data, "VERSION", 7) == 0);
+		
     	if (is_json) {
-			// Send ?WATCH={"json":true};
-			memset( line, 0, sizeof( line ) );
-			strcpy(line, "?WATCH={\"json\":true};\n");
-			if( send( gpsd_sock, line, 22, 0 ) != 22 )
+			/* Verify it's a version of the protocol we speak */
+			if(json_get_value_for_name(line, "proto_major", data) && data[0] != '3')
+			{
+				/* It's an unknown version of the protocol.  Bail out. */
 				return;
-
-			// Check that we have devices
-			memset(line, 0, sizeof(line));
-			if( recv( gpsd_sock, line, sizeof( line ) - 1, 0 ) <= 0 )
-				return;
-
-			// Stop processing if there is no device
-			if (strncmp(line, "{\"class\":\"DEVICES\",\"devices\":[]}", 32) == 0) {
-				close(gpsd_sock);
-				return;
-			} else {
-				pos = strlen(line);
 			}
+			
+			// Send ?WATCH={"json":true};
+			memset(line, 0, sizeof(line));
+			strcpy(line, "?WATCH={\"json\":true};\n");
+			if(send(gpsd_sock, line, 22, 0) != 22)
+			{
+				return;
+			}
+			// Device check removed -- if there isn't a device, just
+			// read and discard lines until the user plugs one in, at
+			// which point GPSD will start emitting coordinates.
     	}
     }
+    else if(is_json < 0)
+    {
+		/* An error occurred while we were waiting for data */
+		return;
+	}
+	/* Else select() returned zero (timeout expired) and we assume we're
+	 * connected to an old-style gpsd. */
 
     /* loop reading the GPS coordinates */
-
     while( G.do_exit == 0 )
     {
         usleep( 500000 );
@@ -4886,78 +5037,91 @@ void gps_tracker( void )
         if (is_json) {
         	// Format definition: http://catb.org/gpsd/gpsd_json.html
 
-        	if (pos == sizeof( line )) {
-        		memset(line, 0, sizeof(line));
-        		pos = 0;
-        	}
+		if( (pos = read_line(gpsd_sock, buffer, pos, sizeof(buffer))) <= 0 )
+		{
+			return;
+		}
+		pos = get_line_from_buffer(buffer, pos, line);
 
-        	// New version, JSON
-        	if( recv( gpsd_sock, line + pos, sizeof( line ) - pos - 1, 0 ) <= 0 )
-        		return;
+		// See if we got a TPV report
+		if(!json_get_value_for_name(line, "class", data) ||
+			strncmp(data, "TPV", 3) != 0)
+		{
+			/* Not a TPV report.  Get another line. */
 
-        	// search for TPV class: {"class":"TPV"
-        	temp = strstr(line, "{\"class\":\"TPV\"");
-        	if (temp == NULL) {
         		continue;
         	}
 
-        	// Make sure the data we have is complete
-        	if (strchr(temp, '}') == NULL) {
-        		// Move the data at the beginning of the buffer;
-        		pos = strlen(temp);
-        		if (temp != line) {
-        			memmove(line, temp, pos);
-        			memset(line + pos, 0, sizeof(line) - pos);
-        		}
-        	}
+		/* See what sort of GPS fix we got.  Possibilities are:
+		* 0: No data
+		* 1: No fix
+		* 2: Lat/Lon, but no alt
+		* 3: Lat/Lon/Alt
+		* Either 2 or 3 may also have speed and heading data.
+		*/
+		if(!json_get_value_for_name(line, "mode", data) ||
+			(mode = atoi(data)) < 2)
+		{
+			/* No GPS fix, so there are no coordinates to extract. */
+			continue;
+		}
 
-			// Example line: {"class":"TPV","tag":"MID2","device":"/dev/ttyUSB0","time":1350957517.000,"ept":0.005,"lat":46.878936576,"lon":-115.832602964,"alt":1968.382,"track":0.0000,"speed":0.000,"climb":0.000,"mode":3}
+		/* Extract the available data from the TPV report.  If we're
+		* in mode 2, latitude and longitude are mandatory, altitude
+		* is set to 0, and speed and heading are optional.
+		* In mode 3, latitude, longitude, and altitude are mandatory,
+		* while speed and heading are optional.
+		* If we can't get a mandatory value, the line is discarded
+		* as fragmentary or malformed.  If we can't get an optional
+		* value, we default it to 0.
+		*/
 
         	// Latitude
-        	temp = strstr(temp, "\"lat\":");
-			if (temp == NULL) {
+        	if(!json_get_value_for_name(line, "lat", data))
+			continue;
+		if(1 != sscanf(data, "%f", &G.gps_loc[0]))
+			continue;
+
+		// Longitude
+		if(!json_get_value_for_name(line, "lon", data))
+			continue;
+		if(1 != sscanf(data, "%f", &G.gps_loc[1]))
+			continue;
+
+		// Altitude
+		if(3 == mode)
+		{
+			if(!json_get_value_for_name(line, "alt", data))
 				continue;
-			}
-
-			ret = sscanf(temp + 6, "%f", &G.gps_loc[0]);
-
-			// Longitude
-			temp = strstr(temp, "\"lon\":");
-			if (temp == NULL) {
+			if(1 != sscanf(data, "%f", &G.gps_loc[4]))
 				continue;
-			}
+		}
+		else
+		{
+			G.gps_loc[4] = 0;
+		}
 
-			ret = sscanf(temp + 6, "%f", &G.gps_loc[1]);
+		// Speed
+		if(!json_get_value_for_name(line, "speed", data))
+		{
+			G.gps_loc[2] = 0;
+		}
+		else
+		{
+			if(1 != sscanf(data, "%f", &G.gps_loc[2]))
+				G.gps_loc[2] = 0;
+		}
 
-			// Altitude
-			temp = strstr(temp, "\"alt\":");
-			if (temp == NULL) {
-				continue;
-			}
-
-			ret = sscanf(temp + 6, "%f", &G.gps_loc[4]);
-
-			// Speed
-			temp = strstr(temp, "\"speed\":");
-			if (temp == NULL) {
-				continue;
-			}
-
-			ret = sscanf(temp + 6, "%f", &G.gps_loc[2]);
-
-			// No more heading
-
-			// Get the next TPV class
-			temp = strstr(temp, "{\"class\":\"TPV\"");
-			if (temp == NULL) {
-				memset( line, 0, sizeof( line ) );
-				pos = 0;
-			} else {
-				pos = strlen(temp);
-				memmove(line, temp, pos);
-				memset(line + pos, 0, sizeof(line) - pos);
-			}
-
+		// Heading
+		if(!json_get_value_for_name(line, "track", data))
+		{
+			G.gps_loc[3] = 0;
+		}
+		else
+		{
+			if(1 != sscanf(data, "%f", &G.gps_loc[3]))
+				G.gps_loc[3] = 0;
+		}
         } else {
         	memset( line, 0, sizeof( line ) );
 
@@ -5907,7 +6071,7 @@ int main( int argc, char *argv[] )
     struct ST_info *st_cur, *st_next;
     struct NA_info *na_cur, *na_next;
     struct oui *oui_cur, *oui_next;
-    struct ethers_names *ether_cur, *ether_next;
+
     struct pcap_pkthdr pkh;
 
     time_t tt1, tt2, tt3, start_time;
@@ -5942,7 +6106,6 @@ int main( int argc, char *argv[] )
         {"essid",    1, 0, 'N'},
         {"essid-regex", 1, 0, 'R'},
         {"channel",  1, 0, 'c'},
-        {"ethers",   1, 0, 'n'},
         {"gpsd",     0, 0, 'g'},
         {"ivs",      0, 0, 'i'},
         {"write",    1, 0, 'w'},
@@ -5957,7 +6120,8 @@ int main( int argc, char *argv[] )
         {"ignore-negative-one", 0, &G.ignore_negative_one, 1},
         {"manufacturer",  0, 0, 'M'},
         {"uptime",   0, 0, 'U'},
-        {"wps",  0, 0, 'W'},
+		{"write-interval", 1, 0, 'W'},
+        {"wps",  0, 0, 'z'},
         {0,          0, 0,  0 }
     };
 
@@ -6027,14 +6191,9 @@ int main( int argc, char *argv[] )
     G.show_ack     =  0;
     G.hide_known   =  0;
     G.maxsize_essid_seen  =  5; // Initial value: length of "ESSID"
-    G.maxsize_wps_seen  =  6;
     G.show_manufacturer = 0;
-    G.show_ethers_name  = 0;
     G.show_uptime  = 0;
-    G.show_wps     = 0;
-    G.show_manufacturer_prefix = 0;
     G.hopfreq      =  DEFAULT_HOPFREQ;
-    G.s_ethers     =  NULL;
     G.s_file       =  NULL;
     G.s_iface      =  NULL;
     G.f_cap_in     =  NULL;
@@ -6046,7 +6205,9 @@ int main( int argc, char *argv[] )
     G.output_format_csv = 1;
     G.output_format_kismet_csv = 1;
     G.output_format_kismet_netxml = 1;
-
+    G.file_write_interval = 5; // Write file every 5 seconds by default
+    G.maxsize_wps_seen  =  6;
+    G.show_wps     = 0;
 #ifdef HAVE_PCRE
     G.f_essid_regex = NULL;
 #endif
@@ -6128,7 +6289,7 @@ int main( int argc, char *argv[] )
         option_index = 0;
 
         option = getopt_long( argc, argv,
-                        "b:c:egiw:s:t:u:m:d:N:R:aHDB:Ahf:r:EC:o:x:MUn:W",
+                        "b:c:egiw:s:t:u:m:d:N:R:aHDB:Ahf:r:EC:o:x:MUW:z",
                         long_options, &option_index );
 
         if( option < 0 ) break;
@@ -6149,6 +6310,21 @@ int main( int argc, char *argv[] )
                 printf("\"%s --help\" for help.\n", argv[0]);
                 return( 1 );
 
+            case 'W':
+
+            	if (!is_string_number(optarg)) {
+            		printf("Error: Write interval is not a number (>0). Aborting.\n");
+            		exit ( 1 );
+            	}
+            	
+            	G.file_write_interval = atoi(optarg);
+            	
+            	if (G.file_write_interval <= 0) {
+            		printf("Error: Write interval must be greater than 0. Aborting.\n");
+            		exit ( 1 );
+            	}
+            	break;
+                
 			case 'E':
 				G.detect_anomaly = 1;
 				break;
@@ -6187,7 +6363,7 @@ int main( int argc, char *argv[] )
 	    		G.show_uptime = 1;
 	    		break;
 
-            case 'W':
+            case 'z':
 
                 G.show_wps = 1;
                 break;
@@ -6236,16 +6412,6 @@ int main( int argc, char *argv[] )
 
                 G.freqoption = 1;
 
-                break;
-
-            case 'n':
-
-                    if ( G.s_ethers ) {
-                        printf( "Configuration file already specified.\n" );
-                        printf("\"%s --help\" for help.\n", argv[0]);
-                    }
-                G.s_ethers = optarg;
-                G.show_ethers_name = 1;
                 break;
 
             case 'b' :
@@ -6749,7 +6915,6 @@ usage:
 
     /* fill oui struct if ram is greater than 32 MB */
     if (get_ram_size()  > MIN_RAM_SIZE_LOAD_OUI_RAM) {
-        G.ethersList = load_ethers_file();
         G.manufList = load_oui_file();
 	}
 
@@ -6804,26 +6969,25 @@ usage:
             break;
         }
 
-        if( time( NULL ) - tt1 >= 5 )
+        if( time( NULL ) - tt1 >= G.file_write_interval )
         {
-            /* update the csv stats file */
+            /* update the text output files */
 
             tt1 = time( NULL );
             if (G. output_format_csv)  dump_write_csv();
             if (G.output_format_kismet_csv) dump_write_kismet_csv();
             if (G.output_format_kismet_netxml) dump_write_kismet_netxml();
-
-            /* sort the APs by power */
-
-	    if(G.sort_by != SORT_BY_NOTHING) {
-		pthread_mutex_lock( &(G.mx_sort) );
-		    dump_sort();
-		pthread_mutex_unlock( &(G.mx_sort) );
-	    }
         }
 
-        if( time( NULL ) - tt2 > 3 )
+        if( time( NULL ) - tt2 > 5 )
         {
+        	if( G.sort_by != SORT_BY_NOTHING) {
+				/* sort the APs by power */
+				pthread_mutex_lock( &(G.mx_sort) );
+				dump_sort();
+				pthread_mutex_unlock( &(G.mx_sort) );
+        	}
+
             /* update the battery state */
             free(G.batt);
             G.batt = NULL;
@@ -7146,8 +7310,6 @@ usage:
         if ( G.output_format_pcap ||  G.f_cap != NULL ) fclose( G.f_cap );
         if ( G.f_ivs != NULL ) fclose( G.f_ivs );
     }
-    else
-        free(G.airodump_start_time);
 
     if( ! G.save_gps )
     {
@@ -7206,9 +7368,6 @@ usage:
     while(na_cur != NULL)
     {
         na_next = na_cur->next;
-	if (G.manufList)
-		if (na_cur->manuf)
-			free(na_cur->manuf);
         free(na_cur);
         na_cur = na_next;
     }
@@ -7219,15 +7378,6 @@ usage:
             oui_next = oui_cur->next;
 	    free(oui_cur);
 	    oui_cur = oui_next;
-        }
-    }
-
-    if (G.ethersList) {
-        ether_cur = G.ethersList;
-        while (ether_cur != NULL) {
-            ether_next = ether_cur->next;
-            free(ether_cur);
-            ether_cur = ether_next;
         }
     }
 
