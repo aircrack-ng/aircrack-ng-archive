@@ -59,6 +59,9 @@ Display a manufacturer column with the information obtained from the IEEE OUI li
 .I -U, --uptime
 Display APs uptime obtained from its beacon timestamp.
 .TP
+.I -W, --wps
+Display a WPS column with WPS version, config method(s), AP Setup Locked obtained from APs beacon or probe response (if any).
+.TP
 .I --output-format <formats>
 Define the formats to use (separated by a comma). Possible values are: pcap, ivs, csv, gps, kismet, netxml. The default values are: pcap, csv, kismet, kismet-newcore.
 \(aqpcap\(aq is for recording a capture in pcap format, \(aqivs\(aq is for ivs format (it is a shortcut for --ivs). \(aqcsv\(aq will create an airodump-ng CSV file, \(aqkismet\(aq will create a kismet csv file and \(aqkismet-newcore\(aq will create the kismet netxml file. \(aqgps\(aq is a shortcut for --gps.
@@ -106,6 +109,9 @@ Invert sorting algorithm
 .TP
 .I m
 Mark the selected AP or cycle through different colors if the selected AP is already marked
+.TP
+.I o
+Display manufacturer prefix on BSSID and STATION
 .TP
 .I r
 (De-)Activate realtime sorting - applies sorting algorithm everytime the display will be redrawn
@@ -195,8 +201,20 @@ The cipher detected. One of CCMP, WRAP, TKIP, WEP, WEP40, or WEP104. Not mandato
 .I AUTH
 The authentication protocol used. One of MGT (WPA/WPA2 using a separate authentication server), SKA (shared key for WEP), PSK (pre-shared key for WPA/WPA2), or OPN (open for WEP).
 .TP
+.I UPTIME
+This is only displayed when --uptime (or -U) is specified.
+.TP
+.I WPS
+This is only displayed when --wps (or -W) is specified. If the AP supports WPS, the first field of the column indicates version supported. The second field indicates WPS config methods (can be more than one method, separated by comma): USB = USB method, ETHER = Ethernet, LAB = Label, DISP = Display, EXTNFC = External NFC, INTNFC = Internal NFC, NFCINTF = NFC Interface, PBC = Push Button, KPAD =  Keypad. Locked is displayed when AP setup is locked.
+.TP
 .I ESSID
 The so-called "SSID", which can be empty if SSID hiding is activated. In this case, airodump-ng will try to recover the SSID from probe responses and association requests.
+.TP
+.I MANUFACTURER
+This is only displayed when --manufacturer (or -M) is specified.
+.TP
+.I -n, --ethers
+Map MAC addresses of APs and clients to names using the given ethers file. See ethers(5) for the file format. Note that only the first 17 characters of the name are shown (which is the size of a MAC address in the normal human readable form).
 .TP
 .I STATION
 MAC address of each associated station or stations searching for an AP to connect with. Clients not currently associated with an AP have a BSSID of "(not associated)".
