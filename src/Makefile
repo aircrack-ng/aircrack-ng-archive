@@ -76,7 +76,7 @@ OBJS_WC		= wpaclean.o osdep/radiotap/radiotap.o
 OSD		= osdep
 LIBS		:= -L$(OSD) -l$(OSD) $(LIBS)
 ifeq ($(OSNAME), cygwin)
-LIBS		+= -liphlpapi -lsetupapi -luuid
+LIBS		+= -liphlpapi -lsetupapi /lib/w32api/libuuid.a
 endif
 LIBOSD		= $(OSD)/lib$(OSD).a
 

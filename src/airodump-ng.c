@@ -6733,12 +6733,6 @@ usage:
         if(G.num_cards <= 0)
             return( 1 );
 
-        for (i = 0; i < G.num_cards; i++) {
-            fd_raw[i] = wi_fd(wi[i]);
-            if (fd_raw[i] > fdh)
-                fdh = fd_raw[i];
-        }
-
         if(G.freqoption == 1 && G.freqstring != NULL) // use frequencies
         {
             detect_frequencies(wi[0]);
@@ -6765,6 +6759,15 @@ usage:
 
                 signal( SIGUSR1, sighandler );
 
+                /* The cygwin module will create a thread to monitor the
+                 * packets on wi_open(). The fork() in a multiple threads
+                 * process will cause problem.
+                 * Here we close all the cards before doing fork()
+                 */
+                for (i = 0; i < G.num_cards; i++) {
+                    wi_close(wi[i]);
+                }
+
                 if( ! fork() )
                 {
                     /* reopen cards.  This way parent & child don't share resources for
@@ -6775,7 +6778,6 @@ usage:
                         strncpy(ifnam, wi_get_ifname(wi[i]), sizeof(ifnam)-1);
                         ifnam[sizeof(ifnam)-1] = 0;
 
-                        wi_close(wi[i]);
                         wi[i] = wi_open(ifnam);
                         if (!wi[i]) {
                                 printf("Can't reopen %s\n", ifnam);
@@ -6790,6 +6792,18 @@ usage:
 
                     frequency_hopper(wi, G.num_cards, freq_count);
                     exit( 1 );
+                }
+
+                // reopen all the cards
+                for (i = 0; i < G.num_cards; i++) {
+                    strncpy(ifnam, wi_get_ifname(wi[i]), sizeof(ifnam)-1);
+                    ifnam[sizeof(ifnam)-1] = 0;
+
+                    wi[i] = wi_open(ifnam);
+                    if (!wi[i]) {
+                        printf("Can't reopen %s\n", ifnam);
+                        exit(1);
+                    }
                 }
             }
             else
@@ -6816,6 +6830,15 @@ usage:
 
                 signal( SIGUSR1, sighandler );
 
+                /* The cygwin module will create a thread to monitor the
+                 * packets on wi_open(). The fork() in a multiple threads
+                 * process will cause problem.
+                 * Here we close all the cards before doing fork()
+                 */
+                for (i = 0; i < G.num_cards; i++) {
+                    wi_close(wi[i]);
+                }
+
                 if( ! fork() )
                 {
                     /* reopen cards.  This way parent & child don't share resources for
@@ -6826,7 +6849,6 @@ usage:
                         strncpy(ifnam, wi_get_ifname(wi[i]), sizeof(ifnam)-1);
                         ifnam[sizeof(ifnam)-1] = 0;
 
-                        wi_close(wi[i]);
                         wi[i] = wi_open(ifnam);
                         if (!wi[i]) {
                                 printf("Can't reopen %s\n", ifnam);
@@ -6842,6 +6864,18 @@ usage:
                     channel_hopper(wi, G.num_cards, chan_count);
                     exit( 1 );
                 }
+
+                // reopen all the cards
+                for (i = 0; i < G.num_cards; i++) {
+                    strncpy(ifnam, wi_get_ifname(wi[i]), sizeof(ifnam)-1);
+                    ifnam[sizeof(ifnam)-1] = 0;
+
+                    wi[i] = wi_open(ifnam);
+                    if (!wi[i]) {
+                        printf("Can't reopen %s\n", ifnam);
+                        exit(1);
+                    }
+                }
             }
             else
             {
@@ -6852,6 +6886,12 @@ usage:
                 }
                 G.singlechan = 1;
             }
+        }
+
+        for (i = 0; i < G.num_cards; i++) {
+            fd_raw[i] = wi_fd(wi[i]);
+            if (fd_raw[i] > fdh)
+                fdh = fd_raw[i];
         }
     }
 
