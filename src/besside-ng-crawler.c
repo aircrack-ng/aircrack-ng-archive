@@ -289,7 +289,8 @@ void process_directory(const char *dir, time_t begin) {
     
     fullname = malloc(strlen(dir) + strlen(curent->d_name) + 2);
     memcpy(fullname, dir, strlen(dir) + 1);
-    strcat(fullname, "/"); strcat(fullname, curent->d_name);
+    strncat(fullname, "/", 2);
+    strncat(fullname, curent->d_name, strlen(curent->d_name) + 1);
     
     if (stat(fullname, &curstat)) {
       printf("Statting %s ", fullname); perror("failed");
