@@ -43,10 +43,10 @@ int main(int argc, char **argv)
     bzero(&pmk,sizeof(pmk));
     bzero(&epmk,sizeof(epmk));
     bzero(&key,sizeof(key));
-    strcpy(key[0],"biscotte");
-    strcpy(key[1],"password");
-    strcpy(key[2],"aircrack");
-    strcpy(key[3],"keyboard");
+    strncpy(key[0],"biscotte", 128);
+    strncpy(key[1],"password", 128);
+    strncpy(key[2],"aircrack", 128);
+    strncpy(key[3],"keyboard", 128);
     memcpy(epmk[0],
     "\xcd\xd7\x9a\x5a\xcf\xb0\x70\xc7\xe9\xd1\x02\x3b\x87\x02\x85\xd6"
     "\x39\xe4\x30\xb3\x2f\x31\xaa\x37\xac\x82\x5a\x55\xb5\x55\x24\xee", KLEN);
