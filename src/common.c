@@ -1,7 +1,7 @@
 /*
  *  Common functions for all aircrack-ng tools
  *
- *  Copyright (C) 2006-2013 Thomas d'Otreppe
+ *  Copyright (C) 2006-2015 Thomas d'Otreppe <tdotreppe@aircrack-ng.org>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -44,6 +44,26 @@
 
 #define isHex(c) (hexToInt(c) != -1)
 #define HEX_BASE 16
+
+int is_string_number(const char * str)
+{
+	int i;
+	if (str == NULL) {
+		return 0;
+	}
+	
+	if (*str != '-' && !(isdigit(*str))) {
+		return 0;
+	}
+	
+	for (i = 1; str[i] != 0; i++) {
+		if (!isdigit(str[i])) {
+			return 0;
+		}
+	}
+	
+	return 1;
+}
 
 int get_ram_size(void) {
 	FILE *fp;

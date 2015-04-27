@@ -1,5 +1,5 @@
  /*
-  *  Copyright (c) 2007, 2008, 2009 Andrea Bittau <a.bittau@cs.ucl.ac.uk>
+  *  Copyright (c) 2007-2009 Andrea Bittau <a.bittau@cs.ucl.ac.uk>
   *
   *  This program is free software; you can redistribute it and/or modify
   *  it under the terms of the GNU General Public License as published by
@@ -83,6 +83,8 @@ int handle(int s, unsigned char* data, int len, struct sockaddr_in *s_in)
 	*cmd++ = htons(S_CMD_PACKET);
 	*cmd++ = *pid;
 	plen = len - 2;
+    if (plen < 0)
+        return 0;
 
 	last_id = ntohs(*pid);
 	if (last_id > 20000)

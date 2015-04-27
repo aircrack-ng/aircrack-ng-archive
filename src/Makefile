@@ -16,13 +16,14 @@ BINFILES        = aircrack-ng$(EXE) airdecap-ng$(EXE) packetforge-ng$(EXE) \
 
 LIBPCRE		=
 ifeq ($(PCRE), true)
-	LIBPCRE	= $(shell pcre-config --libs)
+	LIBPCRE = $(shell $(PKG_CONFIG) --libs libpcre)
 endif
 
 ifneq ($(OSNAME), cygwin) #There is yet no libpcap support for windows, so we skip the crawler
 	HAVE_PCAP	= $(shell ld -lpcap 2> /dev/null && echo yes)
 	ifeq ($(HAVE_PCAP), yes) #cannot link with -lpcap, skip crawler
 		BINFILES	+= besside-ng-crawler$(EXE)
+		LIBPCAP		= -lpcap
 	endif
 endif
 
@@ -32,14 +33,14 @@ endif
 
 
 SBINFILES       = aireplay-ng$(EXE) airodump-ng$(EXE) airserv-ng$(EXE) \
-		  airtun-ng$(EXE) airbase-ng$(EXE) besside-ng$(EXE)
+		  airtun-ng$(EXE) airbase-ng$(EXE)
 		  
 OPTFILES	= aircrack-ng-opt-prof_gen aircrack-ng-opt \
 		  aircrack-ng-opt-prof prof/*
 
 
-ifeq ($(subst TRUE,true,$(filter TRUE true,$(unstable) $(UNSTABLE))),true)
-	SBINFILES	+= wesside-ng$(EXE) tkiptun-ng$(EXE) easside-ng$(EXE)
+ifeq ($(subst TRUE,true,$(filter TRUE true,$(experimental) $(EXPERIMENTAL))),true)
+	SBINFILES	+= wesside-ng$(EXE) tkiptun-ng$(EXE) easside-ng$(EXE) besside-ng$(EXE)
 	BINFILES	+= buddy-ng$(EXE)
 endif
 
@@ -168,7 +169,7 @@ besside-ng$(EXE): $(OBJS_BS) $(LIBOSD)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_BS) -o $(@) $(LIBS) $(LIBSSL) -lz $(LIBPCRE)
 
 besside-ng-crawler$(EXE): $(OBJS_BC)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_BC) -o $(@) -lpcap
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_BC) -o $(@) $(LIBPCAP)
 
 makeivs-ng$(EXE): $(OBJS_MI)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_MI) -o $(@) $(LDFLAGS)
@@ -193,7 +194,7 @@ strip: $(BINFILES) $(SBINFILES)
 
 clean:
 	$(MAKE) -C $(OSD) clean
-	-rm -f $(SBINFILES) $(BINFILES) $(OPTFILES) airolib-ng$(EXE) *.o wesside-ng$(EXE) tkiptun-ng$(EXE) easside-ng$(EXE) buddy-ng$(EXE) a.out
+	-rm -f $(SBINFILES) $(BINFILES) $(OPTFILES) airolib-ng$(EXE) *.o wesside-ng$(EXE) tkiptun-ng$(EXE) easside-ng$(EXE) buddy-ng$(EXE) besside-ng$(EXE) a.out
 
 distclean: clean
 

@@ -1,7 +1,7 @@
 /*
  *  WEP Cloaking filtering
  *
- *  Copyright (C) 2008-2013 Thomas d'Otreppe
+ *  Copyright (C) 2008-2015 Thomas d'Otreppe <tdotreppe@aircrack-ng.org>
  *
  *  Thanks to Alex Hernandez aka alt3kx for the hardware.
  *
@@ -547,7 +547,7 @@ BOOLEAN read_packets(void)
         }
 
 		#ifdef DEBUG
-        printf("From DS: %d - ToDS: %d\n", _packet_elt_head->current->fromDS, packet->toDS);
+        printf("From DS: %d - ToDS: %d\n", _packet_elt_head->current->fromDS, _packet_elt_head->current->toDS);
         printf("BSSID: %02X:%02X:%02X:%02X:%02X:%02X\n", _packet_elt_head->current->bssid[0],
 				_packet_elt_head->current->bssid[1], _packet_elt_head->current->bssid[2],
 				_packet_elt_head->current->bssid[3], _packet_elt_head->current->bssid[4],
@@ -614,7 +614,7 @@ BOOLEAN read_packets(void)
 			// Copy key index
 			_packet_elt_head->current->key_index = h80211[27];
 			#ifdef DEBUG
-			printf("Key index: %d\n", packet->key_index);
+			printf("Key index: %d\n", _packet_elt_head->current->key_index);
 			#endif
 			// Copy checksum
 			memcpy(_packet_elt_head->current->icv, buffer + (_packet_elt_head->current->header.caplen) - 4, 4);
@@ -1318,7 +1318,7 @@ BOOLEAN print_statistics() {
 
 void usage() {
 	printf("\n"
-			"  %s - (C) 2008-2013 Thomas d\'Otreppe\n"
+			"  %s - (C) 2008-2015 Thomas d\'Otreppe\n"
 			"  http://www.aircrack-ng.org\n"
 			"\n"
 			"  usage: airdecloak-ng [options]\n"

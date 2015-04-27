@@ -3,7 +3,7 @@
 # these bits are constant across distributions
 #
 Name:           aircrack-ng
-Version:        1.2-beta3
+Version:        1.2-rc2
 Summary:        Reliable 802.11 (wireless) sniffer and WEP/WPA-PSK key cracker
 License:        GPL
 Source:         http://dl.aircrack-ng.org/%{name}-%{version}.tar.gz
@@ -118,13 +118,13 @@ etc.).
 %setup -q
 
 %build
-make %{?_smp_mflags} sqlite=true unstable=true
+make %{?_smp_mflags} sqlite=true pcre=true experimental=true
 
 %install
 
 rm -rf $RPM_BUILD_ROOT
 mkdir $RPM_BUILD_ROOT
-make install DESTDIR=$RPM_BUILD_ROOT prefix=%{_prefix} mandir=%{_mandir}/man1 sqlite=true unstable=true
+make install DESTDIR=$RPM_BUILD_ROOT prefix=%{_prefix} mandir=%{_mandir}/man1 sqlite=true pcre=true experimental=true
 
 cd $RPM_BUILD_ROOT
 find . -type d | sed '1,2d;s,^\.,\%attr(-\,root\,root) \%dir ,' > %{_builddir}/file.list.%{name}

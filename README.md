@@ -57,8 +57,8 @@ to compile and install the suite:
                 level below this INSTALLING file
                 Note: Not working yet.
 
-* **unstable**: needed to compile `tkiptun-ng`, `easside-ng` (and `buddy-ng`) and
-                `wesside-ng`
+* **experimental**: needed to compile `tkiptun-ng`, `easside-ng` (and `buddy-ng`) and
+                    `wesside-ng`
 
 * **ext_scripts**: needed to build `airoscript-ng`, `versuck-ng`, `airgraph-ng` and 
                    `airdrop-ng`. 
@@ -71,22 +71,22 @@ to compile and install the suite:
 * **libnl**:    Add support for netlink (nl80211). Linux only.
     - Requires `libnl1` OR `libnl3`.
     - Dependencies (debian):
-        +  LibNL 1: `libnl-dev`
+        + LibNL 1: `libnl-dev`
         + LibNL 3: `libnl-3-dev` and `libnl-genl-3-dev`.
 
 #### Examples:
 
-  * Compiling with sqlite and enabling unstable:
+  * Compiling with sqlite and enabling experimental:
 
-    `make sqlite=true unstable=true`
+    `make sqlite=true experimental=true`
 
   * Installing:
 
-    `make sqlite=true unstable=true install`
+    `make sqlite=true experimental=true install`
 
   * Installing, with external scripts:
 
-    `make sqlite=true unstable=true ext_scripts=true`
+    `make sqlite=true experimental=true ext_scripts=true`
 
   * Compiling with gcrypt:
 

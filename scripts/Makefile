@@ -2,7 +2,7 @@ AC_ROOT		= ..
 include		$(AC_ROOT)/common.mak
 
 SCRIPTS         = airodump-ng-oui-update
-SCRIPTS_LNX	= airmon-ng airmon-zc
+SCRIPTS_LNX	= airmon-ng
 
 default: all
 
@@ -28,9 +28,12 @@ endif
 
 uninstall:
 	-rm -f $(DESTDIR)$(sbindir)/airmon-ng
-	-rm -f $(DESTDIR)$(sbindir)/airmon-zc
 	-rm -f $(DESTDIR)$(sbindir)/airdriver-ng
 	-rm -f $(DESTDIR)$(sbindir)/airodump-ng-oui-update
+	$(MAKE) -C airdrop-ng $(@)
+	$(MAKE) -C airgraph-ng $(@)
+	$(MAKE) -C airoscript-ng $(@)
+	$(MAKE) -C versuck-ng $(@)
 
 clean:
 	@echo Nothing to do

@@ -142,10 +142,20 @@ static unsigned char ZERO[32] =
 "\x00\x00\x00\x00\x00\x00\x00\x00"
 "\x00\x00\x00\x00\x00\x00\x00\x00";
 
-#define OUI_PATH0 "/etc/aircrack-ng/airodump-ng-oui.txt"
-#define OUI_PATH1 "/usr/local/etc/aircrack-ng/airodump-ng-oui.txt"
-#define OUI_PATH2 "/usr/share/aircrack-ng/airodump-ng-oui.txt"
-#define OUI_PATH3 "/usr/share/misc/oui.txt"
+const char *OUI_PATHS[] = {
+    "/etc/aircrack-ng/airodump-ng-oui.txt",
+    "/usr/local/etc/aircrack-ng/airodump-ng-oui.txt",
+    "/usr/share/aircrack-ng/airodump-ng-oui.txt",
+    "/var/lib/misc/oui.txt",
+    "/usr/share/misc/oui.txt",
+    "/var/lib/ieee-data/oui.txt",
+    "/usr/share/ieee-data/oui.txt",
+    "/etc/manuf/oui.txt",
+    "/usr/share/wireshark/wireshark/manuf/oui.txt",
+    "/usr/share/wireshark/manuf/oui.txt",
+    NULL
+};
+
 #define MIN_RAM_SIZE_LOAD_OUI_RAM 32768
 
 int read_pkts=0;
@@ -188,6 +198,14 @@ struct oui {
 	char id[9]; /* TODO: Don't use ASCII chars to compare, use unsigned char[3] (later) with the value (hex ascii will have to be converted) */
 	char manuf[128]; /* TODO: Switch to a char * later to improve memory usage */
 	struct oui *next;
+};
+
+/* WPS_info struct */
+struct WPS_info {
+    unsigned char version;    /* WPS Version */
+    unsigned char state;      /* Current WPS state */
+    unsigned char ap_setup_locked; /* AP setup locked */
+    unsigned int meth;        /* WPS Config Methods */
 };
 
 /* linked list of detected access points */
@@ -259,6 +277,7 @@ struct AP_info
 					  
     int marked;
     int marked_color;
+    struct WPS_info wps;
 };
 
 /* linked list of detected clients */
@@ -285,6 +304,8 @@ struct ST_info
     struct WPA_hdsk wpa;     /* WPA handshake data        */
     int qos_to_ds;           /* does it use 802.11e to ds */
     int qos_fr_ds;           /* does it receive 802.11e   */
+    int channel;             /* Channel station is seen   */
+                             /*  Not used yet		  */
 };
 
 /* linked list of detected macs through ack, cts or rts frames */
@@ -452,6 +473,9 @@ struct globals
     u_int maxsize_essid_seen;
     int show_manufacturer;
     int show_uptime;
+    int file_write_interval;
+    u_int maxsize_wps_seen;
+    int show_wps;
 }
 G;
 

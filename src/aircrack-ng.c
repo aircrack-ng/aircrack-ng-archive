@@ -1,7 +1,7 @@
 /*
  *  802.11 WEP / WPA-PSK Key Cracker
  *
- *  Copyright (C) 2006-2013 Thomas d'Otreppe
+ *  Copyright (C) 2006-2015 Thomas d'Otreppe <tdotreppe@aircrack-ng.org>
  *  Copyright (C) 2004, 2005 Christophe Devine
  *
  *  Advanced WEP attacks developed by KoreK
@@ -181,7 +181,7 @@ const unsigned char R[256] =
 
 char usage[] =
 "\n"
-"  %s - (C) 2006-2013 Thomas d\'Otreppe\n"
+"  %s - (C) 2006-2015 Thomas d\'Otreppe\n"
 "  http://www.aircrack-ng.org\n"
 "\n"
 "  usage: aircrack-ng [options] <.cap / .ivs file(s)>\n"
@@ -4484,6 +4484,8 @@ int do_make_hccap(struct AP_info *ap_cur)
 
 	hccap_t hccap;
 
+	memset (&hccap, 0, sizeof (hccap));
+
 	memcpy (&hccap.essid,      &ap_cur->essid,          sizeof (ap_cur->essid));
 	memcpy (&hccap.mac1,       &ap_cur->bssid,          sizeof (ap_cur->bssid));
 	memcpy (&hccap.mac2,       &ap_cur->wpa.stmac,      sizeof (ap_cur->wpa.stmac));
@@ -5026,21 +5028,6 @@ int main( int argc, char *argv[] )
 		{
 			case 'S':
 				_speed_test = 1;
-				opt.amode = 2;
-				opt.dict = stdin;
-				opt.bssid_set = 1;
-
-				ap_1st = ap_cur = malloc(sizeof(*ap_cur));
-				if (!ap_cur)
-					err(1, "malloc()");
-
-				memset(ap_cur, 0, sizeof(*ap_cur));
-
-				ap_cur->target = 1;
-				ap_cur->wpa.state = 7;
-				strcpy(ap_cur->essid, "sorbo");
-
-				goto __start;
 				break;
 
 			case ':' :
@@ -5432,6 +5419,24 @@ int main( int argc, char *argv[] )
 
 			default : goto usage;
 		}
+	}
+
+	if (_speed_test) {
+		opt.amode = 2;
+		opt.dict = stdin;
+		opt.bssid_set = 1;
+		
+		ap_1st = ap_cur = malloc(sizeof(*ap_cur));
+		if (!ap_cur)
+			err(1, "malloc()");
+		
+		memset(ap_cur, 0, sizeof(*ap_cur));
+		
+		ap_cur->target = 1;
+		ap_cur->wpa.state = 7;
+		strcpy(ap_cur->essid, "sorbo");
+		
+		goto __start;
 	}
 
 	if( argc - optind < 1 )

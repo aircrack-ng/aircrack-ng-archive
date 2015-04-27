@@ -1,7 +1,7 @@
  /*
   *  Server for osdep network driver.  Uses osdep itself!  [ph33r teh recursion]
   *
-  *  Copyright (c) 2007, 2008, 2009  Andrea Bittau <a.bittau@cs.ucl.ac.uk>
+  *  Copyright (c) 2007-2009  Andrea Bittau <a.bittau@cs.ucl.ac.uk>
   *
   *  Advanced WEP attacks developed by KoreK
   *  WPA-PSK  attack code developed by Joshua Wright
@@ -440,6 +440,7 @@ static void handle_card(struct sstate *ss)
 	ri->ri_channel = __cpu_to_be32(ri->ri_channel);
 	ri->ri_rate = __cpu_to_be32(ri->ri_rate);
 	ri->ri_antenna = __cpu_to_be32(ri->ri_antenna);
+	ri->ri_freq = __cpu_to_be32(ri->ri_freq);
 
 	c = ss->ss_clients.c_next;
 	while (c != &ss->ss_clients) {
