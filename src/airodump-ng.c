@@ -1525,7 +1525,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
 			st_cur->manuf = get_manufacturer(st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2]);
 		}
 
-	    st_cur->nb_pkt = 0;
+        st_cur->nb_pkt = 0;
 
         st_cur->prev = st_prv;
 
@@ -1541,7 +1541,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
         st_cur->lastseq = 0;
         st_cur->qos_fr_ds = 0;
         st_cur->qos_to_ds = 0;
-	    st_cur->channel = 0;
+        st_cur->channel = 0;
 
         gettimeofday( &(st_cur->ftimer), NULL);
 
@@ -6371,12 +6371,12 @@ int main( int argc, char *argv[] )
                 G.decloak = 0;
                 break;
 
-	        case 'M':
+            case 'M':
 
                 G.show_manufacturer = 1;
                 break;
 
-	        case 'U' :
+            case 'U' :
 	    		G.show_uptime = 1;
 	    		break;
 
@@ -6601,21 +6601,21 @@ int main( int argc, char *argv[] )
                 G.f_essid[G.f_essid_count-1] = optarg;
                 break;
 
-	        case 'R':
+            case 'R':
 
 #ifdef HAVE_PCRE
                 if (G.f_essid_regex != NULL)
                 {
-			        printf("Error: ESSID regular expression already given. Aborting\n");
-			        exit(1);
+    		        printf("Error: ESSID regular expression already given. Aborting\n");
+    		        exit(1);
                 }
 
                 G.f_essid_regex = pcre_compile(optarg, 0, &pcreerror, &pcreerroffset, NULL);
 
                 if (G.f_essid_regex == NULL)
                 {
-			        printf("Error: regular expression compilation failed at offset %d: %s; aborting\n", pcreerroffset, pcreerror);
-			        exit(1);
+    		        printf("Error: regular expression compilation failed at offset %d: %s; aborting\n", pcreerroffset, pcreerror);
+    		        exit(1);
 		}
 #else
                 printf("Error: Airodump-ng wasn't compiled with pcre support; aborting\n");
