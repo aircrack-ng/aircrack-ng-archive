@@ -406,7 +406,8 @@ struct globals
     unsigned char wpa_bssid[6];   /* the wpa handshake bssid   */
     char message[512];
     char decloak;
-
+    
+    char is_forgetful;
     char is_berlin;           /* is the switch --berlin set? */
     int numaps;               /* number of APs on the current list */
     int maxnumaps;            /* maximum nubers of APs on the list */

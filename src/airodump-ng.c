@@ -6120,6 +6120,7 @@ int main( int argc, char *argv[] )
         {"gpsd",     0, 0, 'g'},
         {"ivs",      0, 0, 'i'},
         {"write",    1, 0, 'w'},
+        {"forgetful",0, 0, 'F'},
         {"encrypt",  1, 0, 't'},
         {"update",   1, 0, 'u'},
         {"berlin",   1, 0, 'B'},
@@ -6365,20 +6366,23 @@ int main( int argc, char *argv[] )
                 G.decloak = 0;
                 break;
 
-	    case 'M':
+	        case 'M':
 
                 G.show_manufacturer = 1;
                 break;
 
-	    case 'U' :
+	        case 'U' :
 	    		G.show_uptime = 1;
 	    		break;
 
             case 'W':
-
                 G.show_wps = 1;
                 break;
-
+            
+            case 'F':
+                G.is_forgetful = 1;
+                break;
+            
             case 'c' :
 
                 if (G.channel[0] > 0 || G.chanoption == 1) {
@@ -6591,21 +6595,21 @@ int main( int argc, char *argv[] )
                 G.f_essid[G.f_essid_count-1] = optarg;
                 break;
 
-	    case 'R':
+	        case 'R':
 
 #ifdef HAVE_PCRE
                 if (G.f_essid_regex != NULL)
                 {
-			printf("Error: ESSID regular expression already given. Aborting\n");
-			exit(1);
+			        printf("Error: ESSID regular expression already given. Aborting\n");
+			        exit(1);
                 }
 
                 G.f_essid_regex = pcre_compile(optarg, 0, &pcreerror, &pcreerroffset, NULL);
 
                 if (G.f_essid_regex == NULL)
                 {
-			printf("Error: regular expression compilation failed at offset %d: %s; aborting\n", pcreerroffset, pcreerror);
-			exit(1);
+			        printf("Error: regular expression compilation failed at offset %d: %s; aborting\n", pcreerroffset, pcreerror);
+			        exit(1);
 		}
 #else
                 printf("Error: Airodump-ng wasn't compiled with pcre support; aborting\n");
