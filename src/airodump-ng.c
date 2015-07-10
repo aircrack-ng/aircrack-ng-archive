@@ -1496,6 +1496,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
                 && time(NULL) - st_cur->tlast > G.forget_to_sec
                 ||  ! memcmp( st_cur->stmac, stmac, 6 ))
         {
+            printf("NEW DEVICE FOUND %s", asctime(st_cur->tlast));
             break; 
         }
 
