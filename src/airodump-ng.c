@@ -1499,8 +1499,12 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
     }
 
     /* if it's a new client, add it */
+    
+    if( st_cur != NULL){
+        fprintf(stderr, "%d || %d || %d", st_cur->tlast, time(NULL), G.forget_to_sec);
+    }
 
-    if( st_cur == NULL || (st_cur != NULL && time(NULL) - st_cur->tlast > G.forget_to_sec))
+    if( st_cur == NULL )
     {
         if( ! ( st_cur = (struct ST_info *) malloc(
                          sizeof( struct ST_info ) ) ) )
