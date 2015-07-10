@@ -409,7 +409,7 @@ struct globals
     
     char is_forgetful;        /* is the -F switch set? */
     char is_berlin;           /* is the switch --berlin set? */
-    int forget_to_sec;        /* time in seconds before MAC address gets forgotten */
+    time_t forget_to_sec;        /* time in seconds before MAC address gets forgotten */
     int numaps;               /* number of APs on the current list */
     int maxnumaps;            /* maximum nubers of APs on the list */
     int maxaps;               /* number of all APs found */
