@@ -1487,7 +1487,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
 
     while( st_cur != NULL )
     {
-        if( ! memcmp( st_cur->stmac, stmac, 6 ) )
+        if( ! memcmp( st_cur->stmac, stmac, 6 ) ) /*TODO also add new if timeout reached */
             break;
 
         st_prv = st_cur;
@@ -1521,7 +1521,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
 			st_cur->manuf = get_manufacturer(st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2]);
 		}
 
-	st_cur->nb_pkt = 0;
+	    st_cur->nb_pkt = 0;
 
         st_cur->prev = st_prv;
 
@@ -1537,7 +1537,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
         st_cur->lastseq = 0;
         st_cur->qos_fr_ds = 0;
         st_cur->qos_to_ds = 0;
-	st_cur->channel = 0;
+	    st_cur->channel = 0;
 
         gettimeofday( &(st_cur->ftimer), NULL);
 
@@ -6203,6 +6203,8 @@ int main( int argc, char *argv[] )
     G.show_ack     =  0;
     G.hide_known   =  0;
     G.maxsize_essid_seen  =  5; // Initial value: length of "ESSID"
+    G.is_forgetful = 0;
+    G.forget_to_sec= 30; // Default value of forgetful timeout
     G.show_manufacturer = 0;
     G.show_uptime  = 0;
     G.hopfreq      =  DEFAULT_HOPFREQ;
@@ -6301,7 +6303,7 @@ int main( int argc, char *argv[] )
         option_index = 0;
 
         option = getopt_long( argc, argv,
-                        "b:c:egiw:s:t:u:m:d:N:R:aHDB:Ahf:r:EC:o:x:MUI:W",
+                        "b:c:egiw:s:t:u:m:d:N:R:aHDB:Ahf:r:EC:o:x:MUI:WF:",
                         long_options, &option_index );
 
         if( option < 0 ) break;
@@ -6381,6 +6383,7 @@ int main( int argc, char *argv[] )
             
             case 'F':
                 G.is_forgetful = 1;
+                G.forget_to_sec = atoi(optarg);
                 break;
             
             case 'c' :
