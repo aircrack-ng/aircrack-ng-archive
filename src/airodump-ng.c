@@ -1491,14 +1491,8 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
 
     while( st_cur != NULL )
     {   
-        /* also add new if timeout reached */   
-        if( G.is_forgetful 
-                && time(NULL) - st_cur->tlast > G.forget_to_sec
-                ||  ! memcmp( st_cur->stmac, stmac, 6 ))
-        {
-            printf("NEW DEVICE FOUND %s", asctime(st_cur->tlast));
+        if( ! memcmp( st_cur->stmac, stmac, 6 ))
             break; 
-        }
 
         st_prv = st_cur;
         st_cur = st_cur->next;
@@ -1570,6 +1564,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
         st_cur->rate_to = ri->ri_rate;
 
     /* update the last time seen */
+    /*TODO ADD NEW IF TIMEOUT REACHED */
 
     st_cur->tlast = time( NULL );
 
