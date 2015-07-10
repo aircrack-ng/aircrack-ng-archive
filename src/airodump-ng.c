@@ -1491,19 +1491,19 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
 
     while( st_cur != NULL )
     {   
-        if( ! memcmp( st_cur->stmac, stmac, 6 ))
+        if( ! memcmp( st_cur->stmac, stmac, 6 ) && 
+                ! (G.is_forgetful && (time(NULL) - st_cur->tlast >= G.forget_to_sec)))
             break; 
 
         st_prv = st_cur;
         st_cur = st_cur->next;
     }
 
-    /* if it's a new client, add it */
-    
     if( st_cur != NULL){
-        fprintf(stderr, "%d || %d || %d", st_cur->tlast, time(NULL), G.forget_to_sec);
+        printf( "%d || %d || %d\n", st_cur->tlast, time(NULL), G.forget_to_sec);
     }
 
+    /* if it's a new client, add it */
     if( st_cur == NULL )
     {
         if( ! ( st_cur = (struct ST_info *) malloc(
