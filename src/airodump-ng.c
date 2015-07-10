@@ -1500,7 +1500,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
 
     /* if it's a new client, add it */
 
-    if( st_cur == NULL )
+    if( st_cur == NULL || (st_cur != NULL && time(NULL) - st_cur->tlast > G.forget_to_sec))
     {
         if( ! ( st_cur = (struct ST_info *) malloc(
                          sizeof( struct ST_info ) ) ) )
@@ -1564,8 +1564,6 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
         st_cur->rate_to = ri->ri_rate;
 
     /* update the last time seen */
-    /*TODO ADD NEW IF TIMEOUT REACHED */
-
     st_cur->tlast = time( NULL );
 
     /* only update power if packets comes from the
