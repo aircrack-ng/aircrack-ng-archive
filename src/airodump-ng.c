@@ -1499,10 +1499,6 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
         st_cur = st_cur->next;
     }
 
-    if( st_cur != NULL){
-        printf( "%d || %d || %d\n", st_cur->tlast, time(NULL), G.forget_to_sec);
-    }
-
     /* if it's a new client, add it */
     if( st_cur == NULL )
     {
