@@ -6758,10 +6758,8 @@ usage:
                 printf("No valid frequency given.\n");
                 return(1);
             }
-
-//             printf("gonna rearrange\n");
+            
             rearrange_frequencies();
-//             printf("finished rearranging\n");
 
             freq_count = getfreqcount(0);
 
