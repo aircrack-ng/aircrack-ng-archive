@@ -653,6 +653,10 @@ char usage[] =
 "      --output-format\n"
 "                  <formats> : Output format. Possible values:\n"
 "                              pcap, ivs, csv, gps, kismet, netxml\n"
+"      --forgetful <timeout> : Will create new rows in csv for duplicate MAC\n"
+"                              addresses if they haven't been seen for\n"
+"                              <timeout> seconds.\n"
+"      -F          <timeout> : Same as --forgetful\n"
 "      --ignore-negative-one : Removes the message that says\n"
 "                              fixed channel <interface>: -1\n"
 "      --write-interval\n"
@@ -1486,9 +1490,14 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
     st_prv = NULL;
 
     while( st_cur != NULL )
-    {
-        if( ! memcmp( st_cur->stmac, stmac, 6 ) ) /*TODO also add new if timeout reached */
-            break;
+    {   
+        /* also add new if timeout reached */   
+        if( G.is_forgetful 
+                && time(NULL) - st_cur->tlast > G.forget_to_sec
+                ||  ! memcmp( st_cur->stmac, stmac, 6 ))
+        {
+            break; 
+        }
 
         st_prv = st_cur;
         st_cur = st_cur->next;
