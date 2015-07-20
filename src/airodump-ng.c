@@ -1492,6 +1492,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
     while( st_cur != NULL )
     {   
         if( ! memcmp( st_cur->stmac, stmac, 6 ) ){ 
+                ! (G.is_forgetful && (time(NULL) - st_cur->tlast >= G.forget_to_sec)))
             
             //add new client after timeout
             if( ! (G.is_forgetful && (time(NULL) - st_cur->tlast >= G.forget_to_sec))){
