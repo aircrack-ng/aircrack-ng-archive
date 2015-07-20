@@ -1491,10 +1491,22 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
 
     while( st_cur != NULL )
     {   
-        if( ! memcmp( st_cur->stmac, stmac, 6 ) && 
-                ! (G.is_forgetful && (time(NULL) - st_cur->tlast >= G.forget_to_sec)))
+        if( ! memcmp( st_cur->stmac, stmac, 6 ) ){ 
+            
+            //add new client after timeout
+            if( ! (G.is_forgetful && (time(NULL) - st_cur->tlast >= G.forget_to_sec))){
+                /* do all insertions towards the head so that the 
+                 * newest entry for a MAC will always come first */
+                struct ST_info *st_new = (struct ST_info *) malloc(sizeof(struct ST_info));
+                memcpy(st_new, st_cur, sizeof(struct ST_info));
+                st_new->next = st_cur;
+                st_new->prev = st_prv;
+                st_prv->next = st_new;
+                st_cur->prev = st_new;
+                st_cur = st_new;
+            }
             break; 
-
+        }
         st_prv = st_cur;
         st_cur = st_cur->next;
     }
