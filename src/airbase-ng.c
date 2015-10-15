@@ -2554,7 +2554,7 @@ int packet_recv(unsigned char* packet, int length, struct AP_conf *apc, int exte
     char essid[256];
     struct timeval tv1;
     u_int64_t timestamp;
-    char fessid[33];
+    char fessid[256];
     int seqnum, fragnum, morefrag;
     int gotsource, gotbssid;
     int remaining, bytes2use;
@@ -3561,7 +3561,7 @@ void beacon_thread( void *arg )
     int beacon_len=0;
     int seq=0, i=0, n=0;
     int essid_len, temp_channel;
-    char essid[33];;
+    char essid[256];;
     float f, ticks[3];
 
     memcpy(&apc, arg, sizeof(struct AP_conf));
@@ -4793,7 +4793,7 @@ usage:
     memcpy(apc.bssid, opt.r_bssid, 6);
     if( getESSIDcount() == 1 && opt.hidden != 1)
     {
-        apc.essid = (char*) malloc(33);
+        apc.essid = (char*) malloc(256);
         apc.essid_len = getESSID(apc.essid);
         apc.essid = (char*) realloc((void *)apc.essid, apc.essid_len + 1);
         apc.essid[apc.essid_len] = 0x00;
