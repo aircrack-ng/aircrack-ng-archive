@@ -25,10 +25,6 @@ compiler:
   - gcc
   - clang
 
-cache:
-    - ccache
-    - apt
-
 script:
     - make sqlite=true experimental=true && make check sqlite=true experimental=true && make clean
     - make sqlite=true experimental=true gcrypt=true && make check sqlite=true experimental=true gcrypt=true
@@ -37,8 +33,3 @@ script:
     - make sqlite=true experimental=true && make check sqlite=true experimental=true && make clean
     - make sqlite=true experimental=true gcrypt=true && make check sqlite=true experimental=true gcrypt=true
     - make pcre=true && make check pcre=true
-
-notifications:
-    irc: "chat.freenode.net#aircrack-ng-test"
-    on_success: never
-    on_failure: always
