@@ -309,8 +309,8 @@ int cpuid_findcpusensorpath(const char *path) {
 	while ((dp = readdir(dirp)) != NULL) {
 		if (!strncmp(dp->d_name, sensor, 5)) {
 			(void)closedir(dirp);
-			asprintf(&cpuinfo.cputemppath, "%stemp%d_input", CORETEMP_PATH, sensorx);
-			return sensorx;
+			if(asprintf(&cpuinfo.cputemppath, "%stemp%d_input", CORETEMP_PATH, sensorx))
+			    return sensorx;
 		} else if (!strncmp(dp->d_name, "temp", 4))
 			sprintf(tbuf[cnt++], "%s", dp->d_name);
 	}
@@ -324,8 +324,8 @@ int cpuid_findcpusensorpath(const char *path) {
 			snprintf(sensor, sizeof(sensor), "temp%d", sensorx);
 
 			if (!strncasecmp(tbuf[i], sensor, strlen(sensor))) {
-				asprintf(&cpuinfo.cputemppath, "%stemp%d_input", CORETEMP_PATH, sensorx);
-				return sensorx;
+				if(asprintf(&cpuinfo.cputemppath, "%stemp%d_input", CORETEMP_PATH, sensorx))
+				    return sensorx;
 			}
 		}
 
