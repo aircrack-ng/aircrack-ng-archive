@@ -182,7 +182,6 @@ int mygetch( ) {
 
 void resetSelection()
 {
-    G.sort_by = SORT_BY_POWER;
     G.sort_inv = 1;
 
     G.start_print_ap=1;
@@ -213,6 +212,49 @@ void resetSelection()
 #define KEY_r		0x72	//realtime sort (de)activate
 #define KEY_s		0x73	//cycle through sorting
 
+void show_sorting_info(void) {
+	switch(G.sort_by) {
+		case SORT_BY_NOTHING:
+			snprintf(G.message, sizeof(G.message), "][ sorting by first seen");
+			break;
+		case SORT_BY_BSSID:
+			snprintf(G.message, sizeof(G.message), "][ sorting by bssid");
+			break;
+		case SORT_BY_POWER:
+			snprintf(G.message, sizeof(G.message), "][ sorting by power level");
+			break;
+		case SORT_BY_BEACON:
+			snprintf(G.message, sizeof(G.message), "][ sorting by beacon number");
+			break;
+		case SORT_BY_DATA:
+			snprintf(G.message, sizeof(G.message), "][ sorting by number of data packets");
+			break;
+		case SORT_BY_PRATE:
+			snprintf(G.message, sizeof(G.message), "][ sorting by packet rate");
+			break;
+		case SORT_BY_CHAN:
+			snprintf(G.message, sizeof(G.message), "][ sorting by channel");
+			break;
+		case SORT_BY_MBIT:
+			snprintf(G.message, sizeof(G.message), "][ sorting by max data rate");
+			break;
+		case SORT_BY_ENC:
+			snprintf(G.message, sizeof(G.message), "][ sorting by encryption");
+			break;
+		case SORT_BY_CIPHER:
+			snprintf(G.message, sizeof(G.message), "][ sorting by cipher");
+			break;
+		case SORT_BY_AUTH:
+			snprintf(G.message, sizeof(G.message), "][ sorting by authentication");
+			break;
+		case SORT_BY_ESSID:
+			snprintf(G.message, sizeof(G.message), "][ sorting by ESSID");
+			break;
+		default:
+			break;
+	}
+}
+
 void input_thread( void *arg) {
 
     if(!arg){}
@@ -230,46 +272,8 @@ void input_thread( void *arg) {
 	    if(G.sort_by > MAX_SORT)
 		G.sort_by = 0;
 
-	    switch(G.sort_by) {
-		case SORT_BY_NOTHING:
-		    snprintf(G.message, sizeof(G.message), "][ sorting by first seen");
-		    break;
-		case SORT_BY_BSSID:
-		    snprintf(G.message, sizeof(G.message), "][ sorting by bssid");
-		    break;
-		case SORT_BY_POWER:
-		    snprintf(G.message, sizeof(G.message), "][ sorting by power level");
-		    break;
-		case SORT_BY_BEACON:
-		    snprintf(G.message, sizeof(G.message), "][ sorting by beacon number");
-		    break;
-		case SORT_BY_DATA:
-		    snprintf(G.message, sizeof(G.message), "][ sorting by number of data packets");
-		    break;
-		case SORT_BY_PRATE:
-		    snprintf(G.message, sizeof(G.message), "][ sorting by packet rate");
-		    break;
-		case SORT_BY_CHAN:
-		    snprintf(G.message, sizeof(G.message), "][ sorting by channel");
-		    break;
-		case SORT_BY_MBIT:
-		    snprintf(G.message, sizeof(G.message), "][ sorting by max data rate");
-		    break;
-		case SORT_BY_ENC:
-		    snprintf(G.message, sizeof(G.message), "][ sorting by encryption");
-		    break;
-		case SORT_BY_CIPHER:
-		    snprintf(G.message, sizeof(G.message), "][ sorting by cipher");
-		    break;
-		case SORT_BY_AUTH:
-		    snprintf(G.message, sizeof(G.message), "][ sorting by authentication");
-		    break;
-		case SORT_BY_ESSID:
-		    snprintf(G.message, sizeof(G.message), "][ sorting by ESSID");
-		    break;
-		default:
-		    break;
-	    }
+	    show_sorting_info();
+
 	    pthread_mutex_lock( &(G.mx_sort) );
 		dump_sort();
 	    pthread_mutex_unlock( &(G.mx_sort) );
@@ -668,6 +672,18 @@ char usage[] =
 "                              fixed channel <interface>: -1\n"
 "      --write-interval\n"
 "                  <seconds> : Output file(s) write interval in seconds\n"
+"      -S           <column> : Sort APs by the chosen column\n"
+"                     ssid\n"
+"                     power\n"
+"                     beacons\n"
+"                     data\n"
+"                     packet-rate\n"
+"                     channel\n"
+"                     max-packet-rate\n"
+"                     encryption\n"
+"                     cipher\n"
+"                     auth\n"
+"                     essid\n"
 "\n"
 "  Filter options:\n"
 "      --encrypt   <suite>   : Filter APs by cipher suite\n"
@@ -6166,6 +6182,7 @@ int main( int argc, char *argv[] )
         {"help",     0, 0, 'H'},
         {"nodecloak",0, 0, 'D'},
         {"showack",  0, 0, 'A'},
+        {"sort",     0, 0, 'S'},
         {"detect-anomaly", 0, 0, 'E'},
         {"output-format",  1, 0, 'o'},
         {"ignore-negative-one", 0, &G.ignore_negative_one, 1},
@@ -6268,6 +6285,7 @@ int main( int argc, char *argv[] )
 #endif
 
 	// Default selection.
+    G.sort_by = SORT_BY_POWER;
     resetSelection();
 
     memset(G.sharedkey, '\x00', 512*3);
@@ -6344,7 +6362,7 @@ int main( int argc, char *argv[] )
         option_index = 0;
 
         option = getopt_long( argc, argv,
-                        "b:c:egiw:s:t:u:m:d:N:R:aHDB:Ahf:r:EC:o:x:MUI:W",
+                        "b:c:egiw:s:t:u:m:d:N:R:aHDB:Ahf:r:EC:o:x:MUI:WS:",
                         long_options, &option_index );
 
         if( option < 0 ) break;
@@ -6742,6 +6760,37 @@ int main( int argc, char *argv[] )
 
                 if (G.active_scan_sim <= 0)
                     G.active_scan_sim = 0;
+                break;
+
+            case 'S':
+
+                if (strncasecmp(optarg, "bssid", 5) == 0) {
+                	G.sort_by = SORT_BY_BSSID;
+                } else if (strncasecmp(optarg, "power", 5) == 0) {
+                	G.sort_by = SORT_BY_POWER;
+                } else if (strncasecmp(optarg, "beacons", 7) == 0) {
+                	G.sort_by = SORT_BY_BEACON;
+                } else if (strncasecmp(optarg, "data", 4) == 0) {
+                	G.sort_by = SORT_BY_DATA;
+                } else if (strncasecmp(optarg, "packet-rate", 11) == 0) {
+                	G.sort_by = SORT_BY_PRATE;
+                } else if (strncasecmp(optarg, "channel", 7) == 0) {
+                	G.sort_by = SORT_BY_CHAN;
+                } else if (strncasecmp(optarg, "max-packet-rate", 15) == 0) {
+                	G.sort_by = SORT_BY_MBIT;
+                } else if (strncasecmp(optarg, "encryption", 10) == 0) {
+                	G.sort_by = SORT_BY_ENC;
+                } else if (strncasecmp(optarg, "cipher", 6) == 0) {
+                	G.sort_by = SORT_BY_CIPHER;
+                } else if (strncasecmp(optarg, "auth", 4) == 0) {
+                	G.sort_by = SORT_BY_AUTH;
+                } else if (strncasecmp(optarg, "essid", 5) == 0) {
+                	G.sort_by = SORT_BY_ESSID;
+                } else {
+                	G.sort_by = SORT_BY_NOTHING;
+                }
+
+                show_sorting_info();
                 break;
 
             default : goto usage;
