@@ -1186,6 +1186,12 @@ int getNextESSID(char *essid)
     //    memcpy(essid, cur->essid, cur->len + 1);
     //   len = cur->len;
 	//}
+	
+	/* 
+	 * if cur == NULL, the current SSID does not exist in the linked list.
+	 * This may happen when we reload a new essid file which does not include the current SSID.
+	 * So, we will wrap it to the beginning of the list.
+	 */
 	if (cur == NULL && rESSID->next != NULL)
 		cur = rESSID->next;
 
