@@ -1,7 +1,7 @@
 /*
  *  802.11 WEP replay & injection attacks
  *
- *  Copyright (C) 2006-2013 Thomas d'Otreppe
+ *  Copyright (C) 2006-2016 Thomas d'Otreppe <tdotreppe@aircrack-ng.org>
  *  Copyright (C) 2004, 2005 Christophe Devine
  *
  *  WEP decryption attack (chopchop) developed by KoreK
@@ -56,6 +56,7 @@
 #include <errno.h>
 #include <time.h>
 #include <getopt.h>
+#include <assert.h>
 
 #include <fcntl.h>
 #include <ctype.h>
@@ -139,7 +140,7 @@ extern const unsigned char crc_chop_tbl[256][4];
 char usage[] =
 
 "\n"
-"  %s - (C) 2006-2013 Thomas d\'Otreppe\n"
+"  %s - (C) 2006-2015 Thomas d\'Otreppe\n"
 "  http://www.aircrack-ng.org\n"
 "\n"
 "  usage: aireplay-ng <options> <replay interface>\n"
@@ -256,7 +257,7 @@ struct options
     char *iface_out;
     char *s_face;
     char *s_file;
-    uchar *prga;
+    unsigned char *prga;
 
     int a_mode;
     int a_count;
@@ -331,10 +332,10 @@ unsigned char tmpbuf[4096];
 unsigned char srcbuf[4096];
 char strbuf[512];
 
-uchar ska_auth1[]     = "\xb0\x00\x3a\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+unsigned char ska_auth1[]     = "\xb0\x00\x3a\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
                         "\x00\x00\x00\x00\x00\x00\xb0\x01\x01\x00\x01\x00\x00\x00";
 
-uchar ska_auth3[4096] = "\xb0\x40\x3a\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+unsigned char ska_auth3[4096] = "\xb0\x40\x3a\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
                         "\x00\x00\x00\x00\x00\x00\xc0\x01";
 
 
@@ -440,7 +441,19 @@ int set_bitrate(struct wif *wi, int rate)
             {
                 if(bitrates[i-1] >= newrate)
                 {
-                    printf("Couldn't set rate to %.1fMBit. (%.1fMBit instead)\n", (rate/1000000.0), (wi_get_rate(wi)/1000000.0));
+                    printf("Couldn't set rate to %.1fMBit. (%.1fMBit instead)\n", (rate/
+#if defined(__x86_64__) && defined(__CYGWIN__)
+			(0.0f + 1000000)),
+#else
+			1000000.0),
+#endif
+			(wi_get_rate(wi)/
+#if defined(__x86_64__) && defined(__CYGWIN__)
+			(0.0f + 1000000)
+#else
+			1000000.0
+#endif
+			));
                     return 1;
                 }
             }
@@ -448,13 +461,36 @@ int set_bitrate(struct wif *wi, int rate)
             {
                 if(bitrates[i+1] <= newrate)
                 {
-                    printf("Couldn't set rate to %.1fMBit. (%.1fMBit instead)\n", (rate/1000000.0), (wi_get_rate(wi)/1000000.0));
+                    printf("Couldn't set rate to %.1fMBit. (%.1fMBit instead)\n", (rate/
+#if defined(__x86_64__) && defined(__CYGWIN__)
+			(0.0f + 1000000)),
+#else
+			1000000.0),
+#endif
+			 (wi_get_rate(wi)/
+#if defined(__x86_64__) && defined(__CYGWIN__)
+			(0.0f + 1000000)));
+#else
+			1000000.0));
+#endif
                     return 1;
                 }
             }
             return 0;
         }
-        printf("Couldn't set rate to %.1fMBit. (%.1fMBit instead)\n", (rate/1000000.0), (wi_get_rate(wi)/1000000.0));
+        printf("Couldn't set rate to %.1fMBit. (%.1fMBit instead)\n", (rate/
+#if defined(__x86_64__) && defined(__CYGWIN__)
+		(0.0f + 1000000)),
+#else
+		1000000.0),
+#endif
+		(wi_get_rate(wi)/
+#if defined(__x86_64__) && defined(__CYGWIN__)
+		(0.0f + 1000000)));
+#else
+		1000000.0));
+#endif
+
         return 1;
     }
     return 0;
@@ -506,7 +542,7 @@ int read_packet(void *buf, size_t count, struct rx_info *ri)
 	return rc;
 }
 
-void read_sleep( int usec )
+void read_sleep( unsigned long usec )
 {
     struct timeval tv, tv2, tv3;
     int caplen;
@@ -518,7 +554,7 @@ void read_sleep( int usec )
     tv3.tv_sec=0;
     tv3.tv_usec=10000;
 
-    while( ((tv2.tv_sec*1000000 - tv.tv_sec*1000000) + (tv2.tv_usec - tv.tv_usec)) < (usec) )
+    while( ((tv2.tv_sec*1000000UL - tv.tv_sec*1000000UL) + (tv2.tv_usec - tv.tv_usec)) < (usec) )
     {
         FD_ZERO( &rfds );
         FD_SET( dev.fd_in, &rfds );
@@ -606,10 +642,10 @@ int filter_packet( unsigned char *h80211, int caplen )
     return( 0 );
 }
 
-int wait_for_beacon(uchar *bssid, uchar *capa, char *essid)
+int wait_for_beacon(unsigned char *bssid, unsigned char *capa, char *essid)
 {
     int len = 0, chan = 0, taglen = 0, tagtype = 0, pos = 0;
-    uchar pkt_sniff[4096];
+    unsigned char pkt_sniff[4096];
     struct timeval tv,tv2;
     char essid2[33];
 
@@ -622,7 +658,7 @@ int wait_for_beacon(uchar *bssid, uchar *capa, char *essid)
             len = read_packet(pkt_sniff, sizeof(pkt_sniff), NULL);
 
             gettimeofday(&tv2, NULL);
-            if(((tv2.tv_sec-tv.tv_sec)*1000000) + (tv2.tv_usec-tv.tv_usec) > 10000*1000) //wait 10sec for beacon frame
+            if(((tv2.tv_sec-tv.tv_sec)*1000000UL) + (tv2.tv_usec-tv.tv_usec) > 10000*1000) //wait 10sec for beacon frame
             {
                 return -1;
             }
@@ -718,7 +754,7 @@ int wait_for_beacon(uchar *bssid, uchar *capa, char *essid)
 /**
     if bssid != NULL its looking for a beacon frame
 */
-int attack_check(uchar* bssid, char* essid, uchar* capa, struct wif *wi)
+int attack_check(unsigned char* bssid, char* essid, unsigned char* capa, struct wif *wi)
 {
     int ap_chan=0, iface_chan=0;
 
@@ -749,7 +785,7 @@ int attack_check(uchar* bssid, char* essid, uchar* capa, struct wif *wi)
     return 0;
 }
 
-int getnet( uchar* capa, int filter, int force)
+int getnet( unsigned char* capa, int filter, int force)
 {
     unsigned char *bssid;
 
@@ -810,7 +846,7 @@ int getnet( uchar* capa, int filter, int force)
     return 0;
 }
 
-int xor_keystream(uchar *ph80211, uchar *keystream, int len)
+int xor_keystream(unsigned char *ph80211, unsigned char *keystream, int len)
 {
     int i=0;
 
@@ -1190,7 +1226,7 @@ int read_prga(unsigned char **dest, char *file)
     return( 0 );
 }
 
-void add_icv(uchar *input, int len, int offset)
+void add_icv(unsigned char *input, int len, int offset)
 {
     unsigned long crc = 0xFFFFFFFF;
     int n=0;
@@ -1208,11 +1244,11 @@ void add_icv(uchar *input, int len, int offset)
     return;
 }
 
-void send_fragments(uchar *packet, int packet_len, uchar *iv, uchar *keystream, int fragsize, int ska)
+void send_fragments(unsigned char *packet, int packet_len, unsigned char *iv, unsigned char *keystream, int fragsize, int ska)
 {
     int t, u;
     int data_size;
-    uchar frag[32+fragsize];
+    unsigned char frag[32+fragsize];
     int pack_size;
     int header_size=24;
 
@@ -1421,7 +1457,7 @@ int do_attack_fake_auth( void )
     int retry = 0;
     int abort;
     int gotack = 0;
-    uchar capa[2];
+    unsigned char capa[2];
     int deauth_wait=3;
     int ska=0;
     int keystreamlen=0;
@@ -1437,6 +1473,7 @@ int do_attack_fake_auth( void )
     unsigned char challenge[2048];
     unsigned char keystream[2048];
 
+    memset(iv, 0, sizeof(iv));
 
     if( memcmp( opt.r_smac,  NULL_MAC, 6 ) == 0 )
     {
@@ -1967,7 +2004,7 @@ int do_attack_fake_auth( void )
                 if(opt.npackets == -1) x_send = 4;
                 state = 0;
                 challengelen = 0;
-                read_sleep( deauth_wait * 1000000 );
+                read_sleep( deauth_wait * 1000000UL );
                 deauth_wait += 2;
                 continue;
             }
@@ -2406,6 +2443,7 @@ int do_attack_arp_resend( void )
     if( fwrite( &pfh_out, n, 1, f_cap_out ) != 1 )
     {
         perror( "fwrite failed\n" );
+        fclose( f_cap_out );
         return( 1 );
     }
 
@@ -2419,6 +2457,7 @@ int do_attack_arp_resend( void )
         if( fcntl( dev.fd_in, F_SETFL, O_NONBLOCK ) < 0 )
         {
             perror( "fcntl(O_NONBLOCK) failed" );
+            fclose( f_cap_out );
             return( 1 );
         }
     }
@@ -2449,6 +2488,8 @@ int do_attack_arp_resend( void )
             if( read( dev.fd_rtc, &n, sizeof( n ) ) < 0 )
             {
                 perror( "read(/dev/rtc) failed" );
+                free( arp );
+                fclose( f_cap_out );
                 return( 1 );
             }
 
@@ -2492,13 +2533,21 @@ int do_attack_arp_resend( void )
 
                 if( send_packet( arp[arp_off1].buf,
                                  arp[arp_off1].len ) < 0 )
-                    return( 1 );
+                    {
+                        free( arp );
+                        fclose( f_cap_out );
+                        return( 1 );
+                    }
 
                 if( ((double)ticks[0]/(double)RTC_RESOLUTION)*(double)opt.r_nbpps > (double)nb_pkt_sent  )
                 {
                     if( send_packet( arp[arp_off1].buf,
                                     arp[arp_off1].len ) < 0 )
+                    {
+                        free( arp );
+                        fclose( f_cap_out );
                         return( 1 );
+                    }
                 }
 
                 if( ++arp_off1 >= nb_arp )
@@ -2514,7 +2563,12 @@ int do_attack_arp_resend( void )
 
             caplen = read_packet( h80211, sizeof( h80211 ), NULL );
 
-            if( caplen  < 0 ) return( 1 );
+            if( caplen  < 0 )
+            {
+                free( arp );
+                fclose( f_cap_out );
+                return( 1 );
+            }
             if( caplen == 0 ) continue;
         }
         else
@@ -2717,6 +2771,8 @@ add_arp:
 
                 if( ( arp[nb_arp].buf = malloc( 128 ) ) == NULL ) {
                     perror( "malloc failed" );
+                    free(arp);
+                    fclose( f_cap_out );
                     return( 1 );
                 }
 
@@ -2734,6 +2790,8 @@ add_arp:
 
                 if( fwrite( &pkh, n, 1, f_cap_out ) != 1 ) {
                     perror( "fwrite failed" );
+                    free( arp );
+                    fclose( f_cap_out );
                     return( 1 );
                 }
 
@@ -2741,6 +2799,8 @@ add_arp:
 
                 if( fwrite( h80211, n, 1, f_cap_out ) != 1 ) {
                     perror( "fwrite failed" );
+                    free( arp );
+                    fclose( f_cap_out );
                     return( 1 );
                 }
 
@@ -2758,7 +2818,7 @@ int do_attack_caffe_latte( void )
     int arp_off1, arp_off2;
     int i, n, caplen, nb_arp, z;
     long nb_pkt_read, nb_arp_tot, nb_ack_pkt;
-    uchar flip[4096];
+    unsigned char flip[4096];
 
     time_t tc;
     float f, ticks[3];
@@ -2819,6 +2879,7 @@ int do_attack_caffe_latte( void )
     if( fwrite( &pfh_out, n, 1, f_cap_out ) != 1 )
     {
         perror( "fwrite failed\n" );
+        fclose( f_cap_out );
         return( 1 );
     }
 
@@ -2832,6 +2893,7 @@ int do_attack_caffe_latte( void )
         if( fcntl( dev.fd_in, F_SETFL, O_NONBLOCK ) < 0 )
         {
             perror( "fcntl(O_NONBLOCK) failed" );
+            fclose( f_cap_out );
             return( 1 );
         }
     }
@@ -2862,6 +2924,8 @@ int do_attack_caffe_latte( void )
             if( read( dev.fd_rtc, &n, sizeof( n ) ) < 0 )
             {
                 perror( "read(/dev/rtc) failed" );
+                free( arp );
+                fclose( f_cap_out );
                 return( 1 );
             }
 
@@ -2905,13 +2969,20 @@ int do_attack_caffe_latte( void )
 
                 if( send_packet( arp[arp_off1].buf,
                                  arp[arp_off1].len ) < 0 )
-                    return( 1 );
-
+                    {
+                        free( arp );
+                        fclose( f_cap_out );
+                        return( 1 );
+                    }
                 if( ((double)ticks[0]/(double)RTC_RESOLUTION)*(double)opt.r_nbpps > (double)nb_pkt_sent  )
                 {
                     if( send_packet( arp[arp_off1].buf,
                                     arp[arp_off1].len ) < 0 )
+                    {
+                        free( arp );
+                        fclose( f_cap_out );
                         return( 1 );
+                    }
                 }
 
                 if( ++arp_off1 >= nb_arp )
@@ -2927,8 +2998,15 @@ int do_attack_caffe_latte( void )
 
             caplen = read_packet( h80211, sizeof( h80211 ), NULL );
 
-            if( caplen  < 0 ) return( 1 );
-            if( caplen == 0 ) continue;
+            if( caplen  < 0 )
+            {
+                free( arp );
+                fclose( f_cap_out );
+                return( 1 );
+            }
+
+            if( caplen == 0 )
+               continue;
         }
         else
         {
@@ -3130,6 +3208,8 @@ add_arp:
 
                 if( ( arp[nb_arp].buf = malloc( 128 ) ) == NULL ) {
                     perror( "malloc failed" );
+                    free(arp);
+                    fclose( f_cap_out );
                     return( 1 );
                 }
 
@@ -3158,6 +3238,8 @@ add_arp:
 
                 if( fwrite( &pkh, n, 1, f_cap_out ) != 1 ) {
                     perror( "fwrite failed" );
+                    free(arp);
+                    fclose( f_cap_out );
                     return( 1 );
                 }
 
@@ -3165,6 +3247,8 @@ add_arp:
 
                 if( fwrite( h80211, n, 1, f_cap_out ) != 1 ) {
                     perror( "fwrite failed" );
+                    free(arp);
+                    fclose( f_cap_out );
                     return( 1 );
                 }
 
@@ -3172,7 +3256,7 @@ add_arp:
             }
         }
     }
-
+    fclose( f_cap_out );
     return( 0 );
 }
 
@@ -3182,8 +3266,8 @@ int do_attack_migmode( void )
     int arp_off1, arp_off2;
     int i, n, caplen, nb_arp, z;
     long nb_pkt_read, nb_arp_tot, nb_ack_pkt;
-    uchar flip[4096];
-    uchar senderMAC[6];
+    unsigned char flip[4096];
+    unsigned char senderMAC[6];
 
     time_t tc;
     float f, ticks[3];
@@ -3201,6 +3285,9 @@ int do_attack_migmode( void )
     else
         arp = (struct ARP_req*) malloc( sizeof( struct ARP_req ) );
 
+    if (arp == NULL)
+        return 1;
+
     /* capture only WEP data to broadcast address */
 
     opt.f_type    = 2;
@@ -3208,12 +3295,15 @@ int do_attack_migmode( void )
     opt.f_iswep   = 1;
     opt.f_fromds  = 1;
 
-    if(getnet(NULL, 1, 1) != 0)
+    if(getnet(NULL, 1, 1) != 0){
+        free(arp);
         return 1;
+    }
 
     if( memcmp( opt.f_bssid, NULL_MAC, 6 ) == 0 )
     {
         printf( "Please specify a BSSID (-b).\n" );
+        free(arp);
         return( 1 );
     }
     /* create and write the output pcap header */
@@ -3241,6 +3331,7 @@ int do_attack_migmode( void )
     if( ( f_cap_out = fopen( strbuf, "wb+" ) ) == NULL )
     {
         perror( "fopen failed" );
+        free(arp);
         return( 1 );
     }
 
@@ -3249,6 +3340,8 @@ int do_attack_migmode( void )
     if( fwrite( &pfh_out, n, 1, f_cap_out ) != 1 )
     {
         perror( "fwrite failed\n" );
+        free(arp);
+        fclose( f_cap_out );
         return( 1 );
     }
 
@@ -3265,6 +3358,8 @@ int do_attack_migmode( void )
         if( fcntl( dev.fd_in, F_SETFL, O_NONBLOCK ) < 0 )
         {
             perror( "fcntl(O_NONBLOCK) failed" );
+            free(arp);
+            fclose( f_cap_out );
             return( 1 );
         }
     }
@@ -3290,6 +3385,8 @@ int do_attack_migmode( void )
             if( read( dev.fd_rtc, &n, sizeof( n ) ) < 0 )
             {
                 perror( "read(/dev/rtc) failed" );
+                free( arp );
+                fclose( f_cap_out );
                 return( 1 );
             }
 
@@ -3333,13 +3430,21 @@ int do_attack_migmode( void )
 
                 if( send_packet( arp[arp_off1].buf,
                                  arp[arp_off1].len ) < 0 )
+                {
+                    free(arp);
+                    fclose( f_cap_out );
                     return( 1 );
+                }
 
                 if( ((double)ticks[0]/(double)RTC_RESOLUTION)*(double)opt.r_nbpps > (double)nb_pkt_sent  )
                 {
                     if( send_packet( arp[arp_off1].buf,
                                     arp[arp_off1].len ) < 0 )
+                    {
+                        free(arp);
+                        fclose( f_cap_out );
                         return( 1 );
+                    }
                 }
 
                 if( ++arp_off1 >= nb_arp )
@@ -3355,7 +3460,12 @@ int do_attack_migmode( void )
 
             caplen = read_packet( h80211, sizeof( h80211 ), NULL );
 
-            if( caplen  < 0 ) return( 1 );
+            if( caplen  < 0 )
+            {
+                free( arp );
+                fclose( f_cap_out );
+                return( 1 );
+            }
             if( caplen == 0 ) continue;
         }
         else
@@ -3543,6 +3653,8 @@ add_arp:
 
                 if( ( arp[nb_arp].buf = malloc( 128 ) ) == NULL ) {
                     perror( "malloc failed" );
+                    free(arp);
+                    fclose( f_cap_out );
                     return( 1 );
                 }
 
@@ -3577,6 +3689,8 @@ add_arp:
 
                 if( fwrite( &pkh, n, 1, f_cap_out ) != 1 ) {
                     perror( "fwrite failed" );
+                    free( arp );
+                    fclose( f_cap_out );
                     return( 1 );
                 }
 
@@ -3584,6 +3698,8 @@ add_arp:
 
                 if( fwrite( h80211, n, 1, f_cap_out ) != 1 ) {
                     perror( "fwrite failed" );
+                    free( arp );
+                    fclose( f_cap_out );
                     return( 1 );
                 }
 
@@ -3595,7 +3711,7 @@ add_arp:
     return( 0 );
 }
 
-int set_clear_arp(uchar *buf, uchar *smac, uchar *dmac) //set first 22 bytes
+int set_clear_arp(unsigned char *buf, unsigned char *smac, unsigned char *dmac) //set first 22 bytes
 {
     if(buf == NULL)
         return -1;
@@ -3617,7 +3733,7 @@ int set_clear_arp(uchar *buf, uchar *smac, uchar *dmac) //set first 22 bytes
     return 0;
 }
 
-int set_final_arp(uchar *buf, uchar *mymac)
+int set_final_arp(unsigned char *buf, unsigned char *mymac)
 {
     if(buf == NULL)
         return -1;
@@ -3639,7 +3755,7 @@ int set_final_arp(uchar *buf, uchar *mymac)
     return 0;
 }
 
-int set_clear_ip(uchar *buf, int ip_len) //set first 9 bytes
+int set_clear_ip(unsigned char *buf, int ip_len) //set first 9 bytes
 {
     if(buf == NULL)
         return -1;
@@ -3652,7 +3768,7 @@ int set_clear_ip(uchar *buf, int ip_len) //set first 9 bytes
     return 0;
 }
 
-int set_final_ip(uchar *buf, uchar *mymac)
+int set_final_ip(unsigned char *buf, unsigned char *mymac)
 {
     if(buf == NULL)
         return -1;
@@ -3679,9 +3795,9 @@ int do_attack_cfrag( void )
     unsigned char bssid[6];
     unsigned char smac[6];
     unsigned char dmac[6];
-    uchar keystream[128];
-    uchar frag1[128], frag2[128], frag3[128];
-    uchar clear[4096], final[4096], flip[4096];
+    unsigned char keystream[128];
+    unsigned char frag1[128], frag2[128], frag3[128];
+    unsigned char clear[4096], final[4096], flip[4096];
     int isarp;
     int z, i;
 
@@ -3993,7 +4109,7 @@ int do_attack_chopchop( void )
     unsigned long crc_mask;
     unsigned char *chopped;
 
-    uchar packet[4096];
+    unsigned char packet[4096];
 
     time_t tt;
     struct tm *lt;
@@ -4169,6 +4285,7 @@ int do_attack_chopchop( void )
         if( fcntl( dev.fd_in, F_SETFL, O_NONBLOCK ) < 0 )
         {
             perror( "fcntl(O_NONBLOCK) failed" );
+            free(chopped);
             return( 1 );
         }
     }
@@ -4195,6 +4312,7 @@ int do_attack_chopchop( void )
 "      Try running another aireplay-ng to fake authentication (attack \"-1\").\n"
 "    * The AP isn't vulnerable when operating in authenticated mode.\n"
 "      Try aireplay-ng in non-authenticated mode instead (no -h option).\n\n" );
+            free(chopped);
             return( 1 );
         }
 
@@ -4205,6 +4323,7 @@ int do_attack_chopchop( void )
             if( read( dev.fd_rtc, &n, sizeof( n ) ) < 0 )
             {
                 perror( "\nread(/dev/rtc) failed" );
+                free(chopped);
                 return( 1 );
             }
 
@@ -4355,7 +4474,10 @@ int do_attack_chopchop( void )
             errno = 0;
 
             if( send_packet( h80211, data_end -1 ) != 0 )
+            {
+                free(chopped);
                 return( 1 );
+            }
 
             if( errno != EAGAIN )
             {
@@ -4370,8 +4492,14 @@ int do_attack_chopchop( void )
 
         n = read_packet( h80211, sizeof( h80211 ), NULL );
 
-        if( n  < 0 ) return( 1 );
-        if( n == 0 ) continue;
+        if( n  < 0 )
+        {
+            free(chopped);
+            return( 1 );
+        }
+
+        if( n == 0 )
+            continue;
 
         nb_pkt_read++;
 
@@ -4409,6 +4537,7 @@ int do_attack_chopchop( void )
                 printf( "\n\nFailure: the access point does not properly "
                         "discard frames with an\ninvalid ICV - try running "
                         "aireplay-ng in authenticated mode (-h) instead.\n\n" );
+                free(chopped);
                 return( 1 );
             }
         }
@@ -4449,6 +4578,7 @@ int do_attack_chopchop( void )
                 printf( "\n\nFailure: the access point does not properly "
                         "discard frames with an\ninvalid ICV - try running "
                         "aireplay-ng in non-authenticated mode instead.\n\n" );
+                free(chopped);
                 return( 1 );
             }
         }
@@ -4560,6 +4690,7 @@ int do_attack_chopchop( void )
     if( ( f_cap_out = fopen( strbuf, "wb+" ) ) == NULL )
     {
         perror( "fopen failed" );
+        free(chopped);
         return( 1 );
     }
 
@@ -4568,6 +4699,8 @@ int do_attack_chopchop( void )
     if( fwrite( &pfh_out, n, 1, f_cap_out ) != 1 )
     {
         perror( "fwrite failed\n" );
+        free(chopped);
+        fclose( f_cap_out );
         return( 1 );
     }
 
@@ -4576,6 +4709,8 @@ int do_attack_chopchop( void )
     if( fwrite( &pkh, n, 1, f_cap_out ) != 1 )
     {
         perror( "fwrite failed" );
+        free(chopped);
+        fclose( f_cap_out );
         return( 1 );
     }
 
@@ -4584,6 +4719,8 @@ int do_attack_chopchop( void )
     if( fwrite( h80211, n, 1, f_cap_out ) != 1 )
     {
         perror( "fwrite failed" );
+        free(chopped);
+        fclose( f_cap_out );
         return( 1 );
     }
 
@@ -4602,6 +4739,7 @@ int do_attack_chopchop( void )
     if( ( f_cap_out = fopen( strbuf, "wb+" ) ) == NULL )
     {
         perror( "fopen failed" );
+        free(chopped);
         return( 1 );
     }
 
@@ -4610,23 +4748,26 @@ int do_attack_chopchop( void )
     if( fwrite( chopped + 24, n, 1, f_cap_out ) != 1 )
     {
         perror( "fwrite failed" );
+        free(chopped);
+        fclose( f_cap_out );
         return( 1 );
     }
 
+    free(chopped);
     fclose( f_cap_out );
 
     printf( "\nCompleted in %lds (%0.2f bytes/s)\n\n",
-            (long) time( NULL ) - tt,
+            (long) (time( NULL ) - tt),
             (float) ( pkh.caplen - 6 - 24 ) /
             (float) ( time( NULL ) - tt  ) );
 
     return( 0 );
 }
 
-int make_arp_request(uchar *h80211, uchar *bssid, uchar *src_mac, uchar *dst_mac, uchar *src_ip, uchar *dst_ip, int size)
+int make_arp_request(unsigned char *h80211, unsigned char *bssid, unsigned char *src_mac, unsigned char *dst_mac, unsigned char *src_ip, unsigned char *dst_ip, int size)
 {
-	uchar *arp_header = (unsigned char*)"\xaa\xaa\x03\x00\x00\x00\x08\x06\x00\x01\x08\x00\x06\x04\x00\x01";
-	uchar *header80211 = (unsigned char*)"\x08\x41\x95\x00";
+	unsigned char *arp_header = (unsigned char*)"\xaa\xaa\x03\x00\x00\x00\x08\x06\x00\x01\x08\x00\x06\x04\x00\x01";
+	unsigned char *header80211 = (unsigned char*)"\x08\x41\x95\x00";
 
     // 802.11 part
     memcpy(h80211,    header80211, 4);
@@ -4649,7 +4790,7 @@ int make_arp_request(uchar *h80211, uchar *bssid, uchar *src_mac, uchar *dst_mac
     return 0;
 }
 
-void save_prga(char *filename, uchar *iv, uchar *prga, int prgalen)
+void save_prga(char *filename, unsigned char *iv, unsigned char *prga, int prgalen)
 {
     FILE *xorfile;
     size_t unused;
@@ -4661,12 +4802,12 @@ void save_prga(char *filename, uchar *iv, uchar *prga, int prgalen)
 
 int do_attack_fragment()
 {
-    uchar packet[4096];
-    uchar packet2[4096];
-    uchar prga[4096];
-    uchar iv[4];
+    unsigned char packet[4096];
+    unsigned char packet2[4096];
+    unsigned char prga[4096];
+    unsigned char iv[4];
 
-//    uchar ack[14] = "\xd4";
+//    unsigned char ack[14] = "\xd4";
 
     char strbuf[256];
 
@@ -4688,7 +4829,7 @@ int do_attack_fragment()
     int packets;
     int z;
 
-    uchar *snap_header = (unsigned char*)"\xAA\xAA\x03\x00\x00\x00\x08\x00";
+    unsigned char *snap_header = (unsigned char*)"\xAA\xAA\x03\x00\x00\x00\x08\x00";
 
     done = caplen = caplen2 = arplen = round = 0;
     prga_len = isrelay = gotit = again = length = 0;
@@ -4837,14 +4978,14 @@ int do_attack_fragment()
                 }
 
                 gettimeofday( &tv2, NULL );
-                if (((tv2.tv_sec*1000000 - tv.tv_sec*1000000) + (tv2.tv_usec - tv.tv_usec)) > (100*1000) && acksgot >0 && acksgot < packets  )//wait 100ms for acks
+                if (((tv2.tv_sec*1000000UL - tv.tv_sec*1000000UL) + (tv2.tv_usec - tv.tv_usec)) > (100*1000) && acksgot >0 && acksgot < packets  )//wait 100ms for acks
                 {
                     PCT; printf("Not enough acks, repeating...\n");
                     again = RETRY;
                     break;
                 }
 
-                if (((tv2.tv_sec*1000000 - tv.tv_sec*1000000) + (tv2.tv_usec - tv.tv_usec)) > (1500*1000) && !gotit) //wait 1500ms for an answer
+                if (((tv2.tv_sec*1000000UL - tv.tv_sec*1000000UL) + (tv2.tv_usec - tv.tv_usec)) > (1500*1000) && !gotit) //wait 1500ms for an answer
                 {
                     PCT; printf("No answer, repeating...\n");
                     round++;
@@ -4877,7 +5018,7 @@ int do_attack_fragment()
         if (! isrelay)
         {
             //Building expected cleartext
-            uchar ct[4096] = "\xaa\xaa\x03\x00\x00\x00\x08\x06\x00\x01\x08\x00\x06\x04\x00\x02";
+            unsigned char ct[4096] = "\xaa\xaa\x03\x00\x00\x00\x08\x06\x00\x01\x08\x00\x06\x04\x00\x02";
             //Ethernet & ARP header
 
             //Followed by the senders MAC and IP:
@@ -4980,14 +5121,14 @@ int do_attack_fragment()
                 }
 
                 gettimeofday( &tv2, NULL );
-                if (((tv2.tv_sec*1000000 - tv.tv_sec*1000000) + (tv2.tv_usec - tv.tv_usec)) > (100*1000) && acksgot >0 && acksgot < packets  )//wait 100ms for acks
+                if (((tv2.tv_sec*1000000UL - tv.tv_sec*1000000UL) + (tv2.tv_usec - tv.tv_usec)) > (100*1000) && acksgot >0 && acksgot < packets  )//wait 100ms for acks
                 {
                     PCT; printf("Not enough acks, repeating...\n");
                     again = RETRY;
                     break;
                 }
 
-                if (((tv2.tv_sec*1000000 - tv.tv_sec*1000000) + (tv2.tv_usec - tv.tv_usec)) > (1500*1000) && !gotit) //wait 1500ms for an answer
+                if (((tv2.tv_sec*1000000UL - tv.tv_sec*1000000UL) + (tv2.tv_usec - tv.tv_usec)) > (1500*1000) && !gotit) //wait 1500ms for an answer
                 {
                     PCT; printf("No answer, repeating...\n");
                     round++;
@@ -5176,10 +5317,10 @@ int do_attack_fragment()
     return( 0 );
 }
 
-int grab_essid(uchar* packet, int len)
+int grab_essid(unsigned char* packet, int len)
 {
     int i=0, j=0, pos=0, tagtype=0, taglen=0, chan=0;
-    uchar bssid[6];
+    unsigned char bssid[6];
 
     memcpy(bssid, packet+16, 6);
     taglen = 22;    //initial value to get the fixed tags parsing started
@@ -5329,6 +5470,7 @@ int tcp_test(const char* ip_str, const short port)
     if( fcntl( sock, F_SETFL, O_NONBLOCK ) < 0 )
     {
         perror( "fcntl(O_NONBLOCK) failed" );
+        close(sock);
         return( 1 );
     }
 
@@ -5376,6 +5518,7 @@ int tcp_test(const char* ip_str, const short port)
     if (send(sock, &nh, sizeof(nh), 0) != sizeof(nh))
     {
         perror("send");
+        close(sock);
         return -1;
     }
 
@@ -5391,30 +5534,34 @@ int tcp_test(const char* ip_str, const short port)
             if( errno != EAGAIN )
             {
                 perror("read");
+                close(sock);
                 return -1;
             }
         }
 
-        if( (unsigned)caplen == sizeof(nh))
+        if(caplen > 0 && (unsigned)caplen == sizeof(nh))
         {
             len = ntohl(nh.nh_len);
-            if( nh.nh_type == 1 && i==0 )
+            if (len <= packetsize && len > 0)
             {
-                i=1;
-                caplen = read(sock, packet, len);
-                if(caplen == len)
+                if( nh.nh_type == 1 && i==0 )
                 {
-                    i=2;
-                    break;
+                    i=1;
+                    caplen = read(sock, packet, len);
+                    if(caplen == len)
+                    {
+                        i=2;
+                        break;
+                    }
+                    else
+                    {
+                        i=0;
+                    }
                 }
                 else
                 {
-                    i=0;
+                    caplen = read(sock, packet, len);
                 }
-            }
-            else
-            {
-                caplen = read(sock, packet, len);
             }
         }
 
@@ -5448,6 +5595,7 @@ int tcp_test(const char* ip_str, const short port)
         if( fcntl( sock, F_SETFL, O_NONBLOCK ) < 0 )
         {
             perror( "fcntl(O_NONBLOCK) failed" );
+            close(sock);
             return( 1 );
         }
 
@@ -5484,7 +5632,7 @@ int tcp_test(const char* ip_str, const short port)
             //simple "high-precision" usleep
             select(1, NULL, NULL, NULL, &tv3);
         }
-        times[i] = ((tv2.tv_sec*1000000 - tv.tv_sec*1000000) + (tv2.tv_usec - tv.tv_usec));
+        times[i] = ((tv2.tv_sec*1000000UL - tv.tv_sec*1000000UL) + (tv2.tv_usec - tv.tv_usec));
         printf( "\r%d/%d\r", i, REQUESTS);
         fflush(stdout);
         close(sock);
@@ -5502,14 +5650,19 @@ int tcp_test(const char* ip_str, const short port)
     }
     avg /= REQUESTS;
 
-    PCT; printf("ping %s:%d (min/avg/max): %.3fms/%.3fms/%.3fms\n", ip_str, port, min/1000.0, avg/1000.0, max/1000.0);
+    PCT; printf("ping %s:%d (min/avg/max): %.3fms/%.3fms/%.3fms\n", ip_str, port, min/
+#if defined(__x86_64__) && defined(__CYGWIN__)
+	(0.0f + 1000), avg/(0.0f + 1000), max/(0.0f + 1000));
+#else
+	1000.0, avg/1000.0, max/1000.0);
+#endif
 
     return 0;
 }
 
 int do_attack_test()
 {
-    uchar packet[4096];
+    unsigned char packet[4096];
     struct timeval tv, tv2, tv3;
     int len=0, i=0, j=0, k=0;
     int gotit=0, answers=0, found=0;
@@ -5518,7 +5671,7 @@ int do_attack_test()
     int ret=0;
     float avg2;
     struct rx_info ri;
-    int atime=200;  //time in ms to wait for answer packet (needs to be higher for airserv)
+    unsigned long atime=200;  //time in ms to wait for answer packet (needs to be higher for airserv)
     unsigned char nulldata[1024];
 
     if(opt.port_out > 0)
@@ -5679,7 +5832,7 @@ int do_attack_test()
             }
 
             gettimeofday( &tv2, NULL );
-            if (((tv2.tv_sec*1000000 - tv.tv_sec*1000000) + (tv2.tv_usec - tv.tv_usec)) > (3*atime*1000)) //wait 'atime'ms for an answer
+            if (((tv2.tv_sec*1000000UL - tv.tv_sec*1000000UL) + (tv2.tv_usec - tv.tv_usec)) > (3*atime*1000)) //wait 'atime'ms for an answer
             {
                 break;
             }
@@ -5880,7 +6033,7 @@ int do_attack_test()
                 }
 
                 gettimeofday( &tv2, NULL );
-                if (((tv2.tv_sec*1000000 - tv.tv_sec*1000000) + (tv2.tv_usec - tv.tv_usec)) > (atime*1000)) //wait 'atime'ms for an answer
+                if (((tv2.tv_sec*1000000UL - tv.tv_sec*1000000UL) + (tv2.tv_usec - tv.tv_usec)) > (atime*1000)) //wait 'atime'ms for an answer
                 {
                     break;
                 }
@@ -5903,7 +6056,12 @@ int do_attack_test()
         {
             avg /= ap[i].found;
             avg2 /= ap[i].found;
-            PCT; printf("Ping (min/avg/max): %.3fms/%.3fms/%.3fms Power: %.2f\n", (min/1000.0), (avg/1000.0), (max/1000.0), avg2);
+            PCT; printf("Ping (min/avg/max): %.3fms/%.3fms/%.3fms Power: %.2f\n",
+#if defined(__x86_64__) && defined(__CYGWIN__)
+	(min/(0.0f + 1000)), (avg/(0.0f + 1000)), (max/(0.0f + 1000)), avg2);
+#else
+	(min/1000.0), (avg/1000.0), (max/1000.0), avg2);
+#endif
         }
         PCT; printf("%2d/%2d: %3d%%\n\n", ap[i].found, REQUESTS, ((ap[i].found*100)/REQUESTS));
 
@@ -6000,7 +6158,7 @@ int do_attack_test()
                         }
 
                         gettimeofday( &tv2, NULL );
-                        if (((tv2.tv_sec*1000000 - tv.tv_sec*1000000) + (tv2.tv_usec - tv.tv_usec)) > (100*1000)) //wait 300ms for an answer
+                        if (((tv2.tv_sec*1000000UL - tv.tv_sec*1000000UL) + (tv2.tv_usec - tv.tv_usec)) > (100*1000)) //wait 300ms for an answer
                         {
                             break;
                         }
@@ -6013,7 +6171,12 @@ int do_attack_test()
                     avg2 += ap[i].pwr[j];
                 if(ap[i].found > 0)
                     avg2 /= ap[i].found;
-                PCT; printf("Probing at %2.1f Mbps:\t%2d/%2d: %3d%%\n", wi_get_rate(_wi_out)/1000000.0,
+                PCT; printf("Probing at %2.1f Mbps:\t%2d/%2d: %3d%%\n", wi_get_rate(_wi_out)/
+#if defined(__x86_64__) && defined(__CYGWIN__)
+	(0.0f + 1000000),
+#else
+	1000000.0,
+#endif
                             ap[i].found, REQUESTS, ((ap[i].found*100)/REQUESTS));
             }
 
@@ -6216,7 +6379,7 @@ int do_attack_test()
                     }
 
                     gettimeofday( &tv2, NULL );
-                    if (((tv2.tv_sec*1000000 - tv.tv_sec*1000000) + (tv2.tv_usec - tv.tv_usec)) > (3*atime*1000)) //wait 3*'atime' ms for an answer
+                    if (((tv2.tv_sec*1000000UL - tv.tv_sec*1000000UL) + (tv2.tv_usec - tv.tv_usec)) > (3*atime*1000)) //wait 3*'atime' ms for an answer
                     {
                         break;
                     }

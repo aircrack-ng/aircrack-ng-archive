@@ -48,7 +48,7 @@
 #include "crypto.h"
 #include "pcap.h"
 
-static uchar ZERO[32] =
+static unsigned char ZERO[32] =
 "\x00\x00\x00\x00\x00\x00\x00\x00"
 "\x00\x00\x00\x00\x00\x00\x00\x00"
 "\x00\x00\x00\x00\x00\x00\x00\x00"
@@ -443,7 +443,8 @@ static void process_beacon(struct ieee80211_frame *wh, int totlen)
 	n->n_beaconlen = len;
 	assert(n->n_beaconlen <= (int) sizeof(n->n_beacon));
 	memcpy(n->n_beacon, wh, n->n_beaconlen);
-	strcpy(n->n_ssid, ssid);
+	strncpy(n->n_ssid, ssid, sizeof(n->n_ssid));
+	(n->n_ssid)[sizeof(n->n_ssid)-1] = '\0';
 
 #if 0
 	printf("got beacon [%s]\n", n->n_ssid);
@@ -720,7 +721,11 @@ int main(int argc, char *argv[])
 	for (i = 2; i < argc; i++) {
 		char *in = argv[i];
 		int prog = (int) (((double) (i - 1)) / ((double)(argc - 2)) 
+#if defined(__x86_64__) && defined(__CYGWIN__)
+				   * (0.0f + 100));
+#else
 				   * 100.0);
+#endif
 
 		printf("Pwning %s (%d/%d %d%%)\n", in, i - 1, argc - 2, prog);
 		fflush(stdout);

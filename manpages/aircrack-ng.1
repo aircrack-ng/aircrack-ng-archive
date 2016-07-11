@@ -1,4 +1,4 @@
-.TH AIRCRACK-NG 1 "November 2013" "Version 1.2-beta2"
+.TH AIRCRACK-NG 1 "February 2016" "Version 1.2-rc4"
 
 .SH NAME
 aircrack-ng - a 802.11 WEP / WPA-PSK key cracker
@@ -36,9 +36,6 @@ Merges all those APs MAC (separated by a comma) into a virtual one.
 .TP
 .I -l <file>
 Write the key into a file.
-.TP
-.I -E <file>
-Create Elcomsoft Wireless Security Auditor (EWSA) Project file v3.02.
 .PP
 .TP
 .B Static WEP cracking options:
@@ -113,7 +110,13 @@ Specify maximum number of IVs to use.
 Path to a dictionary file for wpa cracking. Specify "-" to use stdin. Here is a list of wordlists: http://www.aircrack-ng.org/doku.php?id=faq#where_can_i_find_good_wordlists
 .PP
 .TP
-.B WPA-PSK cracking options:
+.B WPA-PSK options:
+.TP
+.I -E <file>
+Create Elcomsoft Wireless Security Auditor (EWSA) Project file v3.02.
+.TP
+.I -J <file>
+Create Hashcat Capture file.
 .TP
 .I -S
 WPA cracking speed test.
@@ -137,27 +140,35 @@ On Debian systems, the complete text of the GNU General Public License can be fo
 .br
 .B airbase-ng(8)
 .br
-.B airdecap-ng(1)
-.br
-.B airdecloak-ng(1)
-.br
-.B airdriver-ng(8)
-.br
 .B aireplay-ng(8)
 .br
 .B airmon-ng(8)
 .br
 .B airodump-ng(8)
 .br
-.B airolib-ng(1)
+.B airodump-ng-oui-update(8)
 .br
 .B airserv-ng(8)
 .br
 .B airtun-ng(8)
 .br
-.B buddy-ng(1)
+.B besside-ng(8)
 .br
 .B easside-ng(8)
+.br
+.B tkiptun-ng(8)
+.br
+.B wesside-ng(8)
+.br
+.B airdecap-ng(1)
+.br
+.B airdecloak-ng(1)
+.br
+.B airolib-ng(1)
+.br
+.B besside-ng-crawler(1)
+.br
+.B buddy-ng(1)
 .br
 .B ivstools(1)
 .br
@@ -167,6 +178,4 @@ On Debian systems, the complete text of the GNU General Public License can be fo
 .br
 .B packetforge-ng(1)
 .br
-.B tkiptun-ng(8)
-.br
-.B wesside-ng(8)
+.B wpaclean(1)

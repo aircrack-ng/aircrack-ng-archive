@@ -1,7 +1,7 @@
 need := 3.81
 ok := $(filter $(need),$(firstword $(sort $(MAKE_VERSION) \
 	$(need))))
-       
+
 ifndef ok
     $(error fatal error... Need make $(need) but using $(MAKE_VERSION), please upgrade)
 endif
@@ -25,7 +25,7 @@ all:
 	$(MAKE) -C src $(@)
 
 coverity-build:
-	$(COVERITY_BUILD) --dir $(COVERITY_DIR) $(MAKE) sqlite=true unstable=true libnl=true
+	$(COVERITY_BUILD) --dir $(COVERITY_DIR) $(MAKE) sqlite=true experimental=true pcre=true
 
 coverity-package: coverity-build
 	tar czvf $(COVERITY_TAR_GZ) $(COVERITY_DIR)
@@ -66,12 +66,15 @@ doc:
 
 clean:
 	-rm -rf $(COVERITY_DIR)
+	-rm -f common.cfg
 	$(MAKE) -C src $(@)
 	$(MAKE) -C test/cryptounittest $(@)
+	$(MAKE) -C test $(@)
 
 distclean: clean
 
 check: 
 	$(MAKE) -C src $(@)
 	$(MAKE) -C test/cryptounittest $(@)
+	$(MAKE) -C test $(@)
 	

@@ -1,7 +1,7 @@
 /*
  *  802.11 WPA replay & injection attacks
  *
- *  Copyright (C) 2008, 2009 Martin Beck
+ *  Copyright (C) 2008, 2009 Martin Beck <hirte@aircrack-ng.org>
  *
  *  WEP decryption attack (chopchop) developed by KoreK
  *
@@ -70,6 +70,7 @@
 #include "osdep/osdep.h"
 #include "crypto.h"
 #include "common.h"
+#include "eapol.h"
 
 #define RTC_RESOLUTION  8192
 
@@ -124,7 +125,7 @@
 
 #define DEFAULT_MIC_FAILURE_INTERVAL 60
 
-static uchar ZERO[32] =
+static unsigned char ZERO[32] =
         "\x00\x00\x00\x00\x00\x00\x00\x00"
         "\x00\x00\x00\x00\x00\x00\x00\x00"
         "\x00\x00\x00\x00\x00\x00\x00\x00"
@@ -137,12 +138,12 @@ extern unsigned char * getmac(char * macAddress, int strict, unsigned char * mac
 extern int check_crc_buf( unsigned char *buf, int len );
 extern const unsigned long int crc_tbl[256];
 extern const unsigned char crc_chop_tbl[256][4];
-extern int hexStringToHex(char* in, int length, unsigned char* out);
+extern int hexStringToArray(char* in, int in_length, unsigned char* out, int out_length);
 
 char usage[] =
 
 "\n"
-"  %s - (C) 2008-2013 Thomas d\'Otreppe\n"
+"  %s - (C) 2008-2015 Thomas d\'Otreppe\n"
 "  http://www.aircrack-ng.org\n"
 "\n"
 "  usage: tkiptun-ng <options> <replay interface>\n"
@@ -183,18 +184,6 @@ char usage[] =
 "      --help              : Displays this usage screen\n"
 "\n";
 
-struct WPA_hdsk
-{
-	unsigned char stmac[6];				 /* supplicant MAC               */
-	unsigned char snonce[32];			 /* supplicant nonce             */
-	unsigned char anonce[32];			 /* authenticator nonce          */
-	unsigned char keymic[16];			 /* eapol frame MIC              */
-	unsigned char eapol[256];			 /* eapol frame contents         */
-	int eapol_size;				 /* eapol frame size             */
-	int keyver;					 /* key version (TKIP / AES)     */
-	int state;					 /* handshake completion         */
-};
-
 struct options
 {
     unsigned char f_bssid[6];
@@ -232,7 +221,7 @@ struct options
     char *iface_out;
     char *s_face;
     char *s_file;
-    uchar *prga;
+    unsigned char *prga;
 
     int a_mode;
     int a_count;
@@ -254,10 +243,10 @@ struct options
     int oldkeystreamlen;    /* user-defined old keystream length */
     char  wpa_essid[256];   /* essid used for calculating the pmk out of the psk */
     char  psk[128];         /* shared passphrase among the clients */
-    uchar pmk[128];         /* pmk derived from the essid and psk */
-    uchar ptk[80];          /* ptk calculated from all pieces captured in the handshake */
-    uchar ip_cli[4];
-    uchar ip_ap[4];
+    unsigned char pmk[128];         /* pmk derived from the essid and psk */
+    unsigned char ptk[80];          /* ptk calculated from all pieces captured in the handshake */
+    unsigned char ip_cli[4];
+    unsigned char ip_ap[4];
     int got_ptk;
     int got_pmk;
     int got_psk;
@@ -334,10 +323,10 @@ unsigned char tmpbuf[4096];
 unsigned char srcbuf[4096];
 char strbuf[512];
 
-uchar ska_auth1[]     = "\xb0\x00\x3a\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+unsigned char ska_auth1[]     = "\xb0\x00\x3a\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
                         "\x00\x00\x00\x00\x00\x00\xb0\x01\x01\x00\x01\x00\x00\x00";
 
-uchar ska_auth3[4096] = "\xb0\x40\x3a\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+unsigned char ska_auth3[4096] = "\xb0\x40\x3a\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
                         "\x00\x00\x00\x00\x00\x00\xc0\x01";
 
 
@@ -463,10 +452,10 @@ int set_bitrate(struct wif *wi, int rate)
     return 0;
 }
 
-int check_received(unsigned char *packet, int length)
+int check_received(unsigned char *packet, unsigned length)
 {
-    int z;
-    uchar bssid[6], smac[6], dmac[6];
+    unsigned z;
+    unsigned char bssid[6], smac[6], dmac[6];
     struct ivs2_pkthdr ivs2;
 
     z = ( ( packet[1] & 3 ) != 3 ) ? 24 : 30;
@@ -558,6 +547,13 @@ int check_received(unsigned char *packet, int length)
                         opt.wpa.eapol_size = ( packet[z + 2] << 8 )
                                 +   packet[z + 3] + 4;
 
+                        if (opt.wpa.eapol_size > sizeof(opt.wpa.eapol) ||
+                            length - z < opt.wpa.eapol_size) {
+                            // ignore packet trying to crash us
+                            opt.wpa.eapol_size = 0;
+                            return 0;
+                        }
+
                         memcpy( opt.wpa.keymic, &packet[z + 81], 16 );
                         memcpy( opt.wpa.eapol,  &packet[z], opt.wpa.eapol_size );
                         memset( opt.wpa.eapol + 81, 0, 16 );
@@ -583,6 +579,13 @@ int check_received(unsigned char *packet, int length)
                     {
                         opt.wpa.eapol_size = ( packet[z + 2] << 8 )
                                 +   packet[z + 3] + 4;
+
+                        if (opt.wpa.eapol_size > sizeof(opt.wpa.eapol) ||
+                            length - z < opt.wpa.eapol_size) {
+                            // ignore packet trying to crash us
+                            opt.wpa.eapol_size = 0;
+                            return 0;
+                        }
 
                         memcpy( opt.wpa.keymic, &packet[z + 81], 16 );
                         memcpy( opt.wpa.eapol,  &packet[z], opt.wpa.eapol_size );
@@ -690,7 +693,7 @@ int read_packet(void *buf, size_t count, struct rx_info *ri)
     return rc;
 }
 
-void read_sleep( int usec )
+void read_sleep( unsigned long usec )
 {
     struct timeval tv, tv2, tv3;
     int caplen;
@@ -702,7 +705,7 @@ void read_sleep( int usec )
     tv3.tv_sec=0;
     tv3.tv_usec=10000;
 
-    while( ((tv2.tv_sec*1000000 - tv.tv_sec*1000000) + (tv2.tv_usec - tv.tv_usec)) < (usec) )
+    while( ((tv2.tv_sec*1000000UL - tv.tv_sec*1000000UL) + (tv2.tv_usec - tv.tv_usec)) < (usec) )
     {
         FD_ZERO( &rfds );
         FD_SET( dev.fd_in, &rfds );
@@ -816,10 +819,10 @@ int filter_packet( unsigned char *h80211, int caplen )
     return( 0 );
 }
 
-int wait_for_beacon(uchar *bssid, uchar *capa, char *essid)
+int wait_for_beacon(unsigned char *bssid, unsigned char *capa, char *essid)
 {
     int len = 0, chan = 0, taglen = 0, tagtype = 0, pos = 0;
-    uchar pkt_sniff[4096];
+    unsigned char pkt_sniff[4096];
     struct timeval tv,tv2;
     char essid2[33];
 
@@ -832,7 +835,7 @@ int wait_for_beacon(uchar *bssid, uchar *capa, char *essid)
             len = read_packet(pkt_sniff, sizeof(pkt_sniff), NULL);
 
             gettimeofday(&tv2, NULL);
-            if(((tv2.tv_sec-tv.tv_sec)*1000000) + (tv2.tv_usec-tv.tv_usec) > 10000*1000) //wait 10sec for beacon frame
+            if(((tv2.tv_sec-tv.tv_sec)*1000000UL) + (tv2.tv_usec-tv.tv_usec) > 10000*1000) //wait 10sec for beacon frame
             {
                 return -1;
             }
@@ -928,7 +931,7 @@ int wait_for_beacon(uchar *bssid, uchar *capa, char *essid)
 /*
     if bssid != NULL its looking for a beacon frame
 */
-int attack_check(uchar* bssid, char* essid, uchar* capa, struct wif *wi)
+int attack_check(unsigned char* bssid, char* essid, unsigned char* capa, struct wif *wi)
 {
     int ap_chan=0, iface_chan=0;
 
@@ -952,7 +955,7 @@ int attack_check(uchar* bssid, char* essid, uchar* capa, struct wif *wi)
     return 0;
 }
 
-int getnet( uchar* capa, int filter, int force)
+int getnet( unsigned char* capa, int filter, int force)
 {
     unsigned char *bssid;
 
@@ -1013,7 +1016,7 @@ int getnet( uchar* capa, int filter, int force)
     return 0;
 }
 
-int xor_keystream(uchar *ph80211, uchar *keystream, int len)
+int xor_keystream(unsigned char *ph80211, unsigned char *keystream, int len)
 {
     int i=0;
 
@@ -1391,7 +1394,7 @@ int read_prga(unsigned char **dest, char *file)
     return( 0 );
 }
 
-void add_icv(uchar *input, int len, int offset)
+void add_icv(unsigned char *input, int len, int offset)
 {
     unsigned long crc = 0xFFFFFFFF;
     int n=0;
@@ -1409,11 +1412,11 @@ void add_icv(uchar *input, int len, int offset)
     return;
 }
 
-void send_fragments(uchar *packet, int packet_len, uchar *iv, uchar *keystream, int fragsize, int ska)
+void send_fragments(unsigned char *packet, int packet_len, unsigned char *iv, unsigned char *keystream, int fragsize, int ska)
 {
     int t, u;
     int data_size;
-    uchar frag[32+fragsize];
+    unsigned char frag[32+fragsize];
     int pack_size;
     int header_size=24;
 
@@ -1476,7 +1479,7 @@ void send_fragments(uchar *packet, int packet_len, uchar *iv, uchar *keystream, 
 
 }
 
-int set_clear_arp(uchar *buf, uchar *smac, uchar *dmac) //set first 22 bytes
+int set_clear_arp(unsigned char *buf, unsigned char *smac, unsigned char *dmac) //set first 22 bytes
 {
     if(buf == NULL)
         return -1;
@@ -1498,10 +1501,10 @@ int set_clear_arp(uchar *buf, uchar *smac, uchar *dmac) //set first 22 bytes
     return 0;
 }
 
-int build_arp_request(uchar* packet, int *length, int toDS)
+int build_arp_request(unsigned char* packet, int *length, int toDS)
 {
     int i;
-    uchar buf[128];
+    unsigned char buf[128];
 
     packet[0] = 0x88; //QoS Data
     if(toDS) packet[1] = 0x41;  //encrypted to/fromDS
@@ -1588,7 +1591,7 @@ int build_arp_request(uchar* packet, int *length, int toDS)
     return 0;
 }
 
-int set_clear_ip(uchar *buf, int ip_len) //set first 9 bytes
+int set_clear_ip(unsigned char *buf, int ip_len) //set first 9 bytes
 {
     if(buf == NULL)
         return -1;
@@ -1614,7 +1617,7 @@ void dump_packet(unsigned char* packet, int len)
     printf("\n\n");
 }
 
-int check_guess(uchar *srcbuf, uchar *chopped, int caplen, int clearlen, uchar *arp, uchar *dmac)
+int check_guess(unsigned char *srcbuf, unsigned char *chopped, int caplen, int clearlen, unsigned char *arp, unsigned char *dmac)
 {
     int i, j, z, pos;
 
@@ -1670,13 +1673,13 @@ int check_guess(uchar *srcbuf, uchar *chopped, int caplen, int clearlen, uchar *
     return 0;
 }
 
-int guess_packet(uchar *srcbuf, uchar *chopped, int caplen, int clearlen)
+int guess_packet(unsigned char *srcbuf, unsigned char *chopped, int caplen, int clearlen)
 {
     int i,j,k,l,z, len;
     unsigned char smac[6], dmac[6], bssid[6];
 
-    uchar *ptr, *psmac, *psip, *pdmac, *pdip;
-    uchar arp[4096];
+    unsigned char *ptr, *psmac, *psip, *pdmac, *pdip;
+    unsigned char arp[4096];
 
     z = ( ( srcbuf[1] & 3 ) != 3 ) ? 24 : 30;
     if ( ( srcbuf[0] & 0x80 ) == 0x80 ) /* QoS */
@@ -2169,7 +2172,7 @@ int guess_packet(uchar *srcbuf, uchar *chopped, int caplen, int clearlen)
     return 1;
 }
 
-int do_attack_tkipchop( uchar* src_packet, int src_packet_len )
+int do_attack_tkipchop( unsigned char* src_packet, int src_packet_len )
 {
     float f, ticks[4];
     int i, j, n, z, caplen, srcz, srclen;
@@ -2193,7 +2196,7 @@ int do_attack_tkipchop( uchar* src_packet, int src_packet_len )
     unsigned long crc_mask;
     unsigned char *chopped;
 
-    uchar packet[4096];
+    unsigned char packet[4096];
 
     time_t tt;
     struct tm *lt;
@@ -2652,7 +2655,10 @@ int do_attack_tkipchop( uchar* src_packet, int src_packet_len )
             errno = 0;
 
             if( send_packet( h80211, data_end -1 ) != 0 )
+            {
+                free(chopped);
                 return( 1 );
+            }
 
             if( errno != EAGAIN )
             {
@@ -2695,7 +2701,10 @@ int do_attack_tkipchop( uchar* src_packet, int src_packet_len )
 
         n = read_packet( h80211, sizeof( h80211 ), NULL );
 
-        if( n  < 0 ) return( 1 );
+        if( n  < 0 ){
+            free(chopped);
+            return( 1 );
+        }
         if( n == 0 ) continue;
 
         nb_pkt_read++;
@@ -2714,6 +2723,7 @@ int do_attack_tkipchop( uchar* src_packet, int src_packet_len )
                 "\n\nFailure: got several deauthentication packets "
                 "from the AP - you need to start the whole process "
                 "all over again, as the client got disconnected.\n\n" );
+                    free(chopped);
                     return( 1 );
                 }
 
@@ -2735,6 +2745,7 @@ int do_attack_tkipchop( uchar* src_packet, int src_packet_len )
                 printf( "\n\nFailure: the access point does not properly "
                         "discard frames with an\ninvalid ICV - try running "
                         "aireplay-ng in authenticated mode (-h) instead.\n\n" );
+                free(chopped);
                 return( 1 );
 //             }
         }
@@ -3046,10 +3057,10 @@ int do_attack_tkipchop( uchar* src_packet, int src_packet_len )
     return( 0 );
 }
 
-int make_arp_request(uchar *h80211, uchar *bssid, uchar *src_mac, uchar *dst_mac, uchar *src_ip, uchar *dst_ip, int size)
+int make_arp_request(unsigned char *h80211, unsigned char *bssid, unsigned char *src_mac, unsigned char *dst_mac, unsigned char *src_ip, unsigned char *dst_ip, int size)
 {
-	uchar *arp_header = (unsigned char*)"\xaa\xaa\x03\x00\x00\x00\x08\x06\x00\x01\x08\x00\x06\x04\x00\x01";
-	uchar *header80211 = (unsigned char*)"\x08\x41\x95\x00";
+	unsigned char *arp_header = (unsigned char*)"\xaa\xaa\x03\x00\x00\x00\x08\x06\x00\x01\x08\x00\x06\x04\x00\x01";
+	unsigned char *header80211 = (unsigned char*)"\x08\x41\x95\x00";
 
     // 802.11 part
     memcpy(h80211,    header80211, 4);
@@ -3072,7 +3083,7 @@ int make_arp_request(uchar *h80211, uchar *bssid, uchar *src_mac, uchar *dst_mac
     return 0;
 }
 
-void save_prga(char *filename, uchar *iv, uchar *prga, int prgalen)
+void save_prga(char *filename, unsigned char *iv, unsigned char *prga, int prgalen)
 {
 	size_t unused;
     FILE *xorfile;
@@ -3084,12 +3095,12 @@ void save_prga(char *filename, uchar *iv, uchar *prga, int prgalen)
 
 int do_attack_fragment()
 {
-    uchar packet[4096];
-    uchar packet2[4096];
-    uchar prga[4096];
-    uchar iv[4];
+    unsigned char packet[4096];
+    unsigned char packet2[4096];
+    unsigned char prga[4096];
+    unsigned char iv[4];
 
-//    uchar ack[14] = "\xd4";
+//    unsigned char ack[14] = "\xd4";
 
     char strbuf[256];
 
@@ -3111,7 +3122,7 @@ int do_attack_fragment()
     int packets;
     int z;
 
-    uchar *snap_header = (unsigned char*)"\xAA\xAA\x03\x00\x00\x00\x08\x00";
+    unsigned char *snap_header = (unsigned char*)"\xAA\xAA\x03\x00\x00\x00\x08\x00";
 
     done = caplen = caplen2 = arplen = round = 0;
     prga_len = isrelay = gotit = again = length = 0;
@@ -3260,14 +3271,14 @@ int do_attack_fragment()
                 }
 
                 gettimeofday( &tv2, NULL );
-                if (((tv2.tv_sec*1000000 - tv.tv_sec*1000000) + (tv2.tv_usec - tv.tv_usec)) > (100*1000) && acksgot >0 && acksgot < packets  )//wait 100ms for acks
+                if (((tv2.tv_sec*1000000UL - tv.tv_sec*1000000UL) + (tv2.tv_usec - tv.tv_usec)) > (100*1000) && acksgot >0 && acksgot < packets  )//wait 100ms for acks
                 {
                     PCT; printf("Not enough acks, repeating...\n");
                     again = RETRY;
                     break;
                 }
 
-                if (((tv2.tv_sec*1000000 - tv.tv_sec*1000000) + (tv2.tv_usec - tv.tv_usec)) > (1500*1000) && !gotit) //wait 1500ms for an answer
+                if (((tv2.tv_sec*1000000UL - tv.tv_sec*1000000UL) + (tv2.tv_usec - tv.tv_usec)) > (1500*1000) && !gotit) //wait 1500ms for an answer
                 {
                     PCT; printf("No answer, repeating...\n");
                     round++;
@@ -3300,7 +3311,7 @@ int do_attack_fragment()
         if (! isrelay)
         {
             //Building expected cleartext
-            uchar ct[4096] = "\xaa\xaa\x03\x00\x00\x00\x08\x06\x00\x01\x08\x00\x06\x04\x00\x02";
+            unsigned char ct[4096] = "\xaa\xaa\x03\x00\x00\x00\x08\x06\x00\x01\x08\x00\x06\x04\x00\x02";
             //Ethernet & ARP header
 
             //Followed by the senders MAC and IP:
@@ -3403,14 +3414,14 @@ int do_attack_fragment()
                 }
 
                 gettimeofday( &tv2, NULL );
-                if (((tv2.tv_sec*1000000 - tv.tv_sec*1000000) + (tv2.tv_usec - tv.tv_usec)) > (100*1000) && acksgot >0 && acksgot < packets  )//wait 100ms for acks
+                if (((tv2.tv_sec*1000000UL - tv.tv_sec*1000000UL) + (tv2.tv_usec - tv.tv_usec)) > (100*1000) && acksgot >0 && acksgot < packets  )//wait 100ms for acks
                 {
                     PCT; printf("Not enough acks, repeating...\n");
                     again = RETRY;
                     break;
                 }
 
-                if (((tv2.tv_sec*1000000 - tv.tv_sec*1000000) + (tv2.tv_usec - tv.tv_usec)) > (1500*1000) && !gotit) //wait 1500ms for an answer
+                if (((tv2.tv_sec*1000000UL - tv.tv_sec*1000000UL) + (tv2.tv_usec - tv.tv_usec)) > (1500*1000) && !gotit) //wait 1500ms for an answer
                 {
                     PCT; printf("No answer, repeating...\n");
                     round++;
@@ -3524,14 +3535,14 @@ int do_attack_fragment()
                 }
 
                 gettimeofday( &tv2, NULL );
-                if (((tv2.tv_sec*1000000 - tv.tv_sec*1000000) + (tv2.tv_usec - tv.tv_usec)) > (100*1000) && acksgot >0 && acksgot < packets  )//wait 100ms for acks
+                if (((tv2.tv_sec*1000000UL - tv.tv_sec*1000000UL) + (tv2.tv_usec - tv.tv_usec)) > (100*1000) && acksgot >0 && acksgot < packets  )//wait 100ms for acks
                 {
                     PCT; printf("Not enough acks, repeating...\n");
                     again = RETRY;
                     break;
                 }
 
-                if (((tv2.tv_sec*1000000 - tv.tv_sec*1000000) + (tv2.tv_usec - tv.tv_usec)) > (1500*1000) && !gotit) //wait 1500ms for an answer
+                if (((tv2.tv_sec*1000000UL - tv.tv_sec*1000000UL) + (tv2.tv_usec - tv.tv_usec)) > (1500*1000) && !gotit) //wait 1500ms for an answer
                 {
                     PCT; printf("No answer, repeating...\n");
                     round++;
@@ -3732,8 +3743,8 @@ int main( int argc, char *argv[] )
     int i, j, n, ret, got_hdsk;
     char *s, buf[128];
     int caplen=0;
-    uchar packet1[4096];
-    uchar packet2[4096];
+    unsigned char packet1[4096];
+    unsigned char packet2[4096];
     int packet1_len, packet2_len;
     struct timeval mic_fail;
 
@@ -4034,7 +4045,12 @@ int main( int argc, char *argv[] )
             case 'P' :
 
                 memset(  opt.pmk, 0, sizeof( opt.pmk ) );
-                i = hexStringToHex(optarg, strlen(optarg), opt.pmk);
+                i = hexStringToArray(optarg, strlen(optarg), opt.pmk, 128);
+                if (i == -1)
+                {
+                	printf("Invalid value. It requires 128 bytes of PMK in hexadecimal.\n");
+                	return( 1 );
+                }
                 opt.got_pmk = 1;
                 break;
 
@@ -4054,7 +4070,7 @@ int main( int argc, char *argv[] )
             case 'M' :
 
                 ret = sscanf( optarg, "%d", &opt.mic_failure_interval );
-                if( opt.mic_failure_interval < 0 )
+                if( ret != 1 || opt.mic_failure_interval < 0 )
                 {
                     printf( "Invalid MIC error timeout. [>=0]\n" );
                     printf("\"%s --help\" for help.\n", argv[0]);
@@ -4189,7 +4205,9 @@ usage:
     }
 
     /* drop privileges */
-    setuid( getuid() );
+    if (setuid( getuid() ) == -1) {
+	perror("setuid");
+    }
 
     /* XXX */
     if( opt.r_nbpps == 0 )
@@ -4444,7 +4462,7 @@ usage:
     while(1)
     {
         gettimeofday(&mic_fail, NULL);
-        if( (mic_fail.tv_sec - opt.last_mic_failure.tv_sec) * 1000000 + (mic_fail.tv_usec - opt.last_mic_failure.tv_usec) > opt.mic_failure_interval * 1000000)
+        if( (mic_fail.tv_sec - opt.last_mic_failure.tv_sec) * 1000000UL + (mic_fail.tv_usec - opt.last_mic_failure.tv_usec) > opt.mic_failure_interval * 1000000UL)
             break;
         sleep(1);
     }

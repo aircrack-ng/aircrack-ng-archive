@@ -1,5 +1,5 @@
  /*
-  *  Copyright (c) 2007, 2008, 2009 Andrea Bittau <a.bittau@cs.ucl.ac.uk>
+  *  Copyright (c) 2007-2009 Andrea Bittau <a.bittau@cs.ucl.ac.uk>
   *
   *  This program is free software; you can redistribute it and/or modify
   *  it under the terms of the GNU General Public License as published by
@@ -32,6 +32,10 @@
 #include <assert.h>
 #include <grp.h>
 #include <sys/utsname.h>
+
+#ifdef __NetBSD__
+	#include <sys/select.h>
+#endif
 
 #include "easside.h"
 #include "version.h"
@@ -83,6 +87,8 @@ int handle(int s, unsigned char* data, int len, struct sockaddr_in *s_in)
 	*cmd++ = htons(S_CMD_PACKET);
 	*cmd++ = *pid;
 	plen = len - 2;
+    if (plen < 0)
+        return 0;
 
 	last_id = ntohs(*pid);
 	if (last_id > 20000)
@@ -189,6 +195,7 @@ void drop_privs()
 
 void usage()
 {
+    char *version_info = getVersion("Buddy-ng", _MAJ, _MIN, _SUB_MIN, _REVISION, _BETA, _RC);
 	printf("\n"
 		"  %s - (C) 2007,2008 Andrea Bittau\n"
 		"  http://www.aircrack-ng.org\n"
@@ -200,7 +207,8 @@ void usage()
 		"       -h        : This help screen\n"
 		"       -p        : Don't drop privileges\n"
 		"\n",
-		getVersion("Buddy-ng", _MAJ, _MIN, _SUB_MIN, _REVISION, _BETA, _RC));
+		version_info);
+	free(version_info);
 
 	exit(1);
 }

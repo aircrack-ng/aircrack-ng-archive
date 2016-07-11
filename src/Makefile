@@ -5,9 +5,9 @@ TEST_DIR	= $(AC_ROOT)/test
 
 CFLAGS		+= -Iinclude
 
-iCC             = $(shell find /opt/intel/cc/*/bin/icc)
-iCFLAGS         = -w -mcpu=pentiumpro -march=pentiumpro $(COMMON_CFLAGS)
-iOPTFLAGS       = -O3 -ip -ipo -D_FILE_OFFSET_BITS=64
+iCC		= /opt/intel/bin/icc
+iCFLAGS		= -w -xHOST $(COMMON_CFLAGS)
+iOPTFLAGS	= -O3 -ip -ipo -D_FILE_OFFSET_BITS=64
 PROF_DIR	= $(PWD)/prof
 
 BINFILES        = aircrack-ng$(EXE) airdecap-ng$(EXE) packetforge-ng$(EXE) \
@@ -16,13 +16,14 @@ BINFILES        = aircrack-ng$(EXE) airdecap-ng$(EXE) packetforge-ng$(EXE) \
 
 LIBPCRE		=
 ifeq ($(PCRE), true)
-	LIBPCRE	= $(shell pcre-config --libs)
+	LIBPCRE = $(shell $(PKG_CONFIG) --libs libpcre)
 endif
 
 ifneq ($(OSNAME), cygwin) #There is yet no libpcap support for windows, so we skip the crawler
 	HAVE_PCAP	= $(shell ld -lpcap 2> /dev/null && echo yes)
 	ifeq ($(HAVE_PCAP), yes) #cannot link with -lpcap, skip crawler
 		BINFILES	+= besside-ng-crawler$(EXE)
+		LIBPCAP		= -lpcap
 	endif
 endif
 
@@ -32,45 +33,73 @@ endif
 
 
 SBINFILES       = aireplay-ng$(EXE) airodump-ng$(EXE) airserv-ng$(EXE) \
-		  airtun-ng$(EXE) airbase-ng$(EXE) besside-ng$(EXE)
-		  
+		  airtun-ng$(EXE) airbase-ng$(EXE)
+
 OPTFILES	= aircrack-ng-opt-prof_gen aircrack-ng-opt \
 		  aircrack-ng-opt-prof prof/*
 
 
-ifeq ($(subst TRUE,true,$(filter TRUE true,$(unstable) $(UNSTABLE))),true)
-	SBINFILES	+= wesside-ng$(EXE) tkiptun-ng$(EXE) easside-ng$(EXE)
+ifeq ($(subst TRUE,true,$(filter TRUE true,$(experimental) $(EXPERIMENTAL))),true)
+	SBINFILES	+= wesside-ng$(EXE) tkiptun-ng$(EXE) easside-ng$(EXE) besside-ng$(EXE)
 	BINFILES	+= buddy-ng$(EXE)
 endif
 
+SRC_SSE_COMMON	= memory.c wpapsk.c
+OBJS_SSE_COMMON = memory.o wpapsk.o
+OBJ_MEMORY	= memory.o
+SRC_SSE_CORE	= sse-intrinsics.c
+OBJ_SSE_CORE	= sse-intrinsics.o
+SRC_SIMD_CORE	= simd-intrinsics.c
+OBJ_SIMD_CORE	= simd-intrinsics.o
+SIMDOUT		= wpapsk-simd.o
+
+ifeq ($(subst TRUE,true,$(filter TRUE true,$(multibin) $(MULTIBIN))),true)
+SSESIMD_BIN	= wpapsk-simd.o wpapsk-sse.o aircrack-ng-core.o aircrack-ng-simd$(EXE) aircrack-ng-sse$(EXE)
+CFLAGS		+= -DOLD_SSE_CORE
+else
+ifeq ($(subst TRUE,true,$(filter TRUE true,$(newsse) $(NEWSSE))),true)
+ifeq ($(subst TRUE,true,$(filter TRUE true,$(simdcore) $(SIMDCORE))),true)
+CFLAGS		+= -DSIMD_CORE
+SSEC_INT	= simd-intrinsics.c $(SRC_SSE_COMMON)
+SSEO_INT	= simd-intrinsics.o $(OBJS_SSE_COMMON)
+else
+SSEC_INT	= sse-intrinsics.c $(SRC_SSE_COMMON)
+SSEO_INT	= sse-intrinsics.o $(OBJS_SSE_COMMON)
+endif
+endif
+endif
+
+SRC_LINECOUNT	= linecount.o
+LIBLINECOUNT	= liblinecount.a
 
 SRC_PTW		= aircrack-ptw-lib.c
-SRC_AC		= aircrack-ng.c crypto.c common.c $(SRC_PTW)
+SRC_AC		= aircrack-ng.c crypto.c common.c $(SSEC_INT) $(SRC_PTW)
 OBJS_PTW	= aircrack-ptw-lib.o
-OBJS_AC		= aircrack-ng.o crypto.o common.o uniqueiv.o $(OBJS_PTW)
+OBJS_AC		= aircrack-ng.o cpuid.o crypto.o common.o $(SSEO_INT) uniqueiv.o $(OBJS_PTW) $(LIBLINECOUNT)
+OBJS_AC_MULTI	= crypto.o common.o uniqueiv.o $(OBJS_PTW)
 ASM_AC		= sha1-sse2.S
 
 OBJS_AD		= airdecap-ng.o crypto.o common.o
 OBJS_PF		= packetforge-ng.o common.o crypto.o
-OBJS_AR		= aireplay-ng.o common.o crypto.o osdep/radiotap/radiotap-parser.o
-OBJS_ADU	= airodump-ng.o common.o crypto.o uniqueiv.o osdep/radiotap/radiotap-parser.o
+OBJS_AR		= aireplay-ng.o common.o crypto.o osdep/radiotap/radiotap.o
+OBJS_ADU	= airodump-ng.o common.o crypto.o uniqueiv.o osdep/radiotap/radiotap.o
 ifneq ($(OSNAME), Linux)
 	OBJS_ADU	+= osdep/common.o
 endif
-OBJS_AT		= airtun-ng.o common.o crypto.o osdep/radiotap/radiotap-parser.o
+OBJS_AT		= airtun-ng.o common.o crypto.o osdep/radiotap/radiotap.o
 OBJS_IV		= ivstools.o common.o crypto.o uniqueiv.o
-OBJS_AS		= airserv-ng.o common.o osdep/radiotap/radiotap-parser.o
-OBJS_WS		= wesside-ng.o crypto.o common.o osdep/radiotap/radiotap-parser.o $(OBJS_PTW)
-OBJS_BS		= besside-ng.o crypto.o common.o osdep/radiotap/radiotap-parser.o $(OBJS_PTW)
+OBJS_AS		= airserv-ng.o common.o osdep/radiotap/radiotap.o
+OBJS_WS		= wesside-ng.o crypto.o common.o osdep/radiotap/radiotap.o $(OBJS_PTW)
+OBJS_BS		= besside-ng.o crypto.o common.o osdep/radiotap/radiotap.o $(OBJS_PTW)
 OBJS_BC		= besside-ng-crawler.o
 OBJS_AL		= airolib-ng.o crypto.o common.o
-OBJS_ES		= easside-ng.o common.o osdep/radiotap/radiotap-parser.o
+OBJS_ES		= easside-ng.o common.o osdep/radiotap/radiotap.o
 OBJS_BUDDY	= buddy-ng.o common.o
 OBJS_MI		= makeivs-ng.o common.o uniqueiv.o
-OBJS_AB		= airbase-ng.o common.o crypto.o osdep/radiotap/radiotap-parser.o
-OBJS_AU		= airdecloak-ng.o common.o osdep/radiotap/radiotap-parser.o
-OBJS_TT		= tkiptun-ng.o common.o crypto.o osdep/radiotap/radiotap-parser.o
-OBJS_WC		= wpaclean.o osdep/radiotap/radiotap-parser.o
+OBJS_AB		= airbase-ng.o common.o crypto.o osdep/radiotap/radiotap.o
+OBJS_AU		= airdecloak-ng.o common.o osdep/radiotap/radiotap.o
+OBJS_TT		= tkiptun-ng.o common.o crypto.o osdep/radiotap/radiotap.o
+OBJS_WC		= wpaclean.o osdep/radiotap/radiotap.o
 
 OSD		= osdep
 LIBS		:= -L$(OSD) -l$(OSD) $(LIBS)
@@ -80,6 +109,8 @@ endif
 LIBOSD		= $(OSD)/lib$(OSD).a
 
 LIBSSL		= -lssl -lcrypto
+LIBSTDCXX	= -lstdc++
+
 ifeq ($(subst TRUE,true,$(filter TRUE true,$(gcrypt) $(GCRYPT))),true)
 	LIBSSL		= -lgcrypt $(LDFLAGS)
 	CFLAGS 		+= -DUSE_GCRYPT
@@ -106,9 +137,19 @@ else
 	LIBSQL		=
 endif
 
-all: userland $(SBINFILES)
+all: config userland $(SBINFILES) $(SSESIMD_BIN)
 
 userland: $(BINFILES)
+
+config: $(AC_ROOT)/common.cfg
+
+$(AC_ROOT)/common.cfg:
+	sh $(AC_ROOT)/autocfg $(CC) $(AC_ROOT)
+
+$(LIBLINECOUNT): $(SRC_LINECOUNT)
+	$(AR) cru $(LIBLINECOUNT) $(SRC_LINECOUNT)
+	$(RANLIB) $(LIBLINECOUNT)
+	touch $(@)
 
 $(LIBOSD):
 	$(MAKE) -C $(OSD)
@@ -129,7 +170,24 @@ aircrack-ng-opt-prof_use: $(SRC_AC)
 	aircrack-ng-opt-prof -lpthread $(LIBSQL)
 
 aircrack-ng$(EXE): $(OBJS_AC)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_AC) $(ASM_AC) -o $(@) -lpthread $(LIBSSL) $(LIBSQL)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_AC) $(ASM_AC) -o $(@) -lpthread $(LIBSSL) $(LIBSQL) $(LIBSTDCXX)
+
+ifeq ($(subst TRUE,true,$(filter TRUE true,$(multibin) $(MULTIBIN))),true)
+wpapsk-simd.o: wpapsk.c
+	$(CC) $(filter-out -DOLD_SSE_CORE,$(CFLAGS)) -DSIMD_CORE -c -o $(@) wpapsk.c
+
+aircrack-ng-core.o: aircrack-ng.c
+	$(CC) $(filter-out -DOLD_SSE_CORE,$(CFLAGS)) -c -o $(@) aircrack-ng.c
+
+wpapsk-sse.o: wpapsk.c
+	$(CC) $(filter-out -DOLD_SSE_CORE,$(CFLAGS)) -c -o $(@) wpapsk.c
+
+aircrack-ng-simd$(EXE): $(OBJS_AC_MULTI) wpapsk-simd.o $(OBJ_MEMORY) $(OBJ_SIMD_CORE)
+	$(CC) $(filter-out -DOLD_SSE_CORE,$(CFLAGS)) $(LDFLAGS) $(OBJS_AC_MULTI) $(OBJ_MEMORY) $(OBJ_SIMD_CORE) aircrack-ng-core.o wpapsk-simd.o $(ASM_AC) -o $(@) -lpthread $(LIBSSL) $(LIBSQL) $(LIBSTDCXX) $(LIBLINECOUNT)
+
+aircrack-ng-sse$(EXE): $(OBJS_AC_MULTI) wpapsk-sse.o $(OBJ_MEMORY) $(OBJ_SSE_CORE)
+	$(CC) $(filter-out -DOLD_SSE_CORE,$(CFLAGS)) $(LDFLAGS) $(OBJS_AC_MULTI) $(OBJ_MEMORY) $(OBJ_SSE_CORE) aircrack-ng-core.o wpapsk-sse.o $(ASM_AC) -o $(@) -lpthread $(LIBSSL) $(LIBSQL) $(LIBSTDCXX) $(LIBLINECOUNT)
+endif
 
 airdecap-ng$(EXE): $(OBJS_AD)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_AD) -o $(@) $(LIBSSL)
@@ -165,10 +223,10 @@ buddy-ng$(EXE): $(OBJS_BUDDY)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_BUDDY) -o $(@) $(LDFLAGS)
 
 besside-ng$(EXE): $(OBJS_BS) $(LIBOSD)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_BS) -o $(@) $(LIBS) $(LIBSSL) -lz
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_BS) -o $(@) $(LIBS) $(LIBSSL) -lz $(LIBPCRE)
 
 besside-ng-crawler$(EXE): $(OBJS_BC)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_BC) -o $(@) -lpcap
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_BC) -o $(@) $(LIBPCAP)
 
 makeivs-ng$(EXE): $(OBJS_MI)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS_MI) -o $(@) $(LDFLAGS)
@@ -193,7 +251,7 @@ strip: $(BINFILES) $(SBINFILES)
 
 clean:
 	$(MAKE) -C $(OSD) clean
-	-rm -f $(SBINFILES) $(BINFILES) $(OPTFILES) airolib-ng$(EXE) *.o wesside-ng$(EXE) tkiptun-ng$(EXE) easside-ng$(EXE) buddy-ng$(EXE) a.out
+	-rm -f $(SBINFILES) $(BINFILES) $(OPTFILES) airolib-ng$(EXE) *.o wesside-ng$(EXE) tkiptun-ng$(EXE) easside-ng$(EXE) buddy-ng$(EXE) besside-ng$(EXE) a.out $(LIBLINECOUNT) $(SSESIMD_BIN)
 
 distclean: clean
 
@@ -233,6 +291,10 @@ check: all
 	./aircrack-ng$(EXE) -w $(TEST_DIR)/password.lst -a 2 -e test -q $(TEST_DIR)/wpa.cap | grep 'KEY FOUND! \[ biscotte \]'
 	./aircrack-ng$(EXE) -w $(TEST_DIR)/password.lst -a 2 -e linksys -q $(TEST_DIR)/wpa2-psk-linksys.cap | grep 'KEY FOUND! \[ dictionary \]'
 	./aircrack-ng$(EXE) -w $(TEST_DIR)/password.lst -a 2 -e linksys -q $(TEST_DIR)/wpa-psk-linksys.cap | grep 'KEY FOUND! \[ dictionary \]'
+	./aircrack-ng$(EXE) $(TEST_DIR)/wep_64_ptw.cap -l /dev/null | grep "KEY FOUND" | grep "1F:1F:1F:1F:1F"
+	./airdecap-ng$(EXE) -e linksys -p dictionary $(TEST_DIR)/wpa2-psk-linksys.cap -o /dev/null -c /dev/null | grep "decrypted WPA" | grep 25
+	./airdecap-ng$(EXE) -e linksys -p dictionary $(TEST_DIR)/wpa-psk-linksys.cap -o /dev/null -c /dev/null | grep "decrypted WPA" | grep 53
+	./airdecap-ng$(EXE) -e test -p biscotte $(TEST_DIR)/wpa.cap -o /dev/null -c /dev/null | grep "decrypted WPA" | grep 2
 	$(TEST_DIR)/test-airdecap-ng.sh $(CURDIR)
 ifeq ($(subst TRUE,true,$(filter TRUE true,$(sqlite) $(SQLITE))),true)
 	$(TEST_DIR)/test-airolib-sqlite.sh $(CURDIR)

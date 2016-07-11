@@ -35,18 +35,18 @@
 
 #define QUEUE_MAX 666
 
-struct queue {
+struct netqueue {
 	unsigned char	q_buf[2048];
 	int		q_len;
 
-	struct queue	*q_next;
-	struct queue	*q_prev;
+	struct netqueue	*q_next;
+	struct netqueue	*q_prev;
 };
 
 struct priv_net {
 	int		pn_s;
-	struct queue	pn_queue;
-	struct queue	pn_queue_free;
+	struct netqueue	pn_queue;
+	struct netqueue	pn_queue_free;
 	int		pn_queue_len;
 };
 
@@ -131,7 +131,7 @@ int net_get(int s, void *arg, int *len)
 	if (!(plen <= *len))
 		printf("PLEN %d type %d len %d\n",
 			plen, nh.nh_type, *len);
-	assert(plen <= *len); /* XXX */
+	assert(plen <= *len && plen >= 0);
 
 	*len = plen;
 	if ((*len) && (net_read_exact(s, arg, *len) == -1))
@@ -142,15 +142,15 @@ int net_get(int s, void *arg, int *len)
 	return nh.nh_type;
 }
 
-static void queue_del(struct queue *q)
+static void queue_del(struct netqueue *q)
 {
 	q->q_prev->q_next = q->q_next;
 	q->q_next->q_prev = q->q_prev;
 }
 
-static void queue_add(struct queue *head, struct queue *q)
+static void queue_add(struct netqueue *head, struct netqueue *q)
 {
-	struct queue *pos = head->q_prev;
+	struct netqueue *pos = head->q_prev;
 
 	q->q_prev = pos;
 	q->q_next = pos->q_next;
@@ -159,9 +159,9 @@ static void queue_add(struct queue *head, struct queue *q)
 }
 
 #if 0
-static int queue_len(struct queue *head)
+static int queue_len(struct netqueue *head)
 {
-	struct queue *q = head->q_next;
+	struct netqueue *q = head->q_next;
 	int i = 0;
 
 	while (q != head) {
@@ -173,9 +173,9 @@ static int queue_len(struct queue *head)
 }
 #endif
 
-static struct queue *queue_get_slot(struct priv_net *pn)
+static struct netqueue *queue_get_slot(struct priv_net *pn)
 {
-	struct queue *q = pn->pn_queue_free.q_next;
+	struct netqueue *q = pn->pn_queue_free.q_next;
 
 	if (q != &pn->pn_queue_free) {
 		queue_del(q);
@@ -190,7 +190,7 @@ static struct queue *queue_get_slot(struct priv_net *pn)
 
 static void net_enque(struct priv_net *pn, void *buf, int len)
 {
-	struct queue *q;
+	struct netqueue *q;
 
 	q = queue_get_slot(pn);
 	if (!q)
@@ -211,12 +211,14 @@ static int net_get_nopacket(struct priv_net *pn, void *arg, int *len)
 	while (1) {
 		l = sizeof(buf);
 		c = net_get(pn->pn_s, buf, &l);
+		if (c < 0)
+			return c;
 
 		if (c != NET_PACKET && c > 0)
 			break;
 
-                if(c > 0)
-                    net_enque(pn, buf, l);
+		if(c > 0)
+			net_enque(pn, buf, l);
 	}
 
 	assert(l <= *len);
@@ -251,8 +253,8 @@ static int net_cmd(struct priv_net *pn, int command, void *arg, int alen)
 
 static int queue_get(struct priv_net *pn, void *buf, int len)
 {
-	struct queue *head = &pn->pn_queue;
-	struct queue *q = head->q_next;
+	struct netqueue *head = &pn->pn_queue;
+	struct netqueue *q = head->q_next;
 
 	if (q == head)
 		return 0;
@@ -301,8 +303,9 @@ static int net_read(struct wif *wi, unsigned char *h80211, int len,
 		ri->ri_power = __be32_to_cpu(buf[2]);
 		ri->ri_noise = __be32_to_cpu(buf[3]);
 		ri->ri_channel = __be32_to_cpu(buf[4]);
-		ri->ri_rate = __be32_to_cpu(buf[5]);
-		ri->ri_antenna = __be32_to_cpu(buf[6]);
+		ri->ri_freq = __be32_to_cpu(buf[5]);
+		ri->ri_rate = __be32_to_cpu(buf[6]);
+		ri->ri_antenna = __be32_to_cpu(buf[7]);
 	}
 	l -= sz;
 	assert(l > 0);

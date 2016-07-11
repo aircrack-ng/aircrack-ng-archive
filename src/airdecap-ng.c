@@ -1,7 +1,7 @@
 /*
  *  802.11 to Ethernet pcap translator
  *
- *  Copyright (C) 2006-2013 Thomas d'Otreppe
+ *  Copyright (C) 2006-2016 Thomas d'Otreppe <tdotreppe@aircrack-ng.org>
  *  Copyright (C) 2004, 2005  Christophe Devine
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -57,7 +57,7 @@ extern int calc_crc_buf( unsigned char *buf, int len );
 char usage[] =
 
 "\n"
-"  %s - (C) 2006-2013 Thomas d\'Otreppe\n"
+"  %s - (C) 2006-2015 Thomas d\'Otreppe\n"
 "  http://www.aircrack-ng.org\n"
 "\n"
 "  usage: airdecap-ng [options] <pcap file>\n"
@@ -66,9 +66,11 @@ char usage[] =
 "      -l         : don't remove the 802.11 header\n"
 "      -b <bssid> : access point MAC address filter\n"
 "      -e <essid> : target network SSID\n"
+"      -o <fname> : output file for decrypted packets (default <src>-dec)\n"
 "\n"
 "  WEP specific option:\n"
 "      -w <key>   : target network WEP key in hex\n"
+"      -c <fname> : output file for corrupted WEP packets (default <src>-bad)\n"
 "\n"
 "  WPA specific options:\n"
 "      -p <pass>  : target network WPA passphrase\n"
@@ -95,23 +97,25 @@ struct options
     int no_convert;
     char essid[36];
     char passphrase[65];
-    uchar bssid[6];
-    uchar pmk[40];
-    uchar wepkey[64];
+    unsigned char bssid[6];
+    unsigned char pmk[40];
+    unsigned char wepkey[64];
     int weplen, crypt;
     int store_bad;
+    char decrypted_fpath[65536];
+    char corrupted_fpath[65536];
 }
 opt;
 
-uchar buffer[65536];
-uchar buffer2[65536];
+unsigned char buffer[65536];
+unsigned char buffer2[65536];
 
 /* this routine handles to 802.11 to Ethernet translation */
 
-int write_packet( FILE *f_out, struct pcap_pkthdr *pkh, uchar *h80211 )
+int write_packet( FILE *f_out, struct pcap_pkthdr *pkh, unsigned char *h80211 )
 {
     int n;
-    uchar arphdr[12];
+    unsigned char arphdr[12];
     int qosh_offset = 0;
 
     if( opt.no_convert )
@@ -170,7 +174,7 @@ int write_packet( FILE *f_out, struct pcap_pkthdr *pkh, uchar *h80211 )
             pkh->len    -= 30 + qosh_offset + 6;
             pkh->caplen -= 30 + qosh_offset + 6;
 
-            memcpy( buffer + 12, h80211 + qosh_offset + 36, pkh->caplen );
+            memmove( buffer + 12, h80211 + qosh_offset + 36, pkh->caplen );
         }
 
         memcpy( buffer, arphdr, 12 );
@@ -201,13 +205,14 @@ int write_packet( FILE *f_out, struct pcap_pkthdr *pkh, uchar *h80211 )
 int main( int argc, char *argv[] )
 {
     time_t tt;
-    uint magic;
+    unsigned magic;
     char *s, buf[128];
     FILE *f_in, *f_out, *f_bad=NULL;
     unsigned long crc;
-    int i = 0, n, z, linktype;
-    uchar ZERO[32], *h80211;
-    uchar bssid[6], stmac[6];
+    int i = 0, n, linktype;
+    unsigned z;
+    unsigned char ZERO[32], *h80211;
+    unsigned char bssid[6], stmac[6];
 
     struct WPA_ST_info *st_1st;
     struct WPA_ST_info *st_cur;
@@ -238,7 +243,7 @@ int main( int argc, char *argv[] )
             {0,         0, 0,  0 }
         };
 
-        int option = getopt_long( argc, argv, "lb:k:e:p:w:H",
+        int option = getopt_long( argc, argv, "lb:k:e:o:p:w:c:H",
                         long_options, &option_index );
 
         if( option < 0 ) break;
@@ -355,6 +360,30 @@ int main( int argc, char *argv[] )
 
                 memset(  opt.essid, 0, sizeof( opt.essid ) );
                 strncpy( opt.essid, optarg, sizeof( opt.essid ) - 1 );
+                break;
+
+            case 'o' :
+
+                if ( opt.decrypted_fpath[0])
+                {
+                    printf( "filename for decrypted packets already specified.\n" );
+                    printf("\"%s --help\" for help.\n", argv[0]);
+                    return( 1 );
+                }
+
+                strncpy( opt.decrypted_fpath, optarg, sizeof( opt.decrypted_fpath ) - 1 );
+                break;
+
+            case 'c' :
+
+                if ( opt.corrupted_fpath[0])
+                {
+                    printf( "filename for corrupted packets already specified.\n" );
+                    printf("\"%s --help\" for help.\n", argv[0]);
+                    return( 1 );
+                }
+
+                strncpy( opt.corrupted_fpath, optarg, sizeof( opt.corrupted_fpath ) - 1 );
                 break;
 
             case 'p' :
@@ -550,7 +579,13 @@ usage:
         opt.store_bad=1;
     }
 
-    if( ( f_out = fopen( (char *) buffer, "wb+" ) ) == NULL )
+    /* Support manually-configured output files*/
+    if ( opt.decrypted_fpath[0])
+        f_out = fopen( opt.decrypted_fpath, "wb+");
+    else
+        f_out = fopen( (char *) buffer, "wb+");
+
+    if( f_out == NULL )
     {
         perror( "fopen failed" );
         printf( "Could not create \"%s\".\n", buffer );
@@ -559,7 +594,12 @@ usage:
 
     if(opt.store_bad)
     {
-        if( ( f_bad = fopen( (char *) buffer2, "wb+" ) ) == NULL )
+        if ( opt.corrupted_fpath[0])
+            f_bad = fopen( opt.corrupted_fpath, "wb+" );
+        else
+            f_bad = fopen( (char *) buffer2, "wb+" );
+
+        if( f_bad == NULL )
         {
             perror( "fopen failed" );
             printf( "Could not create \"%s\".\n", buffer2 );
@@ -706,7 +746,7 @@ usage:
 
         z = ( ( h80211[1] & 3 ) != 3 ) ? 24 : 30;
 
-        if( z + 16 > (int) pkh.caplen )
+        if( z + 16 > pkh.caplen )
             continue;
 
         /* check QoS header */
@@ -800,7 +840,7 @@ usage:
 
             if( ( h80211[z + 3] & 0x20 ) == 0 )
             {
-                uchar K[64];
+                unsigned char K[64];
 
                 stats.nb_wep++;
 
@@ -832,7 +872,7 @@ usage:
                 pkh.len    -= 8;
                 pkh.caplen -= 8;
 
-                memcpy( h80211 + z, h80211 + z + 4, pkh.caplen - z );
+                memmove( h80211 + z, h80211 + z + 4, pkh.caplen - z );
 
                 stats.nb_unwep++;
 
@@ -944,10 +984,12 @@ usage:
                 st_cur->eapol_size = ( h80211[z + 2] << 8 )
                                    +   h80211[z + 3] + 4;
 
-                if ((int)pkh.len - z < st_cur->eapol_size  || st_cur->eapol_size == 0)
+                if (pkh.len - z < st_cur->eapol_size  || st_cur->eapol_size == 0 ||
+                    st_cur->eapol_size > sizeof(st_cur->eapol))
                 {
-                	// Ignore the packet trying to crash us.
-                	continue;
+                        // Ignore the packet trying to crash us.
+                        st_cur->eapol_size = 0;
+                        continue;
                 }
 
                 memcpy( st_cur->keymic, &h80211[z + 81], 16 );
@@ -978,11 +1020,13 @@ usage:
                 st_cur->eapol_size = ( h80211[z + 2] << 8 )
                                    +   h80211[z + 3] + 4;
 
-                if ((int)pkh.len - z < st_cur->eapol_size  || st_cur->eapol_size == 0)
-				{
-					// Ignore the packet trying to crash us.
-					continue;
-				}
+                if (pkh.len - z < st_cur->eapol_size  || st_cur->eapol_size == 0 ||
+                    st_cur->eapol_size > sizeof(st_cur->eapol))
+                {
+                    // Ignore the packet trying to crash us.
+                    st_cur->eapol_size = 0;
+                    continue;
+                 }
 
                 memcpy( st_cur->keymic, &h80211[z + 81], 16 );
                 memcpy( st_cur->eapol, &h80211[z], st_cur->eapol_size );
@@ -995,6 +1039,13 @@ usage:
 
             st_cur->valid_ptk = calc_ptk( st_cur, opt.pmk );
         }
+    }
+
+    while (st_1st != NULL)
+    {
+        st_cur = st_1st->next;
+        free(st_1st);
+        st_1st = st_cur;
     }
 
     fclose( f_in  );

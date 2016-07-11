@@ -1,7 +1,7 @@
  /*
   * Server for osdep network driver.  Uses osdep itself!  [ph33r teh recursion]
   *
-  *  Copyright (C) 2006-2013 Thomas d'Otreppe
+  *  Copyright (C) 2006-2016 Thomas d'Otreppe <tdotreppe@aircrack-ng.org>
   *  Copyright (C) 2004, 2005 Christophe Devine
   *
   *  This program is free software; you can redistribute it and/or modify
@@ -38,7 +38,7 @@ extern unsigned char * getmac(char * macAddress, int strict, unsigned char * mac
 char usage[] =
 
 "\n"
-"  %s - (C) 2006-2013 Thomas d\'Otreppe\n"
+"  %s - (C) 2006-2015 Thomas d\'Otreppe\n"
 "  http://www.aircrack-ng.org\n"
 "\n"
 "  usage: makeivs-ng [options]\n"
@@ -182,8 +182,12 @@ int main( int argc, char *argv[] )
 
 				paramUsed = 1;
                 sscanf(optarg, "%f", &errorrate);
+#if defined(__x86_64__) && defined(__CYGWIN__)
+                if (errorrate < 0.0f || errorrate > (0.0f + 100)) {
+#else
                 if (errorrate < 0.0f || errorrate > 100.0f) {
-					printf( usage, getVersion("makeivs-ng", _MAJ, _MIN, _SUB_MIN, _REVISION, _BETA, _RC)  );
+#endif
+			printf( usage, getVersion("makeivs-ng", _MAJ, _MIN, _SUB_MIN, _REVISION, _BETA, _RC)  );
                     printf( "Specified errorrate is invalid. [0-100]" );
                     return( 1 );
                 }
@@ -193,8 +197,12 @@ int main( int argc, char *argv[] )
             case 'd':
 
 				paramUsed = 1;
-                sscanf(optarg, "%f", &dupe);
-                if (dupe < 0.0f || dupe > 100.0f) {
+                if (sscanf(optarg, "%f", &dupe) != 1 || dupe < 0.0f || dupe >
+#if defined(__x86_64__) && defined(__CYGWIN__)
+			(0.0f + 100)) {
+#else
+			100.0f) {
+#endif
 					printf( usage, getVersion("makeivs-ng", _MAJ, _MIN, _SUB_MIN, _REVISION, _BETA, _RC)  );
 
                     printf( "Specified dupe is invalid. [0-100]" );
@@ -414,7 +422,12 @@ usage:
     pre_n=0;
     for( n = 0; n < count; n++ )
     {
-        if( (dupe==0) || (pre_n == n) || ((float)rand()/(float)RAND_MAX > (float)((float)dupe/100.0f)) )
+        if( (dupe==0) || (pre_n == n) || ((float)rand()/(float)RAND_MAX > (float)((float)dupe/
+#if defined(__x86_64__) && defined(__CYGWIN__)
+		(0.0f + 100))) )
+#else
+		100.0f)) )
+#endif
         {
             if(prng)
             {
@@ -465,7 +478,12 @@ usage:
             SWAP( S[i], S[j] );
         }
 
-        if(errorrate > 0 && ((float)((float)rand()/(float)RAND_MAX) <= (float)(errorrate/100.0f)) )
+        if(errorrate > 0 && ((float)((float)rand()/(float)RAND_MAX) <= (float)(errorrate/
+#if defined(__x86_64__) && defined(__CYGWIN__)
+		(0.0f + 100))) )
+#else
+		100.0f)) )
+#endif
         {
             SWAP( S[1], S[11] );
         }
@@ -503,7 +521,12 @@ usage:
             fprintf( f_ivs_out, "%c", S[(S[i] + S[j]) & 0xFF] );
         }
         if((n%10000) == 0)
-            printf("%2.1f%%\r", ((float)n/(float)count)*100.0f);
+            printf("%2.1f%%\r", ((float)n/(float)count)*
+#if defined(__x86_64__) && defined(__CYGWIN__)
+		(0.0f + 100));
+#else
+		100.0f);
+#endif
         fflush(stdout);
     }
 

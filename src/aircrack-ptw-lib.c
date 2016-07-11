@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2007, 2008, 2009 Erik Tews, Andrei Pychkine and Ralf-Philipp Weinmann.
+ *  Copyright (c) 2007-2009 Erik Tews, Andrei Pychkine and Ralf-Philipp Weinmann.
  *                2013 Ramiro Polla
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -35,6 +35,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#if defined(__sun__)
+#include <alloca.h>
+#endif
 #include "pcap.h"
 #include "aircrack-ptw-lib.h"
 #include "aircrack-ng.h"
@@ -116,6 +119,11 @@ int tried, max_tries;
 int depth[KEYHSBYTES];
 PTW_tableentry keytable[KEYHSBYTES][n];
 
+// Check if optmizied RC4 for AMD64 has to be compiled
+#if defined(__amd64) && defined(__SSE2__) && !defined(__clang__)
+	#define USE_AMD64_RC4_OPTIMIZED
+#endif
+
 // For sorting
 static int compare(const void * ina, const void * inb) {
 	PTW_tableentry * a = (PTW_tableentry * )ina;
@@ -137,7 +145,7 @@ static int comparedoublesorthelper(const void * ina, const void * inb) {
 }
 
 
-#if defined(__amd64) && defined(__SSE2__)
+#ifdef USE_AMD64_RC4_OPTIMIZED
 static const uint32_t __attribute__((used)) __attribute__((aligned (16))) x0123 [4] = { 0, 1, 2, 3 };
 static const uint32_t __attribute__((used)) __attribute__((aligned (16))) x4444 [4] = { 4, 4, 4, 4 };
 static int rc4test_amd64_sse2(uint8_t *key, int keylen, uint8_t *iv, uint8_t *keystream)
@@ -168,10 +176,10 @@ static int rc4test_amd64_sse2(uint8_t *key, int keylen, uint8_t *iv, uint8_t *ke
 		"movdqa   (%q3), %%xmm0       \n\t"
 		"cmpl    $16, %k4             \n\t"
 		"movdqu %%xmm0, 3+"keybuf"    \n\t"
-		"jng     .L0                  \n\t"
+		"jng     .Lsmall_key1         \n\t"
 		"movdqa 16(%q3), %%xmm1       \n\t"
 		"movdqu %%xmm1,19+"keybuf"    \n\t"
-		".L0:                         \n\t"
+		".Lsmall_key1:                \n\t"
 
 		// key = keybuf
 		"lea  "keybuf", %q3           \n\t"
@@ -198,9 +206,9 @@ static int rc4test_amd64_sse2(uint8_t *key, int keylen, uint8_t *iv, uint8_t *ke
 		"movq %q4, %q8                \n\t"
 		"cmpq $16, %q8                \n\t"
 		"movq $15, %q4                \n\t"
-		"je    .L7                    \n\t"
+		"je    .Lsmall_key2           \n\t"
 		"shrq  $1, %q4                \n\t"
-		".L7:                         \n\t"
+		".Lsmall_key2:                \n\t"
 
 		// init array with key
 		".p2align 4                   \n\t"
@@ -567,12 +575,12 @@ int PTW_computeKey(PTW_attackstate * state, uint8_t * keybuf, int keylen, int te
 	doublesorthelper helper[KEYHSBYTES];
 	int simple, onestrong, twostrong;
 	int i,j;
-#if defined(__amd64) && defined(__SSE2__)
+#ifdef USE_AMD64_RC4_OPTIMIZED
 	/*
 	 * The 64-bit SSE2-optimized rc4test() requires this buffer to be
 	 * aligned at 3 bytes.
 	 */
-	uint8_t fullkeybuf_unaligned[PTW_KSBYTES+13];
+	uint8_t fullkeybuf_unaligned[PTW_KSBYTES+13] __attribute__((aligned(16)));
 	uint8_t *fullkeybuf = &fullkeybuf_unaligned[13];
 #else
 	uint8_t fullkeybuf[PTW_KSBYTES];
@@ -581,7 +589,7 @@ int PTW_computeKey(PTW_attackstate * state, uint8_t * keybuf, int keylen, int te
 	sorthelper(*sh)[n-1];
 	PTW_tableentry (*table)[n] = alloca(sizeof(PTW_tableentry) * n * keylen);
 
-#if defined(__amd64) && defined(__SSE2__)
+#ifdef USE_AMD64_RC4_OPTIMIZED
 	/*
 	 * sse2-optimized rc4test() function for amd64 only works
 	 * for keylen == 5 or keylen == 13

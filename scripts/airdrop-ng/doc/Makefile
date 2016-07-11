@@ -1,3 +1,5 @@
+AC_ROOT		= ../../../
+include		$(AC_ROOT)/common.mak
 DOCFILES = Apple.sample.txt dropRules.conf.example
 default: all
 
@@ -5,7 +7,7 @@ all:
 	@echo "Nothing to do, run make install" 
 
 uninstall:
-	rm $(DESTDIR)$(docdir)/Apple.sample.txt  $(DESTDIR)$(docdir)/dropRules.conf.example $(DESTDIR)$(mandir)/airdrop-ng.1
+	rm -f $(DESTDIR)$(docdir)/Apple.sample.txt  $(DESTDIR)$(docdir)/dropRules.conf.example $(DESTDIR)$(mandir)/airdrop-ng.1
 
 install:
 	install -d $(DESTDIR)$(docdir)

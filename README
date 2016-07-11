@@ -30,7 +30,7 @@ Drivers
 	
 	
 	Problem 1: No client can associate to an airbase soft AP.
-	Solution 1: None at this time.
+	Solution: Use a more recent driver. Madwifi-ng has been deprecated for years.
 	
 	
 	Problem 2: When changing rate while you are capturing packet makes airodump-ng stall
@@ -60,7 +60,7 @@ Aircrack-ng
 	-----------
 
 	Problem: Fakeauth on a WRT54G with WEP (shared authentication) doesn't work.
-	Solution: None at this time (we'll try to fix it for next release).
+	Solution: None at this time (we'll try to fix it in an upcoming release).
 
 
 	Airolib-ng
@@ -72,13 +72,6 @@ Aircrack-ng
 	Solution: Rename the directory or move the database into another directory.
 
 
-	Airbase-ng
-	----------
-
-	Problem: SSID are not displayed correctly (when scanning for networks) when using airbase-ng with r8187 driver.
-	Reason: Beacons are truncated (the beginning is missing) when sent in the air.
-	Solution: None at this time (we'll try to fix it for next release)
-
 	Airodump-ng
 	-----------
 
@@ -89,15 +82,24 @@ Aircrack-ng
 	
 	Problem: On windows, it doesn't display a list of adapters like the old 0.X
 	Solution: It requires you to develop your own DLL.
-	
+
+	Problem: Handshake is not captured/detected
+	Reason: You might be too far and your signal is bad (or too close with a signal too strong).
+	        Another possibility is that Airodump-ng didn't detect the handshake properly due to
+	        being far apart in the capture.
+	Solution 1: Check out our tutorial 'WPA Packet Capture Explained' in the wiki.
+	Solution 2: Try running Aircrack-ng on your capture, it might detect the capture.
+	Solution 3: Check out our wpaclean tool.
+	Note: It will be fixed in an upcoming release.
+
 	Cygwin
 	------
 	
 	Problem: Aircrack-ng doesn't build on Cygwin64
 	Solution: None at this time. Build it using 32 bit cygwin.
-	
-	Problem: Aircrack-ng doesn't build with gcc 4.5
-	Solution: Use an older version of gcc such as 4.3 for now (will be fixed in stable release).
+
+	Problem: /usr/include/sys/reent.h:14:20: fatal error: stddef.h: No such file or directory
+	Solution: It happens because the gcc and g++ version are different. Make sure they are the same.
 	
 Sample files
 ============
@@ -141,3 +143,12 @@ password.lst
 
 password.db
     This is a sample airolib-ng database for WPA key cracking.
+
+pingreply.c
+    Replies to all ping requests. Useful for testing sniffing/injecting packets with airtun-ng.
+
+Chinese-SSID-Name.pcap
+    Contains a beacon with an SSID displayed in Chinese.
+
+verify_inject.py
+    Testing DNS requests using airtun-ng.
