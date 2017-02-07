@@ -1,7 +1,7 @@
 /*
  *  802.11 WEP / WPA-PSK Key Cracker
  *
- *  Copyright (C) 2006-2016 Thomas d'Otreppe <tdotreppe@aircrack-ng.org>
+ *  Copyright (C) 2006-2017 Thomas d'Otreppe <tdotreppe@aircrack-ng.org>
  *  Copyright (C) 2004, 2005 Christophe Devine
  *
  *  Advanced WEP attacks developed by KoreK
@@ -1028,8 +1028,8 @@ void read_thread( void *arg )
 
 			if( pkh.caplen <= 0 || pkh.caplen > 65535 )
 			{
-				fprintf( stderr, "\nInvalid packet capture length %d - "
-					"corrupted file?\n", pkh.caplen );
+				fprintf( stderr, "\nInvalid packet capture length %lu - "
+					"corrupted file?\n", (unsigned long) pkh.caplen );
 				eof_wait( &eof_notified );
 				_exit( FAILURE );
 			}
@@ -1962,8 +1962,8 @@ void check_thread( void *arg )
 
 			if( pkh.caplen <= 0 || pkh.caplen > 65535 )
 			{
-				fprintf( stderr, "\nInvalid packet capture length %d - "
-					"corrupted file?\n", pkh.caplen );
+				fprintf( stderr, "\nInvalid packet capture length %lu - "
+					"corrupted file?\n", (unsigned long) pkh.caplen );
 				goto read_fail;
 			}
 
@@ -6267,7 +6267,7 @@ __start:
 			if( ! opt.is_quiet && !_speed_test) {
 				if( opt.l33t )
 					printf( "\33[37;40m" );
-					printf( "\33[2J" );
+				printf( "\33[2J" );
 				if( opt.l33t )
 					printf( "\33[34;1m" );
 			printf("\33[2;34H%s",progname);

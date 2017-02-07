@@ -40,14 +40,17 @@ endif
 endif
 
 COMMON_CFLAGS	=
+OSX_ALT_FLAGS	=
 
 ifeq ($(subst TRUE,true,$(filter TRUE true,$(xcode) $(XCODE))),true)
 	COMMON_CFLAGS	+= -I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-migrator/sdk/MacOSX.sdk/usr/include/ -D_XCODE -I../..
+	OSX_ALT_FLAGS	= true
 endif
 
 ifeq ($(subst TRUE,true,$(filter TRUE true,$(macport) $(MACPORT))),true)
 	COMMON_CFLAGS	+= -I/opt/local/include -I../..
 	LDFLAGS		+= -L/opt/local/lib
+	OSX_ALT_FLAGS	= true
 endif
 
 ifeq ($(subst TRUE,true,$(filter TRUE true,$(sqlite) $(SQLITE))),true)
@@ -60,6 +63,15 @@ endif
 
 ifeq ($(PCRE), true)
 COMMON_CFLAGS += $(shell $(PKG_CONFIG) --cflags libpcre) -DHAVE_PCRE
+endif
+
+STACK_PROTECTOR	= true
+ifeq ($(stackprotector), false)
+	STACK_PROTECTOR	= false
+endif
+
+ifeq ($(STACKPROTECTOR), false)
+	STACK_PROTECTOR	= false
 endif
 
 ifeq ($(OSNAME), cygwin)
@@ -231,14 +243,16 @@ ifeq ($(GCC_OVER49), 0)
 	GCC_OVER49	= $(shell expr 4.9 \<= `$(CC) -dumpversion | awk -F. '{ print $1$2 }'`)
 endif
 
-ifeq ($(GCC_OVER49), 0)
-	ifeq ($(GCC_OVER41), 1)
-		COMMON_CFLAGS += -fstack-protector
+ifeq ($(STACK_PROTECTOR), true)
+	ifeq ($(GCC_OVER49), 0)
+		ifeq ($(GCC_OVER41), 1)
+			COMMON_CFLAGS += -fstack-protector
+		endif
 	endif
-endif
 
-ifeq ($(GCC_OVER49), 1)
-	COMMON_CFLAGS += -fstack-protector-strong
+	ifeq ($(GCC_OVER49), 1)
+		COMMON_CFLAGS += -fstack-protector-strong
+	endif
 endif
 
 ifeq ($(GCC_OVER45), 1)

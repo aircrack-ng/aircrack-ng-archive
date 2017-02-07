@@ -166,7 +166,7 @@ char usage[] =
 "      -c dmac   : set Destination  MAC address\n"
 "      -h smac   : set Source       MAC address\n"
 "      -e essid  : set target AP SSID\n"
-"      -M sec    : MIC error timout in seconds [60]\n"
+"      -M sec    : MIC error timeout in seconds [60]\n"
 "\n"
 "  Debug options:\n"
 "\n"
@@ -181,7 +181,7 @@ char usage[] =
 "      -i iface  : capture packets from this interface\n"
 "      -r file   : extract packets from this pcap file\n"
 "\n"
-"      --help              : Displays this usage screen\n"
+"      --help    : Displays this usage screen\n"
 "\n";
 
 struct options
@@ -2534,7 +2534,7 @@ int do_attack_tkipchop( unsigned char* src_packet, int src_packet_len )
         if( ticks[1] > (RTC_RESOLUTION/10) )
         {
             ticks[1] = 0;
-            printf( "\rSent %3ld packets, current guess: %02X...\33[K",
+            printf( "\rSent %3lu packets, current guess: %02X...\33[K",
                     nb_pkt_sent, guess );
             fflush( stdout );
         }
@@ -2829,7 +2829,7 @@ int do_attack_tkipchop( unsigned char* src_packet, int src_packet_len )
         n = caplen - data_start;
 
         printf( "\r"); PCT; printf("Offset %4d (%2d%% done) | xor = %02X | pt = %02X | "
-                "%4ld frames written in %5.0fms\n", data_end - 1,
+                "%4lu frames written in %5.0fms\n", data_end - 1,
                 100 * ( caplen - data_end ) / n,
                 chopped[data_end - 1],
                 chopped[data_end - 1] ^ srcbuf[data_end - 1],
@@ -3796,7 +3796,6 @@ int main( int argc, char *argv[] )
 
         static struct option long_options[] = {
             {"help",        0, 0, 'H'},
-            {"fast",        0, 0, 'F'},
             {"pmk",         1, 0, 'P'},
             {"psk",         1, 0, 'p'},
             {0,             0, 0,  0 }
