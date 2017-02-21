@@ -239,7 +239,7 @@ struct options
     int f_fromds;
     int f_iswep;
 
-    int deauthreason;
+    unsigned char deauthreason;
     int r_nbpps;
     int r_fctrl;
     unsigned char r_bssid[6];
@@ -1338,15 +1338,12 @@ int do_attack_deauth( void )
 
         if( memcmp( opt.r_dmac, NULL_MAC, 6 ) != 0 )
         {
-	    /* deauthenticate the target */
-            
+	   /* deauthenticate the target */
 	    memcpy( h80211, DEAUTH_REQ, 26 );
-            
 	    memcpy( h80211 + 16, opt.r_bssid, 6 );
 
             /* add the deauth code */
-            memcpy( h80211 + 24, &(opt.deauthreason), 1);
-
+	    h80211[24] = opt.deauthreason;
             aacks = 0;
             sacks = 0;
             for( i = 0; i < 64; i++ )
@@ -1434,8 +1431,7 @@ int do_attack_deauth( void )
                          opt.r_bssid[4], opt.r_bssid[5] );
 
             memcpy( h80211, DEAUTH_REQ, 26 );
-            memcpy( h80211 + 24, &(opt.deauthreason), 1);
-
+	    h80211[24] = opt.deauthreason;
 
             memcpy( h80211 +  4, BROADCAST,   6 );
             memcpy( h80211 + 10, opt.r_bssid, 6 );
@@ -6668,8 +6664,8 @@ int main( int argc, char *argv[] )
 
             case 'Z' :
 
-                ret = sscanf( optarg, "%d", &opt.deauthreason );
-                if( opt.deauthreason < 0 || opt.deauthreason > 254 || ret != 1 )
+                ret = sscanf( optarg, "%hhu", &opt.deauthreason );
+                if( ret != 1 )
                 {
                     printf( "Invalid deauth reason. [0-254]\n" );
                     printf("\"%s --help\" for help.\n", argv[0]);
