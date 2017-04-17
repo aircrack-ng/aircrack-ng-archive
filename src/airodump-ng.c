@@ -664,6 +664,10 @@ char usage[] =
 "      --output-format\n"
 "                  <formats> : Output format. Possible values:\n"
 "                              pcap, ivs, csv, gps, kismet, netxml\n"
+"      --forgetful <timeout> : Will create new rows in csv for duplicate MAC\n"
+"                              addresses if they haven't been seen for\n"
+"                              <timeout> seconds.\n"
+"      -F          <timeout> : Same as --forgetful\n"
 "      --ignore-negative-one : Removes the message that says\n"
 "                              fixed channel <interface>: -1\n"
 "      --write-interval\n"
@@ -1504,16 +1508,29 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
     st_prv = NULL;
 
     while( st_cur != NULL )
-    {
-        if( ! memcmp( st_cur->stmac, stmac, 6 ) )
-            break;
-
+    {   
+        if( ! memcmp( st_cur->stmac, stmac, 6 ) ){ 
+                ! (G.is_forgetful && (time(NULL) - st_cur->tlast >= G.forget_to_sec)))
+            
+            //add new client after timeout
+            if( ! (G.is_forgetful && (time(NULL) - st_cur->tlast >= G.forget_to_sec))){
+                /* do all insertions towards the head so that the 
+                 * newest entry for a MAC will always come first */
+                struct ST_info *st_new = (struct ST_info *) malloc(sizeof(struct ST_info));
+                memcpy(st_new, st_cur, sizeof(struct ST_info));
+                st_new->next = st_cur;
+                st_new->prev = st_prv;
+                st_prv->next = st_new;
+                st_cur->prev = st_new;
+                st_cur = st_new;
+            }
+            break; 
+        }
         st_prv = st_cur;
         st_cur = st_cur->next;
     }
 
     /* if it's a new client, add it */
-
     if( st_cur == NULL )
     {
         if( ! ( st_cur = (struct ST_info *) malloc(
@@ -1539,7 +1556,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
 			st_cur->manuf = get_manufacturer(st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2]);
 		}
 
-	st_cur->nb_pkt = 0;
+        st_cur->nb_pkt = 0;
 
         st_cur->prev = st_prv;
 
@@ -1555,7 +1572,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
         st_cur->lastseq = 0;
         st_cur->qos_fr_ds = 0;
         st_cur->qos_to_ds = 0;
-	st_cur->channel = 0;
+        st_cur->channel = 0;
 
         gettimeofday( &(st_cur->ftimer), NULL);
 
@@ -1578,7 +1595,6 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
         st_cur->rate_to = ri->ri_rate;
 
     /* update the last time seen */
-
     st_cur->tlast = time( NULL );
 
     /* only update power if packets comes from the
@@ -6160,6 +6176,7 @@ int main( int argc, char *argv[] )
         {"gpsd",     0, 0, 'g'},
         {"ivs",      0, 0, 'i'},
         {"write",    1, 0, 'w'},
+        {"forgetful",0, 0, 'F'},
         {"encrypt",  1, 0, 't'},
         {"update",   1, 0, 'u'},
         {"berlin",   1, 0, 'B'},
@@ -6246,6 +6263,8 @@ int main( int argc, char *argv[] )
     G.show_ack     =  0;
     G.hide_known   =  0;
     G.maxsize_essid_seen  =  5; // Initial value: length of "ESSID"
+    G.is_forgetful = 0;
+    G.forget_to_sec= 30; // Default value of forgetful timeout
     G.show_manufacturer = 0;
     G.show_uptime  = 0;
     G.hopfreq      =  DEFAULT_HOPFREQ;
@@ -6344,7 +6363,7 @@ int main( int argc, char *argv[] )
         option_index = 0;
 
         option = getopt_long( argc, argv,
-                        "b:c:egiw:s:t:u:m:d:N:R:aHDB:Ahf:r:EC:o:x:MUI:W",
+                        "b:c:egiw:s:t:u:m:d:N:R:aHDB:Ahf:r:EC:o:x:MUI:WF:",
                         long_options, &option_index );
 
         if( option < 0 ) break;
@@ -6409,20 +6428,24 @@ int main( int argc, char *argv[] )
                 G.decloak = 0;
                 break;
 
-	    case 'M':
+            case 'M':
 
                 G.show_manufacturer = 1;
                 break;
 
-	    case 'U' :
+            case 'U' :
 	    		G.show_uptime = 1;
 	    		break;
 
             case 'W':
-
                 G.show_wps = 1;
                 break;
-
+            
+            case 'F':
+                G.is_forgetful = 1;
+                G.forget_to_sec = atoi(optarg);
+                break;
+            
             case 'c' :
 
                 if (G.channel[0] > 0 || G.chanoption == 1) {
@@ -6635,21 +6658,21 @@ int main( int argc, char *argv[] )
                 G.f_essid[G.f_essid_count-1] = optarg;
                 break;
 
-	    case 'R':
+            case 'R':
 
 #ifdef HAVE_PCRE
                 if (G.f_essid_regex != NULL)
                 {
-			printf("Error: ESSID regular expression already given. Aborting\n");
-			exit(1);
+    		        printf("Error: ESSID regular expression already given. Aborting\n");
+    		        exit(1);
                 }
 
                 G.f_essid_regex = pcre_compile(optarg, 0, &pcreerror, &pcreerroffset, NULL);
 
                 if (G.f_essid_regex == NULL)
                 {
-			printf("Error: regular expression compilation failed at offset %d: %s; aborting\n", pcreerroffset, pcreerror);
-			exit(1);
+    		        printf("Error: regular expression compilation failed at offset %d: %s; aborting\n", pcreerroffset, pcreerror);
+    		        exit(1);
 		}
 #else
                 printf("Error: Airodump-ng wasn't compiled with pcre support; aborting\n");
@@ -6802,10 +6825,8 @@ usage:
                 printf("No valid frequency given.\n");
                 return(1);
             }
-
-//             printf("gonna rearrange\n");
+            
             rearrange_frequencies();
-//             printf("finished rearranging\n");
 
             freq_count = getfreqcount(0);
 
