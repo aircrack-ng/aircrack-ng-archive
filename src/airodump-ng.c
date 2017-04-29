@@ -1914,7 +1914,8 @@ skip_probe:
                                     ap_cur->wps.version = pwfa[2];
                                     break;
                                 }
-                                wfa_len -= pwfa[1];
+                                wfa_len -= pwfa[1] + 2;
+                                pwfa += pwfa[1] + 2;
                             }
                         }
                     case 0x1054: // Primary Device Type
