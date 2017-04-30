@@ -1918,6 +1918,7 @@ skip_probe:
                                 pwfa += pwfa[1] + 2;
                             }
                         }
+                        break;
                     case 0x1054: // Primary Device Type
                         break;
                     case 0x1057: // AP Setup Locked
