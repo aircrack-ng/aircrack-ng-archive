@@ -1908,7 +1908,7 @@ skip_probe:
                     case 0x1049: // Vendor Extension
                         if (memcmp(&p[4], "\x00\x37\x2A", 3) == 0) {
                             unsigned char *pwfa = &p[7];
-                            short wfa_len = ntohs(*((short *)&p[2]));
+                            int wfa_len = ntohs(*((short *)&p[2]));
                             while( wfa_len > 0 ) {
                                 if (*pwfa == 0) { // Version2
                                     ap_cur->wps.version = pwfa[2];
