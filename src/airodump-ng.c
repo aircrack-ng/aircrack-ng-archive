@@ -3484,7 +3484,7 @@ void dump_print( int ws_row, int ws_col, int if_num )
     }
 
     if(G.show_sta) {
-	memcpy( strbuf, " BSSID              STATION "
+	memcpy( strbuf, " ESSID              STATION "
 		"           PWR   Rate    Lost    Frames  Probes", columns_sta );
 	strbuf[ws_col - 1] = '\0';
 	fprintf( stderr, "%s\n", strbuf );
@@ -3557,13 +3557,14 @@ void dump_print( int ws_row, int ws_col, int if_num )
 		if( ws_row != 0 && nlines >= ws_row )
 		    return;
 
+		//fprintf( stderr, " %3d", ap_cur->essid[1] );
 		if( ! memcmp( ap_cur->bssid, BROADCAST, 6 ) )
 		    fprintf( stderr, " (not associated) " );
 		else
-		    fprintf( stderr, " %02X:%02X:%02X:%02X:%02X:%02X",
-			    ap_cur->bssid[0], ap_cur->bssid[1],
+		    fprintf( stderr, /*" %02X:%02X:%02X:%02X:%02X:%02X"*/ " %s",
+			    /*ap_cur->bssid[0], ap_cur->bssid[1],
 			    ap_cur->bssid[2], ap_cur->bssid[3],
-			    ap_cur->bssid[4], ap_cur->bssid[5] );
+			    ap_cur->bssid[4], ap_cur->bssid[5]*/ap_cur->essid[0] );
 
 		fprintf( stderr, "  %02X:%02X:%02X:%02X:%02X:%02X",
 			st_cur->stmac[0], st_cur->stmac[1],
