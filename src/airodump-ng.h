@@ -372,6 +372,9 @@ struct globals
     int singlefreq;         /* frequency hopping: 1 */
     int chswitch;	    /* switching method     */
     int f_encrypt;          /* encryption filter    */
+    int f_auth;             /* authentication filter */
+    int f_hotspot;          /* hotspot filter */
+    int f_cipher;           /* chipher filter */
     int update_s;	    /* update delay in sec  */
 
     int is_wlanng[MAX_CARDS];          /* set if wlan-ng       */
