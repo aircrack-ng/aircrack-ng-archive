@@ -1186,38 +1186,28 @@ int list_check_decloak(struct pkt_buf **list, int length, unsigned char* packet)
 
 int remove_namac(unsigned char* mac)
 {
-    struct NA_info *na_cur = NULL;
-    struct NA_info *na_prv = NULL;
+    struct NA_info **na_indicator = NULL;
+    struct NA_info *na_needrm = NULL;
 
     if(mac == NULL)
         return( -1 );
 
-    na_cur = G.na_1st;
-    na_prv = NULL;
-
-    while( na_cur != NULL )
+    na_indicator = &G.na_1st;
+    
+    while( *na_indicator != NULL )
     {
-        if( ! memcmp( na_cur->namac, mac, 6 ) )
+        if( ! memcmp( (*na_indicator)->namac, mac, 6 ) )
             break;
 
-        na_prv = na_cur;
-        na_cur = na_cur->next;
+        na_indicator = &(*na_indicator)->next;
     }
 
     /* if it's known, remove it */
-    if( na_cur != NULL )
+    if( *na_indicator != NULL )
     {
-        /* first in linked list */
-        if(na_cur == G.na_1st)
-        {
-            G.na_1st = na_cur->next;
-        }
-        else
-        {
-            na_prv->next = na_cur->next;
-        }
-        free(na_cur);
-        na_cur=NULL;
+        na_needrm = *na_indicator;
+        *na_indicator = na_needrm->next;
+        free(na_needrm);
     }
 
     return( 0 );
