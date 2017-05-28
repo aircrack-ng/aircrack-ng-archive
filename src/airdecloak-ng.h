@@ -156,53 +156,53 @@ extern int getmac(char * macAddress, int strict, unsigned char * mac);
 extern char * mac2string(unsigned char * mac);
 extern int maccmp(unsigned char *mac1, unsigned char *mac2);
 
-void usage();
+void usage(void);
 int getBits(unsigned char b, int from, int length);
 FILE * openfile(const char * filename, const char * mode, int fatal);
 BOOLEAN write_packet(FILE * file, struct packet_elt * packet);
 FILE * init_new_pcap(const char * filename);
 FILE * open_existing_pcap(const char * filename);
 BOOLEAN read_packets(void);
-BOOLEAN initialize_linked_list();
-BOOLEAN add_node_if_not_complete();
-void set_node_complete();
-void remove_last_uncomplete_node();
+BOOLEAN initialize_linked_list(void);
+BOOLEAN add_node_if_not_complete(void);
+void set_node_complete(void);
+void remove_last_uncomplete_node(void);
 struct packet_elt * getPacketNr(int position);
 char * iv2string(unsigned char * iv);
 char * icv2string(unsigned char * icv);
 void print_packet(struct packet_elt * packet);
-void reset_current_packet_pointer();
-BOOLEAN reset_current_packet_pointer_to_ap_packet();
-BOOLEAN reset_current_packet_pointer_to_client_packet();
-BOOLEAN next_packet_pointer();
-BOOLEAN next_packet_pointer_from_ap();
-BOOLEAN next_packet_pointer_from_client();
-BOOLEAN prev_packet_pointer();
+void reset_current_packet_pointer(void);
+BOOLEAN reset_current_packet_pointer_to_ap_packet(void);
+BOOLEAN reset_current_packet_pointer_to_client_packet(void);
+BOOLEAN next_packet_pointer(void);
+BOOLEAN next_packet_pointer_from_ap(void);
+BOOLEAN next_packet_pointer_from_client(void);
+BOOLEAN prev_packet_pointer(void);
 int compare_SN_to_current_packet(struct packet_elt * packet);
 BOOLEAN current_packet_pointer_same_fromToDS_and_source(struct packet_elt * packet);
 BOOLEAN prev_packet_pointer_same_fromToDS_and_source(struct packet_elt * packet);
 BOOLEAN next_packet_pointer_same_fromToDS_and_source(struct packet_elt * packet);
-BOOLEAN prev_packet_pointer_same_fromToDS_and_source_as_current();
-BOOLEAN next_packet_pointer_same_fromToDS_and_source_as_current();
-BOOLEAN write_packets();
-BOOLEAN print_statistics();
+BOOLEAN prev_packet_pointer_same_fromToDS_and_source_as_current(void);
+BOOLEAN next_packet_pointer_same_fromToDS_and_source_as_current(void);
+BOOLEAN write_packets(void);
+BOOLEAN print_statistics(void);
 char * status_format(int status);
-int get_average_signal_ap();
+int get_average_signal_ap(void);
 
 // Check for cloaking functions
-BOOLEAN check_for_cloaking(); // Main cloaking check function
+BOOLEAN check_for_cloaking(void); // Main cloaking check function
 #define CFC_base_filter() CFC_with_valid_packets_mark_others_with_identical_sn_cloaked()
-int CFC_with_valid_packets_mark_others_with_identical_sn_cloaked();
+int CFC_with_valid_packets_mark_others_with_identical_sn_cloaked(void);
 int CFC_mark_all_frames_with_status_to(int original_status, int new_status);
-int CFC_filter_signal();
-int CFC_filter_duplicate_sn_ap();
-int CFC_filter_duplicate_sn_client();
-int CFC_filter_duplicate_sn();
-int CFC_filter_consecutive_sn();
-int CFC_filter_consecutive_sn_ap();
-int CFC_filter_consecutive_sn_client();
-int CFC_filter_duplicate_iv();
-int CFC_filter_signal_duplicate_and_consecutive_sn();
+int CFC_filter_signal(void);
+int CFC_filter_duplicate_sn_ap(void);
+int CFC_filter_duplicate_sn_client(void);
+int CFC_filter_duplicate_sn(void);
+int CFC_filter_consecutive_sn(void);
+int CFC_filter_consecutive_sn_ap(void);
+int CFC_filter_consecutive_sn_client(void);
+int CFC_filter_duplicate_iv(void);
+int CFC_filter_signal_duplicate_and_consecutive_sn(void);
 
 /*
 const char usage[] =

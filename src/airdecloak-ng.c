@@ -313,7 +313,7 @@ void print_packet(struct packet_elt * packet) {
 	printf("Signal: %d - Retry bit: %d - is cloaked: %d\n", packet->signal_quality, packet->retry_bit, packet->is_cloaked);
 }
 
-int get_rtap_signal(int caplen)
+static int get_rtap_signal(int caplen)
 {
 	struct ieee80211_radiotap_iterator iterator;
 	struct ieee80211_radiotap_header *rthdr;

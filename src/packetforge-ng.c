@@ -162,7 +162,7 @@ dev;
 unsigned char h80211[2048];
 unsigned char tmpbuf[2048];
 
-int capture_ask_packet( int *caplen )
+static int capture_ask_packet( int *caplen )
 {
     time_t tr;
     struct timeval tv;
@@ -373,7 +373,7 @@ int capture_ask_packet( int *caplen )
     return( 0 );
 }
 
-int packet_dump(unsigned char* packet, int length)
+static int packet_dump(unsigned char* packet, int length)
 {
     int i;
 
@@ -391,7 +391,7 @@ int packet_dump(unsigned char* packet, int length)
 }
 
 /* IP address parsing routine */
-int getip( char *s, unsigned char *ip , unsigned short *port)
+static int getip( char *s, unsigned char *ip , unsigned short *port)
 {
     int i = 0, n;
 
@@ -425,7 +425,7 @@ int getip( char *s, unsigned char *ip , unsigned short *port)
     return( i != 4 );
 }
 
-unsigned short ip_chksum(unsigned short* addr, int count)
+static unsigned short ip_chksum(unsigned short* addr, int count)
 {
 	unsigned short checksum;
 	   /* Compute Internet Checksum for "count" bytes
@@ -454,7 +454,7 @@ unsigned short ip_chksum(unsigned short* addr, int count)
     return checksum;
 }
 
-int set_tofromds(unsigned char* packet)
+static int set_tofromds(unsigned char* packet)
 {
     if(packet == NULL) return 1;
 
@@ -482,7 +482,7 @@ int set_tofromds(unsigned char* packet)
     return 0;
 }
 
-int set_bssid(unsigned char* packet)
+static int set_bssid(unsigned char* packet)
 {
     int mi_b;
 
@@ -508,7 +508,7 @@ int set_bssid(unsigned char* packet)
     return 0;
 }
 
-int set_dmac(unsigned char* packet)
+static int set_dmac(unsigned char* packet)
 {
     int mi_d;
 
@@ -534,7 +534,7 @@ int set_dmac(unsigned char* packet)
     return 0;
 }
 
-int set_smac(unsigned char* packet)
+static int set_smac(unsigned char* packet)
 {
     int mi_s;
 
@@ -561,7 +561,7 @@ int set_smac(unsigned char* packet)
 }
 
 /* offset for ip&&udp = 48, for arp = 56 */
-int set_dip(unsigned char* packet, int offset)
+static int set_dip(unsigned char* packet, int offset)
 {
     if(packet == NULL) return 1;
     if(offset < 0 || offset > 2046) return 1;
@@ -579,7 +579,7 @@ int set_dip(unsigned char* packet, int offset)
 }
 
 /* offset for ip&&udp = 44, for arp = 46 */
-int set_sip(unsigned char* packet, int offset)
+static int set_sip(unsigned char* packet, int offset)
 {
     if(packet == NULL) return 1;
     if(offset < 0 || offset > 2046) return 1;
@@ -596,7 +596,7 @@ int set_sip(unsigned char* packet, int offset)
     return 0;
 }
 
-int set_ipid(unsigned char* packet, int offset)
+static int set_ipid(unsigned char* packet, int offset)
 {
     unsigned short id;
 
@@ -610,7 +610,7 @@ int set_ipid(unsigned char* packet, int offset)
     return 0;
 }
 
-int set_dport(unsigned char* packet)
+static int set_dport(unsigned char* packet)
 {
     unsigned short port;
 
@@ -622,7 +622,7 @@ int set_dport(unsigned char* packet)
     return 0;
 }
 
-int set_sport(unsigned char* packet)
+static int set_sport(unsigned char* packet)
 {
     unsigned short port;
 
@@ -634,7 +634,7 @@ int set_sport(unsigned char* packet)
     return 0;
 }
 
-int set_ip_ttl(unsigned char* packet)
+static int set_ip_ttl(unsigned char* packet)
 {
     unsigned char ttl;
 
@@ -646,7 +646,7 @@ int set_ip_ttl(unsigned char* packet)
     return 0;
 }
 
-int set_IVidx(unsigned char* packet)
+static int set_IVidx(unsigned char* packet)
 {
     if(packet == NULL) return 1;
 
@@ -662,7 +662,7 @@ int set_IVidx(unsigned char* packet)
     return 0;
 }
 
-int next_keystream(unsigned char *dest, int size, unsigned char *bssid, int minlen)
+static int next_keystream(unsigned char *dest, int size, unsigned char *bssid, int minlen)
 {
     struct ivs2_pkthdr ivs2;
     char *buffer;
@@ -726,7 +726,7 @@ int next_keystream(unsigned char *dest, int size, unsigned char *bssid, int minl
     return -1;
 }
 
-int encrypt_data(unsigned char *dest, unsigned char* data, int length)
+static int encrypt_data(unsigned char *dest, unsigned char* data, int length)
 {
     unsigned char cipher[2048];
     int n;
@@ -778,7 +778,7 @@ int encrypt_data(unsigned char *dest, unsigned char* data, int length)
     return 0;
 }
 
-int create_wep_packet(unsigned char* packet, int *length)
+static int create_wep_packet(unsigned char* packet, int *length)
 {
     if(packet == NULL) return 1;
 
@@ -800,7 +800,7 @@ int create_wep_packet(unsigned char* packet, int *length)
     return 0;
 }
 
-int read_raw_packet(unsigned char* dest, char* srcfile, int length)
+static int read_raw_packet(unsigned char* dest, char* srcfile, int length)
 {
     size_t readblock;
     FILE *f;
@@ -829,7 +829,7 @@ int read_raw_packet(unsigned char* dest, char* srcfile, int length)
     return 0;
 }
 
-int write_cap_packet(unsigned char* packet, int length)
+static int write_cap_packet(unsigned char* packet, int length)
 {
     FILE *f;
     struct pcap_file_header pfh;
@@ -910,7 +910,7 @@ int write_cap_packet(unsigned char* packet, int length)
     return 0;
 }
 
-int read_prga(unsigned char **dest, char *file)
+static int read_prga(unsigned char **dest, char *file)
 {
     FILE *f;
     int size;
@@ -976,7 +976,7 @@ int read_prga(unsigned char **dest, char *file)
     return( 0 );
 }
 
-int forge_arp()
+static int forge_arp(void)
 {
 
     /* use arp request */
@@ -998,7 +998,7 @@ int forge_arp()
     return 0;
 }
 
-int forge_udp()
+static int forge_udp(void)
 {
     unsigned short chksum;
 
@@ -1027,7 +1027,7 @@ int forge_udp()
     return 0;
 }
 
-int forge_icmp()
+static int forge_icmp(void)
 {
     unsigned short chksum;
 
@@ -1058,7 +1058,7 @@ int forge_icmp()
     return 0;
 }
 
-int forge_null()
+static int forge_null(void)
 {
     opt.pktlen = opt.size;
     memcpy(h80211, NULL_PACKET, 24);
@@ -1080,7 +1080,7 @@ int forge_null()
     return 0;
 }
 
-int forge_custom()
+static int forge_custom(void)
 {
     if(capture_ask_packet( &opt.pktlen ) != 0) return 1;
 //    if(read_raw_packet(h80211, opt.raw_file, opt.pktlen) != 0) return 1;
@@ -1103,7 +1103,7 @@ int forge_custom()
     return 0;
 }
 
-void print_usage(void)
+static void print_usage(void)
 {
     char *version_info = getVersion("Packetforge-ng", _MAJ, _MIN, _SUB_MIN, _REVISION, _BETA, _RC);
     printf(usage, version_info);

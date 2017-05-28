@@ -109,10 +109,10 @@ extern int getmac(char * macAddress, int strict, unsigned char * mac);
 extern int readLine(char line[], int maxlength);
 extern int hexToInt(char s[], int len);
 extern int hexCharToInt(unsigned char c);
-extern int cpuid_simdsize();
-extern int cpuid_getinfo();
+extern int cpuid_simdsize(int viewmax);
+extern int cpuid_getinfo(void);
 extern struct _cpuinfo cpuinfo;
-extern int get_nb_cpus();
+extern int get_nb_cpus(void);
 
 #define S_LLC_SNAP      "\xAA\xAA\x03\x00\x00\x00"
 #define S_LLC_SNAP_ARP  (S_LLC_SNAP "\x08\x06")
