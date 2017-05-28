@@ -671,6 +671,8 @@ char usage[] =
 "\n"
 "  Filter options:\n"
 "      --encrypt   <suite>   : Filter APs by cipher suite\n"
+"      --auth      <auth>    : Filter APs by auth\n"
+"      --cipher   <cipher>   : Filter APs by cipher\n"
 "      --netmask <netmask>   : Filter APs by mask\n"
 "      --bssid     <bssid>   : Filter APs by BSSID\n"
 "      --essid     <essid>   : Filter APs by ESSID\n"
@@ -679,6 +681,7 @@ char usage[] =
 "                              expression\n"
 #endif
 "      -a                    : Filter unassociated clients\n"
+"      --ignore-hotspot      : Filter Hotspot\n"
 "\n"
 "  By default, airodump-ng hop on 2.4GHz channels.\n"
 "  You can make it capture on other/specific channel(s) by using:\n"
@@ -2439,7 +2442,17 @@ write_packet:
         {
             return(1);
         }
-
+        if(ap_cur->security != 0 && G.f_auth != 0 && ((ap_cur->security & G.f_auth) == 0))
+        {
+            return(1);
+        }
+        if(ap_cur->security != 0 && G.f_cipher != 0 && ((ap_cur->security & G.f_cipher) == 0))
+        {
+            return(1);
+        }
+        if(G.f_hotspot != 0 && ((ap_cur->security & STD_OPN) != 0 || (ap_cur->security & AUTH_MGT) != 0 )){
+            return(1);
+        }
         if(is_filtered_essid(ap_cur->essid))
         {
             return(1);
@@ -2923,12 +2936,25 @@ int get_ap_list_count() {
             continue;
         }
 
+        if(ap_cur->security != 0 && G.f_auth != 0 && ((ap_cur->security & G.f_auth) == 0))
+        {
+            ap_cur = ap_cur->prev;
+            continue;
+        }
+        if(ap_cur->security != 0 && G.f_cipher != 0 && ((ap_cur->security & G.f_cipher) == 0))
+        {
+            ap_cur = ap_cur->prev;
+            continue;
+        }
         if(ap_cur->security != 0 && G.f_encrypt != 0 && ((ap_cur->security & G.f_encrypt) == 0))
         {
             ap_cur = ap_cur->prev;
             continue;
         }
-
+        if(G.f_hotspot != 0 && ((ap_cur->security & STD_OPN) != 0 || (ap_cur->security & AUTH_MGT) != 0 )){
+            ap_cur = ap_cur->prev;
+            continue;
+        }
         if(is_filtered_essid(ap_cur->essid))
         {
             ap_cur = ap_cur->prev;
@@ -2971,7 +2997,22 @@ int get_sta_list_count() {
             ap_cur = ap_cur->prev;
             continue;
         }
-
+        
+        if(ap_cur->security != 0 && G.f_auth != 0 && ((ap_cur->security & G.f_auth) == 0))
+        {
+            ap_cur = ap_cur->prev;
+            continue;
+        }
+        
+        if(ap_cur->security != 0 && G.f_cipher != 0 && ((ap_cur->security & G.f_cipher) == 0))
+        {
+            ap_cur = ap_cur->prev;
+            continue;
+        }
+        if(G.f_hotspot != 0 && ((ap_cur->security & STD_OPN) != 0 || (ap_cur->security & AUTH_MGT) != 0 )){
+            ap_cur = ap_cur->prev;
+            continue;
+        }
         // Don't filter unassociated clients by ESSID
         if(memcmp(ap_cur->bssid, BROADCAST, 6) && is_filtered_essid(ap_cur->essid))
         {
@@ -3256,7 +3297,22 @@ void dump_print( int ws_row, int ws_col, int if_num )
 		ap_cur = ap_cur->prev;
 		continue;
 	    }
-
+        
+        if(ap_cur->security != 0 && G.f_auth != 0 && ((ap_cur->security & G.f_auth) == 0))
+        {
+            ap_cur = ap_cur->prev;
+            continue;
+        }
+        
+        if(ap_cur->security != 0 && G.f_cipher != 0 && ((ap_cur->security & G.f_cipher) == 0))
+        {
+            ap_cur = ap_cur->prev;
+            continue;
+        }
+        if(G.f_hotspot != 0 && ((ap_cur->security & STD_OPN) != 0 || (ap_cur->security & AUTH_MGT) != 0 )){
+            ap_cur = ap_cur->prev;
+            continue;
+        }
 	    if(is_filtered_essid(ap_cur->essid))
 	    {
 		ap_cur = ap_cur->prev;
@@ -3511,6 +3567,21 @@ void dump_print( int ws_row, int ws_col, int if_num )
 		ap_cur = ap_cur->prev;
 		continue;
 	    }
+        
+        if(ap_cur->security != 0 && G.f_auth != 0 && ((ap_cur->security & G.f_auth) == 0))
+        {
+            ap_cur = ap_cur->prev;
+            continue;
+        }
+        if(ap_cur->security != 0 && G.f_cipher != 0 && ((ap_cur->security & G.f_cipher) == 0))
+        {
+            ap_cur = ap_cur->prev;
+            continue;
+        }
+        if(G.f_hotspot != 0 && ((ap_cur->security & STD_OPN) != 0 || (ap_cur->security & AUTH_MGT) != 0 )){
+            ap_cur = ap_cur->prev;
+            continue;
+        }
 
 	    // Don't filter unassociated clients by ESSID
 	    if(memcmp(ap_cur->bssid, BROADCAST, 6) && is_filtered_essid(ap_cur->essid))
@@ -3781,7 +3852,21 @@ int dump_write_csv( void )
             ap_cur = ap_cur->next;
             continue;
         }
-
+        if(ap_cur->security != 0 && G.f_auth != 0 && ((ap_cur->security & G.f_auth) == 0))
+        {
+            ap_cur = ap_cur->prev;
+            continue;
+        }
+        
+        if(ap_cur->security != 0 && G.f_cipher != 0 && ((ap_cur->security & G.f_cipher) == 0))
+        {
+            ap_cur = ap_cur->prev;
+            continue;
+        }
+        if(G.f_hotspot != 0 && ((ap_cur->security & STD_OPN) != 0 || (ap_cur->security & AUTH_MGT) != 0 )){
+            ap_cur = ap_cur->prev;
+            continue;
+        }
         fprintf( G.f_txt, "%02X:%02X:%02X:%02X:%02X:%02X, ",
                  ap_cur->bssid[0], ap_cur->bssid[1],
                  ap_cur->bssid[2], ap_cur->bssid[3],
@@ -4280,7 +4365,22 @@ int dump_write_kismet_netxml( void )
             ap_cur = ap_cur->next;
             continue;
         }
-
+        
+        if(ap_cur->security != 0 && G.f_auth != 0 && ((ap_cur->security & G.f_auth) == 0))
+        {
+            ap_cur = ap_cur->next;
+            continue;
+        }
+        
+        if(ap_cur->security != 0 && G.f_cipher != 0 && ((ap_cur->security & G.f_cipher) == 0))
+        {
+            ap_cur = ap_cur->next;
+            continue;
+        }
+        if(G.f_hotspot != 0 && ((ap_cur->security & STD_OPN) != 0 || (ap_cur->security & AUTH_MGT) != 0 )){
+            ap_cur = ap_cur->prev;
+            continue;
+        }
         if(is_filtered_essid(ap_cur->essid))
         {
             ap_cur = ap_cur->next;
@@ -4639,7 +4739,22 @@ int dump_write_kismet_csv( void )
             ap_cur = ap_cur->next;
             continue;
         }
-
+        
+        if(ap_cur->security != 0 && G.f_auth != 0 && ((ap_cur->security & G.f_auth) == 0))
+        {
+            ap_cur = ap_cur->next;
+            continue;
+        }
+        
+        if(ap_cur->security != 0 && G.f_cipher != 0 && ((ap_cur->security & G.f_cipher) == 0))
+        {
+            ap_cur = ap_cur->next;
+            continue;
+        }
+        if(G.f_hotspot != 0 && ((ap_cur->security & STD_OPN) != 0 || (ap_cur->security & AUTH_MGT) != 0 )){
+            ap_cur = ap_cur->prev;
+            continue;
+        }
         if(is_filtered_essid(ap_cur->essid) || ap_cur->nb_pkt < 2)
         {
             ap_cur = ap_cur->next;
@@ -5922,7 +6037,58 @@ int set_encryption_filter(const char* input)
 
     return 0;
 }
+            
+int set_authentication_filter(const char* input)
+{
+    if(input == NULL) return 1;
+    
+    if(strlen(input) < 3) return 1;
+    
+    if(strcasecmp(input, "mgt") == 0)
+    G.f_auth |= AUTH_MGT;
+    
+    if(strcasecmp(input, "psk") == 0)
+    G.f_auth |= AUTH_PSK;
+    
+    if(strcasecmp(input, "opn") == 0)
+    {
+        G.f_auth |= AUTH_OPN;
+    }
+    return 0;
+}
+                
+int set_cipher_filter(const char* input)
+{
+    if(input == NULL) return 1;
+    
+    if(strlen(input) < 3) return 1;
+    
+    if(strcasecmp(input, "wep") == 0)
+    G.f_cipher |= ENC_WEP;
+    
+    if(strcasecmp(input, "tkip") == 0)
+    G.f_cipher |= ENC_TKIP;
+    
+    if(strcasecmp(input, "wrap") == 0)
+    G.f_cipher |= ENC_WRAP;
+    
+    if(strcasecmp(input, "ccmp") == 0)
+    G.f_cipher |= ENC_CCMP;
+    
+    if(strcasecmp(input, "wep40") == 0)
+    G.f_cipher |= ENC_WEP40;
+    
+    if(strcasecmp(input, "wep104") == 0)
+    G.f_cipher |= ENC_WEP104;
+    
+    return 0;
+}
 
+void set_hotspot_filter()
+{
+    G.f_hotspot = 1;
+}
+                
 int check_monitor(struct wif *wi[], int *fd_raw, int *fdh, int cards)
 {
     int i, monitor;
@@ -6161,6 +6327,9 @@ int main( int argc, char *argv[] )
         {"ivs",      0, 0, 'i'},
         {"write",    1, 0, 'w'},
         {"encrypt",  1, 0, 't'},
+        {"auth",     1, 0, 'p'},
+        {"cipher",   1, 0, 'z'},
+        {"ignore-hotspot",  0,  0,  'Z'},
         {"update",   1, 0, 'u'},
         {"berlin",   1, 0, 'B'},
         {"help",     0, 0, 'H'},
@@ -6232,6 +6401,9 @@ int main( int argc, char *argv[] )
     G.prefix       =  NULL;
     G.f_encrypt    =  0;
     G.asso_client  =  0;
+    G.f_auth       =  0;
+    G.f_cipher     =  0;
+    G.f_hotspot    =  0;
     G.f_essid      =  NULL;
     G.f_essid_count = 0;
     G.active_scan_sim  =  0;
@@ -6661,8 +6833,19 @@ int main( int argc, char *argv[] )
 
                 set_encryption_filter(optarg);
                 break;
-
-			case 'o':
+                
+            case 'p':
+                set_authentication_filter(optarg);
+                break;
+                
+            case 'z':
+                set_cipher_filter(optarg);
+                break;
+                
+            case 'Z':
+                set_hotspot_filter();
+                break;
+            case 'o':
 
 				// Reset output format if it's the first time the option is specified
 				if (output_format_first_time) {
