@@ -980,6 +980,7 @@ int CFC_filter_signal() {
 						++nb_packets;
 						break;
 					}
+					break;
 				case UKNOWN_FRAME_CLOAKING_STATUS:
 					// If variation is > max allowed variation, it's a cloaked packet
 					if (abs(_packet_elt_head->current->signal_quality - average_signal)
@@ -1114,6 +1115,7 @@ int CFC_filter_duplicate_iv() {
 						_packet_elt_head->current->is_cloaked = CLOAKED_FRAME;
 						++nb_packets;
 					}
+					break;
 				case UKNOWN_FRAME_CLOAKING_STATUS:
 					// If unknown status, mark it as potentially cloaked
 					if (*(ivs_table + get_iv(_packet_elt_head->current)) > 1) {
