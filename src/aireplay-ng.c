@@ -642,9 +642,29 @@ int filter_packet( unsigned char *h80211, int caplen )
     return( 0 );
 }
 
+int find_tag(unsigned char *pkt, int len, int target)
+{
+    int taglen = 0, tagtype = 0, pos = 0;
+
+    taglen = 22;    //initial value to get the fixed tags parsing started
+    taglen+= 12;    //skip fixed tags in frames
+
+    do
+    {
+        pos    += taglen + 2;
+        tagtype = pkt[pos];
+        taglen  = pkt[pos+1];
+    } while(tagtype != target && pos < len-2);
+
+    if(tagtype != target) return -1;
+    if(pos+2+taglen > len) return -1;
+
+    return pos;
+}
+
 int wait_for_beacon(unsigned char *bssid, unsigned char *capa, char *essid)
 {
-    int len = 0, chan = 0, taglen = 0, tagtype = 0, pos = 0;
+    int len = 0, chan = 0, taglen = 0, pos = 0;
     unsigned char pkt_sniff[4096];
     struct timeval tv,tv2;
     char essid2[33];
@@ -666,41 +686,32 @@ int wait_for_beacon(unsigned char *bssid, unsigned char *capa, char *essid)
         }
         if (! memcmp(pkt_sniff, "\x80", 1))
         {
-            pos = 0;
-            taglen = 22;    //initial value to get the fixed tags parsing started
-            taglen+= 12;    //skip fixed tags in frames
-            do
+            pos = find_tag(pkt_sniff, len, 3);
+            if(pos >= 0)
             {
-                pos    += taglen + 2;
-                tagtype = pkt_sniff[pos];
                 taglen  = pkt_sniff[pos+1];
-            } while(tagtype != 3 && pos < len-2);
-
-            if(tagtype != 3) continue;
-            if(taglen != 1) continue;
-            if(pos+2+taglen > len) continue;
-
-            chan = pkt_sniff[pos+2];
+                if(taglen != 1) continue;
+                chan = pkt_sniff[pos+2];
+            }
+            else
+            {
+                pos = find_tag(pkt_sniff, len, 61);
+                if(pos < 0) continue;
+                taglen  = pkt_sniff[pos+1];
+                if(taglen != 22) continue;
+                chan = pkt_sniff[pos+2];
+            }
 
             if(essid)
             {
-                pos = 0;
-                taglen = 22;    //initial value to get the fixed tags parsing started
-                taglen+= 12;    //skip fixed tags in frames
-                do
-                {
-                    pos    += taglen + 2;
-                    tagtype = pkt_sniff[pos];
-                    taglen  = pkt_sniff[pos+1];
-                } while(tagtype != 0 && pos < len-2);
-
-                if(tagtype != 0) continue;
+                pos = find_tag(pkt_sniff, len, 0);
+                if(pos < 0) continue;
+                taglen  = pkt_sniff[pos+1];
                 if(taglen <= 1)
                 {
                     if (memcmp(bssid, pkt_sniff+10, 6) == 0) break;
                     else continue;
                 }
-                if(pos+2+taglen > len) continue;
 
                 if(taglen > 32)taglen = 32;
 
@@ -5319,39 +5330,30 @@ int do_attack_fragment()
 
 int grab_essid(unsigned char* packet, int len)
 {
-    int i=0, j=0, pos=0, tagtype=0, taglen=0, chan=0;
+    int i=0, j=0, pos=0, taglen=0, chan=0;
     unsigned char bssid[6];
 
     memcpy(bssid, packet+16, 6);
-    taglen = 22;    //initial value to get the fixed tags parsing started
-    taglen+= 12;    //skip fixed tags in frames
-    do
+    pos = find_tag(packet, len, 3);
+    if(pos >= 0)
     {
-        pos    += taglen + 2;
-        tagtype = packet[pos];
         taglen  = packet[pos+1];
-    } while(tagtype != 3 && pos < len-2);
-
-    if(tagtype != 3) return -1;
-    if(taglen != 1) return -1;
-    if(pos+2+taglen > len) return -1;
-
-    chan = packet[pos+2];
-
-    pos=0;
-
-    taglen = 22;    //initial value to get the fixed tags parsing started
-    taglen+= 12;    //skip fixed tags in frames
-    do
+        if(taglen != 1) return -1;
+        chan = packet[pos+2];
+    }
+    else
     {
-        pos    += taglen + 2;
-        tagtype = packet[pos];
+        pos = find_tag(packet, len, 61);
+        if(pos < 0) return -1;
         taglen  = packet[pos+1];
-    } while(tagtype != 0 && pos < len-2);
+        if(taglen != 22) return -1;
+        chan = packet[pos+2];
+    }
 
-    if(tagtype != 0) return -1;
+    pos = find_tag(packet, len, 0);
+    if(pos < 0) return -1;
+    taglen  = packet[pos+1];
     if(taglen > 250) taglen = 250;
-    if(pos+2+taglen > len) return -1;
 
     for(i=0; i<20; i++)
     {
