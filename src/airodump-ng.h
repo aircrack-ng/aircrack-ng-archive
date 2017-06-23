@@ -40,8 +40,9 @@
 #define DEFAULT_HOPFREQ 250  /* default delay in ms between channel hopping */
 #define DEFAULT_CWIDTH  20 /* 20 MHz channels by default */
 
-#define NB_PWR  5       /* size of signal power ring buffer */
-#define NB_PRB 10       /* size of probed ESSID ring buffer */
+#define NB_PWR  5         /* size of signal power ring buffer */
+#define NB_PRB 10         /* size of probed ESSID ring buffer */
+#define NB_PRB_DAEMON 500 /* size of probed ESSID ring buffer in quiet mode*/
 
 #define MAX_CARDS 8	/* maximum number of cards to capture from */
 
@@ -476,6 +477,8 @@ struct globals
     int file_write_interval;
     u_int maxsize_wps_seen;
     int show_wps;
+   
+    int daemon;
 }
 G;
 
