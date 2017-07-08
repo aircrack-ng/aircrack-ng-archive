@@ -500,7 +500,7 @@ int check_shared_key(unsigned char *h80211, int caplen)
     if( time(NULL) - G.sk_start > 5)
     {
         /* timeout(5sec) - remove all packets, restart timer */
-        memset(G.sharedkey, '\x00', 4096*3);
+        memset(G.sharedkey, '\x00', sizeof(G.sharedkey));
         G.sk_start = time(NULL);
     }
 
@@ -647,7 +647,7 @@ int check_shared_key(unsigned char *h80211, int caplen)
                 textlen+4, *(G.sharedkey[0]+m_bmac), *(G.sharedkey[0]+m_bmac+1), *(G.sharedkey[0]+m_bmac+2),
               *(G.sharedkey[0]+m_bmac+3), *(G.sharedkey[0]+m_bmac+4), *(G.sharedkey[0]+m_bmac+5));
 
-    memset(G.sharedkey, '\x00', 512*3);
+    memset(G.sharedkey, '\x00', sizeof(G.sharedkey));
     /* ok, keystream saved */
     return 0;
 }
@@ -6300,7 +6300,7 @@ int main( int argc, char *argv[] )
 	// Default selection.
     resetSelection();
 
-    memset(G.sharedkey, '\x00', 512*3);
+    memset(G.sharedkey, '\x00', sizeof(G.sharedkey));
     memset(G.message, '\x00', sizeof(G.message));
     memset(&G.pfh_in, '\x00', sizeof(struct pcap_file_header));
 
