@@ -40,6 +40,8 @@
 #define DEFAULT_HOPFREQ 250  /* default delay in ms between channel hopping */
 #define DEFAULT_CWIDTH  20 /* 20 MHz channels by default */
 
+#define DEFAULT_USLEEP 20000	/* microseconds */
+
 #define NB_PWR  5       /* size of signal power ring buffer */
 #define NB_PRB 10       /* size of probed ESSID ring buffer */
 
@@ -476,6 +478,9 @@ struct globals
     int file_write_interval;
     u_int maxsize_wps_seen;
     int show_wps;
+
+    int noinput_option;
+    unsigned usleep_option;
 }
 G;
 
