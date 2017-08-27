@@ -2710,6 +2710,7 @@ add_arp:
 
                     h80211[1] = 0x41;   /* ToDS & WEP  */
                 }
+                break;
                 case  2: /* FromDS */
                 {
                     if( opt.r_fromdsinj )
@@ -2733,6 +2734,7 @@ add_arp:
                         h80211[1] = 0x41;   /* ToDS & WEP  */
                     }
                 }
+                break;
             }
 
             //should be correct already, keep qos/wds status
