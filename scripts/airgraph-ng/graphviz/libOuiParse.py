@@ -123,11 +123,11 @@ class macOUI_lookup:
         flag denotes use of read or readlines
         """
         try:
-            ouiFile = open(fname, "r")
-            if flag == 'RL':
-                text = ouiFile.readlines()
-            elif flag == 'R':
-                text = ouiFile.read()
+            with open(fname, "r") as fid:
+                if flag == 'RL':
+                    text = fid.readlines()
+                elif flag == 'R':
+                    text = fid.read()
             return text
         except IOError:
             return False

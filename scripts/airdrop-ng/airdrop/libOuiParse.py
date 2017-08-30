@@ -128,8 +128,8 @@ class macOUI_lookup:
         """
         open the file and read it in
         """
-        ouiFile = open(self.ouiTxt, "r")
-        text = ouiFile.readlines()
+        with open(self.ouiTxt, "r") as fid:
+            text = fid.readlines()
         #text = ouiFile.read()
         return text
     
