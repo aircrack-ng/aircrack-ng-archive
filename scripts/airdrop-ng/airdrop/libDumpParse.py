@@ -3,6 +3,7 @@
 #returns in an array of client and Ap information
 #part of the airdrop-ng project
 from sys import exit as Exit
+
 class airDumpParse:
 	def parser(self,file):
 		"""

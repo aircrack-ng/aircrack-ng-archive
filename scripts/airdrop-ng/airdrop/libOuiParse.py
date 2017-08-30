@@ -22,14 +22,10 @@ __data__ = 'a class for dealing with the oui txt file'
 #########################################
 """
 
-from airdrop import install_dir
-
 import re
-import urllib2
-import urllib
-import sys
 import os
 
+from airdrop import install_dir
 
 class macOUI_lookup:
     """

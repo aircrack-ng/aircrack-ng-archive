@@ -22,7 +22,10 @@ __data__ = 'a class for dealing with the oui txt file'
 #########################################
 """
 
-import re, urllib, sys, os
+import re
+import urllib
+import sys
+import os
 import pdb
 #this lib is crap and needs to be rewritten -Textile 
 
