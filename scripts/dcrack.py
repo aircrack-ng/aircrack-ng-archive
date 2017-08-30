@@ -160,10 +160,7 @@ class ServerHandler(SimpleHTTPRequestHandler):
 		c = con.cursor()
 		c.execute("SELECT * from clients")
 	
-		clients = []
-
-		for r in c.fetchall():
-			clients.append(r['speed'])
+		clients = [r['speed'] for r in c.fetchall()]
 
 		nets = []
 

@@ -29,9 +29,7 @@ class airDumpParse:
 			print "Error Airodump File",file,"does not exist"
 			Exit(1)
 		data = openedFile.xreadlines()
-		cleanedData = []
-		for line in data:
-			cleanedData.append(line.rstrip())
+		cleanedData = [line.rstrip() for line in data]
 		openedFile.close()
 		return cleanedData
 	
