@@ -96,7 +96,7 @@ class macOUI_lookup:
         look up a company name and return their OUI's
         """
         oui = []
-        if type(companyLst).__name__ == "list":
+        if type(companyLst) is list:
             for name in companyLst:
                 compMatch = re.compile(name,re.I)
                 if self.company_oui.has_key(name):
@@ -106,7 +106,7 @@ class macOUI_lookup:
                         if compMatch.search(key) is not None:
                             oui.extend(self.company_oui[key])
 
-        elif type(companyLst).__name__ == "str":
+        elif type(companyLst) is str:
             if self.company_oui.has_key(companyLst):
                 oui = self.company_oui[companyLst]
             else:
@@ -143,7 +143,7 @@ class macOUI_lookup:
         ouiLines = self.ouiRaw.split("\n\n") 
         #split each company into a list one company per position
         for line in ouiLines:
-            if Hex.search(line) != None: 
+            if Hex.search(line) is not None: 
                 lineList = Hex.search(line).group().replace("\t"," ").split("  ") 
                 #return the matched text and build a list out of it
                 HexOui[lineList[0].replace("-",":")] = lineList[2] 
