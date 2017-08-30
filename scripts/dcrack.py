@@ -383,7 +383,7 @@ class ServerHandler(SimpleHTTPRequestHandler):
 					s = row['start'] - i
 				break
 
-			if (i >= row['start'] and i <= row['end']):
+			if (row['start'] <= i <= row['end']):
 				i = row['end']
 			else:
 				found = True
