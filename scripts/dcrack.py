@@ -893,13 +893,11 @@ def cmd_status():
 #	print(stuff)
 #	print("=============")
 
-	i = 0
 	speed = 0
-	for c in stuff['clients']:
-		i += 1
+	for idx, c in enumerate(stuff['clients'], start=1):
 		speed += c
 
-	print("Clients\t%d\nSpeed\t%d\n" % (i, speed))
+	print("Clients\t%d\nSpeed\t%d\n" % (idx, speed))
 
 	need = 0
 
