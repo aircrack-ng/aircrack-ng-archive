@@ -106,7 +106,7 @@ def dotWrite(data): #OLDNAME dot_write
 	except Exception:
 		pass
 	with open('airGconfig.dot','a') as fid:
-        fid.writelines(data)
+		fid.writelines(data)
 
 def subGraph(items,graphName,graphType,tracked,parse): #OLDNAME subgraph
 	"""

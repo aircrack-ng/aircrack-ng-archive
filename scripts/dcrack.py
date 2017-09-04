@@ -306,7 +306,7 @@ class ServerHandler(SimpleHTTPRequestHandler):
 
 		# XXX openat
 		with open(fn, "rb") as fid:
-            s.wfile.write(fid.read())
+			s.wfile.write(fid.read())
 
 		return None
 
@@ -454,7 +454,6 @@ class ServerHandler(SimpleHTTPRequestHandler):
 
 		try:
 			with open("dcrack-dict-%s.txt" % d): pass
-
 			return "OK"
 		except:
 			return "NO"
@@ -612,8 +611,8 @@ def get_work():
 
 def decompress(fn):
 	with gzip.open(fn + ".gz") as fid1:
-        with open(fn, "wb") as fid2:
-            fid2.writelines(fid1)
+		with open(fn, "wb") as fid2:
+			fid2.writelines(fid1)
 
 def setup_dict(crack):
 	global url
@@ -631,15 +630,15 @@ def setup_dict(crack):
 		stuff = urlopen(u)
 
 		with open(fn + ".gz", "wb") as fid:
-            fid.write(stuff.read())
+			fid.write(stuff.read())
 
 		print("Uncompressing dictionary")
 		decompress(fn)
 	
 		sha1 = hashlib.sha1()
 		with open(fn, "rb") as fid:
-            sha1.update(fid.read())
-            
+			sha1.update(fid.read())
+
 		h = sha1.hexdigest()
 
 		if h != d:
@@ -654,12 +653,12 @@ def setup_dict(crack):
 	except:
 		print("Splitting dict %s" % s)
 		with open(fn, "rb") as fid1:
-            with open(s, "wb") as fid2:
-                for i, l in enumerate(fid1):
-                    if i >= crack['end']:
-                        break
-                    if i >= crack['start']:
-                        fid2.write(l)
+			with open(s, "wb") as fid2:
+				for i, l in enumerate(fid1):
+					if i >= crack['end']:
+						break
+					if i >= crack['start']:
+						fid2.write(l)
 	return s
 
 def get_cap(crack):
@@ -687,7 +686,7 @@ def get_cap(crack):
 	stuff = urlopen(u)
 
 	with open(fn + ".gz", "wb") as fid:
-        fid.write(stuff.read())
+		fid.write(stuff.read())
 
 	print("Uncompressing cap")
 	decompress(fn)
@@ -801,17 +800,17 @@ def upload_file(url, f):
 	# XXX not quite HTTP form
 
 	with open(f, "rb") as fid:
-        c.request("POST", x.path, fid)
-        res = c.getresponse()
-        stuff = res.read()
-        c.close()
+		c.request("POST", x.path, fid)
+		res = c.getresponse()
+		stuff = res.read()
+		c.close()
 
 	return stuff
 
 def compress_file(f):
 	with open(f, "rb") as fid1:
-        with gzip.open(f + ".gz", "wb") as fid2:
-            fid2.writelines(fid1)
+		with gzip.open(f + ".gz", "wb") as fid2:
+			fid2.writelines(fid1)
 
 def send_dict():
 	global url
@@ -826,7 +825,7 @@ def send_dict():
 
 	sha1 = hashlib.sha1()
 	with open(d, "rb") as fid:
-        sha1.update(fid.read())
+		sha1.update(fid.read())
 
 	h = sha1.hexdigest()
 
