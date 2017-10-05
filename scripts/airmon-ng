@@ -130,7 +130,12 @@ if [ -f /proc/modules ] || [ -d /sys/module ]; then
 		printf "Warning: driver detection without modinfo may yield inaccurate results.\n"
 		MODINFO=0
 	else
-		MODINFO=1
+		# check if modinfo supports -n (busybox doesn't)
+		if modinfo --help 2>&1 | grep [-]n >/dev/null 2>&1 ; then
+			MODINFO=1
+		else
+			MODINFO=0
+		fi
 	fi
 else
 	MODINFO=0
