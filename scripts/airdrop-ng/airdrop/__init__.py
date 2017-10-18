@@ -13,7 +13,7 @@ class bcolors:
 
     def disable(self):
         """
-        fucntion to disable colored text
+        function to disable colored text
         """
         self.HEADER = ''
         self.OKBLUE = ''
