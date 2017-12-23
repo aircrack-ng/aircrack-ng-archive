@@ -41,7 +41,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 
-#include <pcap/pcap.h>
+#include <pcap.h>
 
 // Statistics
 uint32_t stats_files = 0;

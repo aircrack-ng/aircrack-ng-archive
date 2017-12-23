@@ -35,9 +35,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
-#ifdef HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif
 #if defined(__sun__)
 #include <alloca.h>
 #endif
