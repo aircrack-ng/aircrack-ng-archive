@@ -52,7 +52,7 @@ missing_tool()
 	_prog="$1"
 	_env="$2"
 
-	echo "Could not auto-detect '${_prog}'; please install or specify the '${_env}' environment variable." >2
+	echo "Could not auto-detect '${_prog}'; please install or specify the '${_env}' environment variable."
 	exit 1
 }
 
