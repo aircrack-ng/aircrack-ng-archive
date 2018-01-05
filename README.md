@@ -41,10 +41,16 @@ to speed up the cracking process.
 To build `aircrack-ng`, the Autotools build system is utilized. Autotools replaces
 the older method of compilation.
 
+**NOTE**: If utilizing a developer version, eg: one checked out from source control,
+you will need to run a pre-`configure` script. The script to use is one of the
+following: `autoreconf -i` or `env NOCONFIGURE=1 ./autogen.sh`.
+
 First, `./configure` the project for building with the appropriate options specified
 for your environment:
 
     `./configure <options>`
+
+**TIP**: If the above fails, please see above about developer source control versions.
 
 Next, compile the project (respecting if `make` or `gmake` is needed):
 
