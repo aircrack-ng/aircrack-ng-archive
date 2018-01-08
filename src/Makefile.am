@@ -37,11 +37,7 @@
 # If you delete this exception statement from all source files in the
 # program, then also delete it here.
 
-if HAVE_AIRPCAP_OR_PCAP
 SUBDIRS = include osdep
-else
-SUBDIRS = include
-endif
 
 AM_CPPFLAGS = -I$(top_srcdir) \
               -I$(top_srcdir)/src/include \
@@ -128,20 +124,18 @@ bin_PROGRAMS = aircrack-ng \
                makeivs-ng \
                airdecloak-ng
 
-if HAVE_AIRPCAP_OR_PCAP
-
 if HAVE_PCAP
 bin_PROGRAMS += besside-ng-crawler
 endif
 
 bin_PROGRAMS += wpaclean
 
-sbin_PROGRAMS = airbase-ng \
+sbin_PROGRAMS = airventriloquist-ng \
+                airbase-ng \
                 aireplay-ng \
                 airodump-ng \
                 airserv-ng \
                 airtun-ng
-endif
 
 if HAVE_SQLITE3
 bin_PROGRAMS += airolib-ng
@@ -151,8 +145,7 @@ if EXPERIMENTAL
 bin_PROGRAMS += buddy-ng
 
 if HAVE_AIRPCAP_OR_PCAP
-sbin_PROGRAMS += airventriloquist-ng \
-                 besside-ng \
+sbin_PROGRAMS += besside-ng \
                  easside-ng \
                  tkiptun-ng \
                  wesside-ng
