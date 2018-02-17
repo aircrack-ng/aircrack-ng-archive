@@ -64,12 +64,12 @@
 
 using namespace std;
 
-unsigned int FileRead(istream &is, vector <char> &buff) {
+static unsigned int FileRead(istream &is, vector <char> &buff) {
 	is.read(&buff[0], buff.size());
 	return is.gcount();
 }
 
-unsigned int countBuffer(const vector <char> &buff, int bufsize) {
+static unsigned int countBuffer(const vector <char> &buff, int bufsize) {
 	int lines = 0, i = 4;
 	const char * p = &buff[0];
 	unsigned short charct = 0;

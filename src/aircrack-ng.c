@@ -249,7 +249,7 @@ int intr_read = 0;
 
 int safe_write( int fd, void *buf, size_t len );
 
-void clean_exit(int ret)
+static void clean_exit(int ret)
 {
 	struct AP_info *ap_cur;
 	struct AP_info *ap_next;
@@ -405,7 +405,7 @@ void clean_exit(int ret)
 	_exit(ret);
 }
 
-void sighandler( int signum )
+static void sighandler( int signum )
 {
 	#if ((defined(__INTEL_COMPILER) || defined(__ICC)) && defined(DO_PGO_DUMP))
 	_PGOPTI_Prof_Dump();
@@ -442,7 +442,7 @@ void sighandler( int signum )
 		printf( "\33[2J\n" );
 }
 
-void eof_wait( int *eof_notified )
+static void eof_wait( int *eof_notified )
 {
 	if( *eof_notified == 0 )
 	{
@@ -459,9 +459,7 @@ void eof_wait( int *eof_notified )
 	usleep( 100000 );
 }
 
-int wpa_send_passphrase(char *key, struct WPA_data* data, int lock);
-
-inline int wpa_send_passphrase(char *key, struct WPA_data* data, int lock)
+static inline int wpa_send_passphrase(char *key, struct WPA_data* data, int lock)
 {
 	int delta = 0, i = 0, fincnt = 0;
 	off_t tmpword = 0;
@@ -522,9 +520,7 @@ inline int wpa_send_passphrase(char *key, struct WPA_data* data, int lock)
 	return 1;
 }
 
-int wpa_receive_passphrase(char *key, struct WPA_data* data);
-
-inline int wpa_receive_passphrase(char *key, struct WPA_data* data)
+static inline int wpa_receive_passphrase(char *key, struct WPA_data* data)
 {
 	pthread_mutex_lock(&data->mutex);
 
@@ -549,7 +545,7 @@ inline int wpa_receive_passphrase(char *key, struct WPA_data* data)
 
     Return value is negative for failures
 */
-int checkbssids(char *bssidlist)
+static int checkbssids(char *bssidlist)
 {
 	int first = 1;
 	int failed = 0;
@@ -634,7 +630,7 @@ int checkbssids(char *bssidlist)
 	return nbBSSID;
 }
 
-int mergebssids(char * bssidlist, unsigned char * bssid)
+static int mergebssids(char * bssidlist, unsigned char * bssid)
 {
 	struct mergeBSSID * list_prev;
 	struct mergeBSSID * list_cur;
@@ -753,7 +749,7 @@ int mergebssids(char * bssidlist, unsigned char * bssid)
 
 /* fread isn't atomic, sadly */
 
-int atomic_read( read_buf *rb, int fd, int len, void *buf )
+static int atomic_read( read_buf *rb, int fd, int len, void *buf )
 {
 	int n;
 
@@ -808,7 +804,7 @@ int atomic_read( read_buf *rb, int fd, int len, void *buf )
 	return( 0 );
 }
 
-void read_thread( void *arg )
+static void read_thread( void *arg )
 {
 	/* we dont care if the buffers allocated here are not freed
 	 * since those threads are only created once, and the memory
@@ -1770,7 +1766,7 @@ void read_thread( void *arg )
 	_exit( FAILURE );
 }
 
-void check_thread( void *arg )
+static void check_thread( void *arg )
 {
 	/* in case you see valgrind warnings, read the comment on top
 	 * of read_thread() */
@@ -2585,7 +2581,7 @@ float chrono( struct timeval *start, int reset )
 
 /* signal-safe I/O routines */
 
-int safe_read( int fd, void *buf, size_t len )
+static int safe_read( int fd, void *buf, size_t len )
 {
 	int n;
 	size_t sum = 0;
@@ -2630,7 +2626,7 @@ int safe_write( int fd, void *buf, size_t len )
 
 /* each thread computes the votes over a subset of the IVs */
 
-int crack_wep_thread( void *arg )
+static int crack_wep_thread( void *arg )
 {
 	long xv, min, max;
 	unsigned char jj[256];
@@ -3121,7 +3117,7 @@ static void key_found(unsigned char *wepkey, int keylen, int B)
 
 /* test if the current WEP key is valid */
 
-int check_wep_key( unsigned char *wepkey, int B, int keylen )
+static int check_wep_key( unsigned char *wepkey, int B, int keylen )
 {
 	unsigned char x1, x2;
 	unsigned long xv;
@@ -3196,7 +3192,7 @@ int check_wep_key( unsigned char *wepkey, int B, int keylen )
 
 /* routine used to sort the votes */
 
-int cmp_votes( const void *bs1, const void *bs2 )
+static int cmp_votes( const void *bs1, const void *bs2 )
 {
 	if( ((vote *) bs1)->val < ((vote *) bs2)->val )
 		return(  1 );
@@ -3209,7 +3205,7 @@ int cmp_votes( const void *bs1, const void *bs2 )
 
 /* sum up the votes and sort them */
 
-int calc_poll( int B )
+static int calc_poll( int B )
 {
 	int i, n, cid, *vi;
 	int votes[N_ATTACKS][256];
@@ -3298,7 +3294,7 @@ int calc_poll( int B )
 	return( SUCCESS );
 }
 
-int update_ivbuf( void )
+static int update_ivbuf( void )
 {
 	int n;
 	struct AP_info *ap_cur;
@@ -3375,7 +3371,7 @@ int update_ivbuf( void )
  * It will remove votes for a specific keybyte (and remove from the requested current value)
  * Return 0 on success, another value on failure
  */
-int remove_votes(int keybyte, unsigned char value)
+static int remove_votes(int keybyte, unsigned char value)
 {
 	int i;
 	int found = 0;
@@ -3415,7 +3411,7 @@ int remove_votes(int keybyte, unsigned char value)
  * reaches B == keylen. It also stops when the current keybyte vote *
  * is lower than the highest vote divided by the fudge factor.      */
 
-int do_wep_crack1( int B )
+static int do_wep_crack1( int B )
 {
 	int i, j, l, m, tsel, charread;
 	int remove_keybyte_nr, remove_keybyte_value;
@@ -3708,7 +3704,7 @@ int do_wep_crack1( int B )
 
 /* experimental single bruteforce attack */
 
-int do_wep_crack2( int B )
+static int do_wep_crack2( int B )
 {
 	int i, j;
 
@@ -3793,7 +3789,7 @@ int do_wep_crack2( int B )
 	return( FAILURE );
 }
 
-int inner_bruteforcer_thread(void *arg)
+static int inner_bruteforcer_thread(void *arg)
 {
 	int i, j, k, l, reduce=0;
 	size_t nthread = (size_t)arg;
@@ -3904,7 +3900,7 @@ int inner_bruteforcer_thread(void *arg)
 
 /* display the current wpa key info, matrix-like */
 
-void show_wpa_stats( char *key, int keylen, unsigned char pmk[32], unsigned char ptk[64],
+static void show_wpa_stats( char *key, int keylen, unsigned char pmk[32], unsigned char ptk[64],
 unsigned char mic[16], int force )
 {
 	float delta, calc, ksec;
@@ -4015,7 +4011,7 @@ __out:
 }
 
 
-int crack_wpa_thread( void *arg )
+static int crack_wpa_thread( void *arg )
 {
 	FILE * keyFile;
 	char  essid[36];
@@ -4248,7 +4244,7 @@ int crack_wpa_thread( void *arg )
  * nb: index of the dictionary
  * return 0 on success and FAILURE if it failed
  */
-int next_dict(int nb)
+static int next_dict(int nb)
 {
 	off_t tmpword = 0;
 
@@ -4385,7 +4381,7 @@ int sql_wpacallback(void* arg, int ccount, char** values, char** columnnames ) {
 }
 #endif
 
-int do_make_wkp(struct AP_info *ap_cur)
+static int do_make_wkp(struct AP_info *ap_cur)
 {
 	size_t elt_written;
 	unsigned i = 0;
@@ -4536,7 +4532,7 @@ int do_make_wkp(struct AP_info *ap_cur)
 	return( 1 );
 }
 
-int do_make_hccap(struct AP_info *ap_cur)
+static int do_make_hccap(struct AP_info *ap_cur)
 {
 	size_t elt_written;
 	unsigned i = 0;
@@ -4668,7 +4664,7 @@ int do_make_hccap(struct AP_info *ap_cur)
 	return( 1 );
 }
 
-int do_wpa_crack()
+static int do_wpa_crack(void)
 {
 	int i, j, cid, num_cpus, res;
 	char key1[128];
@@ -4769,7 +4765,7 @@ int do_wpa_crack()
 	return( FAILURE );
 }
 
-int next_key( char **key, int keysize )
+static int next_key( char **key, int keysize )
 {
 	char *tmp, *tmpref;
 	int i, rtn;
@@ -4888,7 +4884,7 @@ int next_key( char **key, int keysize )
 	return( SUCCESS );
 }
 
-int set_dicts(char* optargs)
+static int set_dicts(char* optargs)
 {
 	int len;
 	char *optarg;
@@ -4930,7 +4926,7 @@ Uses the specified dictionary to crack the WEP key.
 Return: SUCCESS if it cracked the key,
         FAILURE if it could not.
 */
-int crack_wep_dict()
+static int crack_wep_dict(void)
 {
 	struct timeval t_last;
 	struct timeval t_now;

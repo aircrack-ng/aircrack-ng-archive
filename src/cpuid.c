@@ -58,7 +58,7 @@ struct _cpuinfo cpuinfo = { 0, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0.0, NULL };
 //
 // Until better support for other arch's is added an ifdef is needed
 //
-unsigned long getRegister(const unsigned int val, const char from, const char to) {
+static unsigned long getRegister(const unsigned int val, const char from, const char to) {
 	unsigned long mask = (1<<(to+1)) - 1;
 
 	if (to == 31)
@@ -67,14 +67,14 @@ unsigned long getRegister(const unsigned int val, const char from, const char to
 	return (val & mask) >> from;
 }
 
-void sprintcat(char *dest, const char *src, size_t len) {
+static void sprintcat(char *dest, const char *src, size_t len) {
 	if (strlen(dest))
 		(void)strncat(dest, ",", len);
 
 	(void)strncat(dest, src, len);
 }
 
-int is_dir(const char *dir) {
+static int is_dir(const char *dir) {
 	struct stat sb;
 
 	if (!stat(dir, &sb))
@@ -83,7 +83,7 @@ int is_dir(const char *dir) {
 	return 0;
 }
 
-unsigned long GetCacheTotalLize(unsigned ebx, unsigned ecx) {
+static unsigned long GetCacheTotalLize(unsigned ebx, unsigned ecx) {
 	unsigned long  LnSz, SectorSz, WaySz, SetSz;
         LnSz = getRegister(ebx, 0, 11 ) + 1;
         SectorSz = getRegister(ebx, 12, 21 ) + 1;
@@ -135,7 +135,7 @@ int cpuid_simdsize(int viewmax) {
 }
 
 #ifdef _X86
-char* cpuid_vendor() {
+static char* cpuid_vendor(void) {
 	unsigned eax = 0, ebx = 0, ecx = 0, edx = 0;
 
 	__cpuid(0, eax, ebx, ecx, edx);
@@ -179,7 +179,7 @@ char* cpuid_vendor() {
 }
 #endif
 
-char* cpuid_featureflags() {
+static char* cpuid_featureflags(void) {
 	char flags[64] = {0};
 #ifdef _X86
 	unsigned eax = 0, ebx = 0, ecx = 0, edx = 0;
@@ -269,7 +269,7 @@ char* cpuid_featureflags() {
 	return strdup(flags);
 }
 
-float cpuid_getcoretemp() {
+static float cpuid_getcoretemp(void) {
 #ifdef __FreeBSD__
 	int tempval = 0;
 	size_t len = sizeof(tempval);
@@ -361,7 +361,7 @@ int cpuid_readsysfs(const char *file) {
 //
 // Return CPU frequency from scaling governor when supported
 //
-int cpuid_getfreq(int type) {
+static int cpuid_getfreq(int type) {
 	int fd, ifreq = 0;
 	struct stat sf;
 	char freq[16] = {0}, *fptr;
@@ -385,7 +385,7 @@ int cpuid_getfreq(int type) {
 }
 #endif
 
-char* cpuid_modelinfo() {
+static char* cpuid_modelinfo(void) {
 #ifdef _X86
 	unsigned eax = 0, ebx = 0, ecx = 0, edx = 0;
 	int bi = 2, broff = 0;
@@ -471,7 +471,7 @@ char* cpuid_modelinfo() {
 	return model;
 }
 
-int cpuid_getinfo() {
+int cpuid_getinfo(void) {
 	int cpu_count = get_nb_cpus();
 	float cpu_temp;
 #ifdef _X86

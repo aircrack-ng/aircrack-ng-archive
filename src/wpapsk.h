@@ -77,7 +77,7 @@ extern unsigned char *xsse_crypt2[128];
 #define PLAINTEXT_LENGTH	63 /* We can do 64 but spec. says 63 */
 
 int threadxnt;
-void init_atoi();
+void init_atoi(void);
 void init_ssecore(int);
 void free_ssecore(int);
 int init_wpapsk(char (*key)[128], char *essid, int threadid);

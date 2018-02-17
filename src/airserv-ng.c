@@ -44,7 +44,7 @@
 
 extern char * getVersion(char * progname, int maj, int min, int submin, int svnrev, int beta, int rc);
 
-void sighandler( int signum )
+static void sighandler( int signum )
 {
     if( signum == SIGPIPE )
         printf("broken pipe!\n");
@@ -65,7 +65,7 @@ static struct sstate {
 	int		ss_level;
 } _ss;
 
-static struct sstate *get_ss()
+static struct sstate *get_ss(void)
 {
 	return &_ss;
 }

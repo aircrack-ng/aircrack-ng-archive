@@ -100,7 +100,7 @@ static unsigned char ZERO[32] =
 
 extern char * getVersion(char * progname, int maj, int min, int submin, int svnrev, int beta, int rc);
 
-void usage(int what)
+static void usage(int what)
 {
     char *version_info = getVersion("ivsTools", _MAJ, _MIN, _SUB_MIN, _REVISION, _BETA, _RC);
     printf("\n  %s - (C) 2006-2015 Thomas d\'Otreppe\n"
@@ -117,7 +117,7 @@ void usage(int what)
                 "        Merge ivs files\n");
 }
 
-int merge( int argc, char *argv[] )
+static int merge( int argc, char *argv[] )
 {
     int i, n, unused;
     unsigned long nbw;
@@ -216,7 +216,7 @@ int merge( int argc, char *argv[] )
     return( 0 );
 }
 
-int dump_add_packet( unsigned char *h80211, unsigned caplen)
+static int dump_add_packet( unsigned char *h80211, unsigned caplen)
 {
     int i, n, seq, dlen, clen;
     unsigned z;

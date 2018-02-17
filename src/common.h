@@ -84,5 +84,16 @@ int64_t ftello64(FILE * fp);
 #endif
 
 void calctime(time_t t, float calc);
+int is_string_number(const char * str);
+int get_ram_size(void);
+char *getVersion(char * progname, int maj, int min, int submin, int svnrev, int beta, int rc);
+int get_nb_cpus(void);
+int maccmp(unsigned char *mac1, unsigned char *mac2);
+char *mac2string(unsigned char *mac_address);
+int hexCharToInt(unsigned char c);
+int hexStringToArray(char* in, int in_length, unsigned char* out, int out_length);
+//int getmac(char * macAddress, int strict, unsigned char * mac);
+int readLine(char line[], int maxlength);
+int hexToInt(char s[], int len);
 
 #endif

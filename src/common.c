@@ -53,6 +53,8 @@
 #define isHex(c) (hexToInt(c) != -1)
 #define HEX_BASE 16
 
+#include "common.h"
+
 /*
  * The following function comes from jumbo.c from JTR.
  * It has the following license:
@@ -232,7 +234,7 @@ char * getVersion(char * progname, int maj, int min, int submin, int svnrev, int
 }
 
 // Return the number of cpu. If detection fails, it will return -1;
-int get_nb_cpus()
+int get_nb_cpus(void)
 {
         int number = -1;
 

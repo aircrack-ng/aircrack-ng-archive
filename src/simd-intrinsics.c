@@ -1741,7 +1741,7 @@ void sha256_reverse(uint32_t *hash)
 	hash[0] = e - (a - (s0 + maj));
 }
 
-void sha256_unreverse()
+void sha256_unreverse(void)
 {
 	fprintf(stderr, "sha256_unreverse() not implemented\n");
 	perror("sha256_unreverse");
@@ -2322,7 +2322,7 @@ void sha512_reverse(uint64_t *hash)
 	hash[0] = e - (a - (s0 + maj));
 }
 
-void sha512_unreverse()
+void sha512_unreverse(void)
 {
 	fprintf(stderr, "sha512_unreverse() not implemented\n");
 	perror("sha512");

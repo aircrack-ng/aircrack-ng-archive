@@ -150,7 +150,7 @@ struct priv_linux {
 #define NULL_MAC        "\x00\x00\x00\x00\x00\x00"
 #endif
 
-unsigned long calc_crc_osdep( unsigned char * buf, int len)
+static unsigned long calc_crc_osdep( unsigned char * buf, int len)
 {
     unsigned long crc = 0xFFFFFFFF;
 
@@ -162,7 +162,7 @@ unsigned long calc_crc_osdep( unsigned char * buf, int len)
 
 /* CRC checksum verification routine */
 
-int check_crc_buf_osdep( unsigned char *buf, int len )
+static int check_crc_buf_osdep( unsigned char *buf, int len )
 {
     unsigned long crc;
 
@@ -1216,7 +1216,7 @@ static int opensysfs(struct priv_linux *dev, char *iface, int fd) {
     return 0;
 }
 
-int linux_get_monitor(struct wif *wi)
+static int linux_get_monitor(struct wif *wi)
 {
     struct priv_linux *dev = wi_priv(wi);
     struct ifreq ifr;
@@ -1269,7 +1269,7 @@ int linux_get_monitor(struct wif *wi)
     return( 0 );
 }
 
-int set_monitor( struct priv_linux *dev, char *iface, int fd )
+static int set_monitor( struct priv_linux *dev, char *iface, int fd )
 {
     int pid, status, unused;
     struct iwreq wrq;

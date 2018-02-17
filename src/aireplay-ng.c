@@ -346,7 +346,7 @@ int ctrl_c, alarmed;
 char * iwpriv;
 
 
-void sighandler( int signum )
+static void sighandler( int signum )
 {
     if( signum == SIGINT )
         ctrl_c++;
@@ -355,7 +355,7 @@ void sighandler( int signum )
         alarmed++;
 }
 
-int reset_ifaces()
+static int reset_ifaces(void)
 {
     //close interfaces
     if(_wi_in != _wi_out)
@@ -411,7 +411,7 @@ int reset_ifaces()
     return 0;
 }
 
-int set_bitrate(struct wif *wi, int rate)
+static int set_bitrate(struct wif *wi, int rate)
 {
     int i, newrate;
 
@@ -498,7 +498,7 @@ int set_bitrate(struct wif *wi, int rate)
     return 0;
 }
 
-int send_packet(void *buf, size_t count)
+static int send_packet(void *buf, size_t count)
 {
 	struct wif *wi = _wi_out; /* XXX globals suck */
 	unsigned char *pkt = (unsigned char*) buf;
@@ -525,7 +525,7 @@ int send_packet(void *buf, size_t count)
 	return 0;
 }
 
-int read_packet(void *buf, size_t count, struct rx_info *ri)
+static int read_packet(void *buf, size_t count, struct rx_info *ri)
 {
 	struct wif *wi = _wi_in; /* XXX */
 	int rc;
@@ -544,7 +544,7 @@ int read_packet(void *buf, size_t count, struct rx_info *ri)
 	return rc;
 }
 
-void read_sleep( unsigned long usec )
+static void read_sleep( unsigned long usec )
 {
     struct timeval tv, tv2, tv3;
     int caplen;
@@ -574,7 +574,7 @@ void read_sleep( unsigned long usec )
 }
 
 
-int filter_packet( unsigned char *h80211, int caplen )
+static int filter_packet( unsigned char *h80211, int caplen )
 {
     int z, mi_b, mi_s, mi_d, ext=0, qos;
 
@@ -644,7 +644,7 @@ int filter_packet( unsigned char *h80211, int caplen )
     return( 0 );
 }
 
-int wait_for_beacon(unsigned char *bssid, unsigned char *capa, char *essid)
+static int wait_for_beacon(unsigned char *bssid, unsigned char *capa, char *essid)
 {
     int len = 0, chan = 0, taglen = 0, tagtype = 0, pos = 0;
     unsigned char pkt_sniff[4096];
@@ -756,7 +756,7 @@ int wait_for_beacon(unsigned char *bssid, unsigned char *capa, char *essid)
 /**
     if bssid != NULL its looking for a beacon frame
 */
-int attack_check(unsigned char* bssid, char* essid, unsigned char* capa, struct wif *wi)
+static int attack_check(unsigned char* bssid, char* essid, unsigned char* capa, struct wif *wi)
 {
     int ap_chan=0, iface_chan=0;
 
@@ -787,7 +787,7 @@ int attack_check(unsigned char* bssid, char* essid, unsigned char* capa, struct 
     return 0;
 }
 
-int getnet( unsigned char* capa, int filter, int force)
+static int getnet( unsigned char* capa, int filter, int force)
 {
     unsigned char *bssid;
 
@@ -848,7 +848,7 @@ int getnet( unsigned char* capa, int filter, int force)
     return 0;
 }
 
-int xor_keystream(unsigned char *ph80211, unsigned char *keystream, int len)
+static int xor_keystream(unsigned char *ph80211, unsigned char *keystream, int len)
 {
     int i=0;
 
@@ -859,7 +859,7 @@ int xor_keystream(unsigned char *ph80211, unsigned char *keystream, int len)
     return 0;
 }
 
-int capture_ask_packet( int *caplen, int just_grab )
+static int capture_ask_packet( int *caplen, int just_grab )
 {
     time_t tr;
     struct timeval tv;
@@ -1193,7 +1193,7 @@ int capture_ask_packet( int *caplen, int just_grab )
     return( 0 );
 }
 
-int read_prga(unsigned char **dest, char *file)
+static int read_prga(unsigned char **dest, char *file)
 {
     FILE *f;
     int size;
@@ -1228,7 +1228,7 @@ int read_prga(unsigned char **dest, char *file)
     return( 0 );
 }
 
-void add_icv(unsigned char *input, int len, int offset)
+static void add_icv(unsigned char *input, int len, int offset)
 {
     unsigned long crc = 0xFFFFFFFF;
     int n=0;
@@ -1246,7 +1246,7 @@ void add_icv(unsigned char *input, int len, int offset)
     return;
 }
 
-void send_fragments(unsigned char *packet, int packet_len, unsigned char *iv, unsigned char *keystream, int fragsize, int ska)
+static void send_fragments(unsigned char *packet, int packet_len, unsigned char *iv, unsigned char *keystream, int fragsize, int ska)
 {
     int t, u;
     int data_size;
@@ -1313,7 +1313,7 @@ void send_fragments(unsigned char *packet, int packet_len, unsigned char *iv, un
 
 }
 
-int do_attack_deauth( void )
+static int do_attack_deauth( void )
 {
     int i, n;
     int aacks, sacks, caplen;
@@ -1452,7 +1452,7 @@ int do_attack_deauth( void )
     return( 0 );
 }
 
-int do_attack_fake_auth( void )
+static int do_attack_fake_auth( void )
 {
     time_t tt, tr;
     struct timeval tv, tv2, tv3;
@@ -2242,7 +2242,7 @@ int do_attack_fake_auth( void )
     return( 0 );
 }
 
-int do_attack_interactive( void )
+static int do_attack_interactive( void )
 {
     int caplen, n, z;
     int mi_b, mi_s, mi_d;
@@ -2384,7 +2384,7 @@ read_packets:
     return( 0 );
 }
 
-int do_attack_arp_resend( void )
+static int do_attack_arp_resend( void )
 {
     int nb_bad_pkt;
     int arp_off1, arp_off2;
@@ -2821,7 +2821,7 @@ add_arp:
     return( 0 );
 }
 
-int do_attack_caffe_latte( void )
+static int do_attack_caffe_latte( void )
 {
     int nb_bad_pkt;
     int arp_off1, arp_off2;
@@ -3269,7 +3269,7 @@ add_arp:
     return( 0 );
 }
 
-int do_attack_migmode( void )
+static int do_attack_migmode( void )
 {
     int nb_bad_pkt;
     int arp_off1, arp_off2;
@@ -3720,7 +3720,7 @@ add_arp:
     return( 0 );
 }
 
-int set_clear_arp(unsigned char *buf, unsigned char *smac, unsigned char *dmac) //set first 22 bytes
+static int set_clear_arp(unsigned char *buf, unsigned char *smac, unsigned char *dmac) //set first 22 bytes
 {
     if(buf == NULL)
         return -1;
@@ -3742,7 +3742,7 @@ int set_clear_arp(unsigned char *buf, unsigned char *smac, unsigned char *dmac) 
     return 0;
 }
 
-int set_final_arp(unsigned char *buf, unsigned char *mymac)
+static int set_final_arp(unsigned char *buf, unsigned char *mymac)
 {
     if(buf == NULL)
         return -1;
@@ -3764,7 +3764,7 @@ int set_final_arp(unsigned char *buf, unsigned char *mymac)
     return 0;
 }
 
-int set_clear_ip(unsigned char *buf, int ip_len) //set first 9 bytes
+static int set_clear_ip(unsigned char *buf, int ip_len) //set first 9 bytes
 {
     if(buf == NULL)
         return -1;
@@ -3777,7 +3777,7 @@ int set_clear_ip(unsigned char *buf, int ip_len) //set first 9 bytes
     return 0;
 }
 
-int set_final_ip(unsigned char *buf, unsigned char *mymac)
+static int set_final_ip(unsigned char *buf, unsigned char *mymac)
 {
     if(buf == NULL)
         return -1;
@@ -3795,7 +3795,7 @@ int set_final_ip(unsigned char *buf, unsigned char *mymac)
     return 0;
 }
 
-int do_attack_cfrag( void )
+static int do_attack_cfrag( void )
 {
     int caplen, n;
     struct timeval tv;
@@ -4101,7 +4101,7 @@ read_packets:
     return( 0 );
 }
 
-int do_attack_chopchop( void )
+static int do_attack_chopchop( void )
 {
     float f, ticks[4];
     int i, j, n, z, caplen, srcz;
@@ -4773,7 +4773,7 @@ int do_attack_chopchop( void )
     return( 0 );
 }
 
-int make_arp_request(unsigned char *h80211, unsigned char *bssid, unsigned char *src_mac, unsigned char *dst_mac, unsigned char *src_ip, unsigned char *dst_ip, int size)
+static int make_arp_request(unsigned char *h80211, unsigned char *bssid, unsigned char *src_mac, unsigned char *dst_mac, unsigned char *src_ip, unsigned char *dst_ip, int size)
 {
 	unsigned char *arp_header = (unsigned char*)"\xaa\xaa\x03\x00\x00\x00\x08\x06\x00\x01\x08\x00\x06\x04\x00\x01";
 	unsigned char *header80211 = (unsigned char*)"\x08\x41\x95\x00";
@@ -4799,7 +4799,7 @@ int make_arp_request(unsigned char *h80211, unsigned char *bssid, unsigned char 
     return 0;
 }
 
-void save_prga(char *filename, unsigned char *iv, unsigned char *prga, int prgalen)
+static void save_prga(char *filename, unsigned char *iv, unsigned char *prga, int prgalen)
 {
     FILE *xorfile;
     size_t unused;
@@ -4809,7 +4809,7 @@ void save_prga(char *filename, unsigned char *iv, unsigned char *prga, int prgal
     fclose (xorfile);
 }
 
-int do_attack_fragment()
+static int do_attack_fragment(void)
 {
     unsigned char packet[4096];
     unsigned char packet2[4096];
@@ -5326,7 +5326,7 @@ int do_attack_fragment()
     return( 0 );
 }
 
-int grab_essid(unsigned char* packet, int len)
+static int grab_essid(unsigned char* packet, int len)
 {
     int i=0, j=0, pos=0, tagtype=0, taglen=0, chan=0;
     unsigned char bssid[6];
@@ -5433,7 +5433,7 @@ out:
 	return port;
 }
 
-void dump_packet(unsigned char* packet, int len)
+static void dump_packet(unsigned char* packet, int len)
 {
     int i=0;
 
@@ -5452,7 +5452,7 @@ struct net_hdr {
 	uint8_t		nh_data[0];
 } __packed;
 
-int tcp_test(const char* ip_str, const short port)
+static int tcp_test(const char* ip_str, const short port)
 {
     int sock, i;
     struct sockaddr_in s_in;
@@ -5669,7 +5669,7 @@ int tcp_test(const char* ip_str, const short port)
     return 0;
 }
 
-int do_attack_test()
+static int do_attack_test(void)
 {
     unsigned char packet[4096];
     struct timeval tv, tv2, tv3;
