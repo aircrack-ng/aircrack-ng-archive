@@ -675,6 +675,7 @@ char usage[] =
 "                              are received (Default: 120 seconds)\n"
 "      -r             <file> : Read packets from that file\n"
 "      -x            <msecs> : Active Scanning Simulation\n"
+"      --daemon              : Run without user interaction\n"
 "      --manufacturer        : Display manufacturer from IEEE OUI list\n"
 "      --uptime              : Display AP Uptime from Beacon Timestamp\n"
 "      --wps                 : Display WPS information (if any)\n"
@@ -1344,11 +1345,11 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
             ap_prv->next  = ap_cur;
 
         memcpy( ap_cur->bssid, bssid, 6 );
-		if (ap_cur->manuf == NULL) {
-			ap_cur->manuf = get_manufacturer(ap_cur->bssid[0], ap_cur->bssid[1], ap_cur->bssid[2]);
-		}
+		  if (ap_cur->manuf == NULL) {
+			  ap_cur->manuf = get_manufacturer(ap_cur->bssid[0], ap_cur->bssid[1], ap_cur->bssid[2]);
+		  }
 
-	ap_cur->nb_pkt = 0;
+	     ap_cur->nb_pkt = 0;
         ap_cur->prev = ap_prv;
 
         ap_cur->tinit = time( NULL );
@@ -1367,7 +1368,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
 
         ap_cur->uiv_root = uniqueiv_init();
 
-	ap_cur->nb_data = 0;
+	     ap_cur->nb_data = 0;
         ap_cur->nb_dataps = 0;
         ap_cur->nb_data_old = 0;
         gettimeofday(&(ap_cur->tv), NULL);
@@ -1397,8 +1398,8 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
         ap_cur->is_decloak = 0;
         ap_cur->packets = NULL;
 
-	ap_cur->marked = 0;
-	ap_cur->marked_color = 1;
+        ap_cur->marked = 0;
+        ap_cur->marked_color = 1;
 
         ap_cur->data_root = NULL;
         ap_cur->EAP_detected = 0;
@@ -1556,7 +1557,7 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
 			st_cur->manuf = get_manufacturer(st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2]);
 		}
 
-	st_cur->nb_pkt = 0;
+	     st_cur->nb_pkt = 0;
 
         st_cur->prev = st_prv;
 
@@ -1572,11 +1573,11 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
         st_cur->lastseq = 0;
         st_cur->qos_fr_ds = 0;
         st_cur->qos_to_ds = 0;
-	st_cur->channel = 0;
+	     st_cur->channel = 0;
 
         gettimeofday( &(st_cur->ftimer), NULL);
 
-        for( i = 0; i < NB_PRB; i++ )
+        for( i = 0; i < ( G.daemon ? NB_PRB_DAEMON : NB_PRB ); i++ )
         {
             memset( st_cur->probes[i], 0, sizeof(
                     st_cur->probes[i] ) );
@@ -1584,12 +1585,12 @@ int dump_add_packet( unsigned char *h80211, int caplen, struct rx_info *ri, int 
         }
 
         G.st_end = st_cur;
-    }
+     }
 
     if( st_cur->base == NULL ||
         memcmp( ap_cur->bssid, BROADCAST, 6 ) != 0 )
         st_cur->base = ap_cur;
-
+   
     //update bitrate to station
     if( (st_cur != NULL) && ( h80211[1] & 3 ) == 2 )
         st_cur->rate_to = ri->ri_rate;
@@ -1650,11 +1651,11 @@ skip_station:
                 /* got a valid ASCII probed ESSID, check if it's
                    already in the ring buffer */
 
-                for( i = 0; i < NB_PRB; i++ )
+                 for( i = 0; i < ( G.daemon ? NB_PRB_DAEMON : NB_PRB ); i++ )
                     if( memcmp( st_cur->probes[i], p + 2, n ) == 0 )
                         goto skip_probe;
 
-                st_cur->probe_index = ( st_cur->probe_index + 1 ) % NB_PRB;
+                st_cur->probe_index = ( st_cur->probe_index + 1 ) % ( G.daemon ? NB_PRB_DAEMON : NB_PRB );
                 memset( st_cur->probes[st_cur->probe_index], 0, 256 );
                 memcpy( st_cur->probes[st_cur->probe_index], p + 2, n ); //twice?!
                 st_cur->ssid_length[st_cur->probe_index] = n;
@@ -1705,10 +1706,10 @@ skip_probe:
 
 //                n = ( p[1] > 32 ) ? 32 : p[1];
                 n = p[1];
-
-                memset( ap_cur->essid, 0, 256 );
-                memcpy( ap_cur->essid, p + 2, n );
-
+               
+                   memset( ap_cur->essid, 0, 256 );
+                   memcpy( ap_cur->essid, p + 2, n );
+               
                 if( G.f_ivs != NULL && !ap_cur->essid_stored )
                 {
                     memset(&ivs2, '\x00', sizeof(struct ivs2_pkthdr));
@@ -1770,7 +1771,7 @@ skip_probe:
                 ap_cur->channel = p[2];
             /* also get the channel from ht information->primary channel */
             else if (p[0] == 0x3d){
-		ap_cur->channel = p[2];
+		          ap_cur->channel = p[2];
             }
 
             p += 2 + p[1];
@@ -2556,7 +2557,7 @@ write_packet:
                 {
                     if( ! memcmp( na_cur->namac, namac, 6 ) )
                         break;
-
+                   
                     na_prv = na_cur;
                     na_cur = na_cur->next;
                 }
@@ -2679,7 +2680,7 @@ void dump_sort( void )
 
     struct ST_info *st_cur, *st_min;
     struct AP_info *ap_cur, *ap_min;
-
+   
     /* sort the aps by WHATEVER first */
 
     while( G.ap_1st )
@@ -2952,7 +2953,7 @@ int get_ap_list_count() {
             ap_cur = ap_cur->prev;
             continue;
         }
-
+       
         if(ap_cur->security != 0 && G.f_encrypt != 0 && ((ap_cur->security & G.f_encrypt) == 0))
         {
             ap_cur = ap_cur->prev;
@@ -2992,10 +2993,10 @@ int get_sta_list_count() {
         if( ap_cur->nb_pkt < 2 ||
             time( NULL ) - ap_cur->tlast > G.berlin )
         {
-            ap_cur = ap_cur->prev;
-            continue;
+           ap_cur = ap_cur->prev;
+           continue;
         }
-
+       
         if(ap_cur->security != 0 && G.f_encrypt != 0 && ((ap_cur->security & G.f_encrypt) == 0))
         {
             ap_cur = ap_cur->prev;
@@ -3016,8 +3017,8 @@ int get_sta_list_count() {
             if( st_cur->base != ap_cur ||
                 time( NULL ) - st_cur->tlast > G.berlin )
             {
-                st_cur = st_cur->prev;
-                continue;
+               st_cur = st_cur->prev;
+               continue;
             }
 
             if( ! memcmp( ap_cur->bssid, BROADCAST, 6 ) && G.asso_client )
@@ -3106,8 +3107,8 @@ void dump_print( int ws_row, int ws_col, int if_num )
             if( ap_cur->nb_pkt < 2 || time( NULL ) - ap_cur->tlast > G.berlin ||
                 memcmp( ap_cur->bssid, BROADCAST, 6 ) == 0 )
             {
-                ap_cur = ap_cur->prev;
-                continue;
+               ap_cur = ap_cur->prev;
+               continue;
             }
             G.numaps++;
             ap_cur = ap_cur->prev;
@@ -3277,8 +3278,8 @@ void dump_print( int ws_row, int ws_col, int if_num )
 	    if( ap_cur->nb_pkt < 2 || time( NULL ) - ap_cur->tlast > G.berlin ||
 		memcmp( ap_cur->bssid, BROADCAST, 6 ) == 0 )
 	    {
-		ap_cur = ap_cur->prev;
-		continue;
+          ap_cur = ap_cur->prev;
+          continue;
 	    }
 
 	    if(ap_cur->security != 0 && G.f_encrypt != 0 && ((ap_cur->security & G.f_encrypt) == 0))
@@ -3532,8 +3533,8 @@ void dump_print( int ws_row, int ws_col, int if_num )
 	    if( ap_cur->nb_pkt < 2 ||
 		time( NULL ) - ap_cur->tlast > G.berlin )
 	    {
-		ap_cur = ap_cur->prev;
-		continue;
+          ap_cur = ap_cur->prev;
+          continue;
 	    }
 
 	    if(ap_cur->security != 0 && G.f_encrypt != 0 && ((ap_cur->security & G.f_encrypt) == 0))
@@ -3568,7 +3569,7 @@ void dump_print( int ws_row, int ws_col, int if_num )
 		    time( NULL ) - st_cur->tlast > G.berlin )
 		{
 		    st_cur = st_cur->prev;
-		    continue;
+          continue;
 		}
 
 		if( ! memcmp( ap_cur->bssid, BROADCAST, 6 ) && G.asso_client )
@@ -3612,7 +3613,7 @@ void dump_print( int ws_row, int ws_col, int if_num )
 		{
 		    memset( ssid_list, 0, sizeof( ssid_list ) );
 
-		    for( i = 0, n = 0; i < NB_PRB; i++ )
+		    for( i = 0, n = 0; i < ( G.daemon ? NB_PRB_DAEMON : NB_PRB ); i++ )
 		    {
 			if( st_cur->probes[i][0] == '\0' )
 			    continue;
@@ -3951,7 +3952,7 @@ int dump_write_csv( void )
                      ap_cur->bssid[4], ap_cur->bssid[5] );
 
 	probes_written = 0;
-        for( i = 0, n = 0; i < NB_PRB; i++ )
+        for( i = 0, n = 0; i < ( G.daemon ? NB_PRB_DAEMON : NB_PRB ); i++ )
         {
             if( st_cur->ssid_length[i] == 0 )
                 continue;
@@ -4160,7 +4161,7 @@ int dump_write_kismet_netxml_client_info(struct ST_info *client, int client_no)
 
 	/* SSID item, aka Probes */
 	nb_probes_written = 0;
-	for( i = 0; i < NB_PRB; i++ )
+	for( i = 0; i < ( G.daemon ? NB_PRB_DAEMON : NB_PRB ); i++ )
         {
 		if( client->probes[i][0] == '\0' )
 			continue;
@@ -6203,6 +6204,7 @@ int main( int argc, char *argv[] )
         {"uptime",   0, 0, 'U'},
         {"write-interval", 1, 0, 'I'},
         {"wps",  0, 0, 'W'},
+        {"daemon",  0, 0, 'q'},
         {0,          0, 0,  0 }
     };
 
@@ -6285,6 +6287,8 @@ int main( int argc, char *argv[] )
     G.detect_anomaly = 0;
     G.airodump_start_time = NULL;
 	G.manufList = NULL;
+   
+    G.daemon = 0;
 
 	G.output_format_pcap = 1;
     G.output_format_csv = 1;
@@ -6773,6 +6777,10 @@ int main( int argc, char *argv[] )
                 if (G.active_scan_sim <= 0)
                     G.active_scan_sim = 0;
                 break;
+              
+            case 'q':
+              G.daemon = 1;
+              break;
 
             default : goto usage;
         }
@@ -7046,12 +7054,15 @@ usage:
     G.airodump_start_time[strlen(G.airodump_start_time) - 1] = 0; // remove new line
     G.airodump_start_time = (char *) realloc( G.airodump_start_time, sizeof(char) * (strlen(G.airodump_start_time) + 1) );
 
-    if( pthread_create( &(G.input_tid), NULL, (void *) input_thread, NULL ) != 0 )
+    if( ! G.daemon )
     {
-	perror( "pthread_create failed" );
-	return 1;
+       if( pthread_create( &(G.input_tid), NULL, (void *) input_thread, NULL ) != 0 )
+       {
+	       perror( "pthread_create failed" );
+	       return 1;
+       }
     }
-
+  
 
     while( 1 )
     {
@@ -7284,7 +7295,7 @@ usage:
 
             /* display the list of access points we have */
 
-	    if(!G.do_pause) {
+	    if(!G.do_pause && !G.daemon) {
 		pthread_mutex_lock( &(G.mx_print) );
 
 		    fprintf( stderr, "\33[1;1H" );
