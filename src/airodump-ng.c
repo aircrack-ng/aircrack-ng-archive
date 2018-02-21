@@ -220,7 +220,10 @@ void input_thread( void *arg) {
     while( G.do_exit == 0 ) {
 	int keycode=0;
 
-	keycode=mygetch();
+	if (G.noinput_option == 0)
+		keycode=mygetch();
+	if (G.usleep_option > 0)
+		usleep(G.usleep_option);
 
 	if(keycode == KEY_s) {
 	    G.sort_by++;
@@ -681,6 +684,11 @@ char usage[] =
 "      --output-format\n"
 "                  <formats> : Output format. Possible values:\n"
 "                              pcap, ivs, csv, gps, kismet, netxml\n"
+"      --noinput             : Doesn't try to input interactive keystrokes\n"
+"                              (Doesn't hog CPU while running without a console)\n"
+"      --usleep <usecs>      : Release CPU for some microseconds each 'interactive loop'\n"
+"                              (default none, --noinput activate it at 20000 usecs)\n"
+
 "      --ignore-negative-one : Removes the message that says\n"
 "                              fixed channel <interface>: -1\n"
 "      --write-interval\n"
@@ -6198,6 +6206,8 @@ int main( int argc, char *argv[] )
         {"showack",  0, 0, 'A'},
         {"detect-anomaly", 0, 0, 'E'},
         {"output-format",  1, 0, 'o'},
+        {"noinput",  0, 0, '1'},
+        {"usleep",   1, 0, '2'},
         {"ignore-negative-one", 0, &G.ignore_negative_one, 1},
         {"manufacturer",  0, 0, 'M'},
         {"uptime",   0, 0, 'U'},
@@ -6290,6 +6300,8 @@ int main( int argc, char *argv[] )
     G.output_format_csv = 1;
     G.output_format_kismet_csv = 1;
     G.output_format_kismet_netxml = 1;
+    G.noinput_option = 0;
+    G.usleep_option = 0;
     G.file_write_interval = 5; // Write file every 5 seconds by default
     G.maxsize_wps_seen  =  6;
     G.show_wps     = 0;
@@ -6374,7 +6386,7 @@ int main( int argc, char *argv[] )
         option_index = 0;
 
         option = getopt_long( argc, argv,
-                        "b:c:egiw:s:t:u:m:d:N:R:aHDB:Ahf:r:EC:o:x:MUI:W",
+                        "b:c:egiw:s:t:u:m:d:N:R:aHDB:Ahf:r:EC:o:x:MUI:W12:",
                         long_options, &option_index );
 
         if( option < 0 ) break;
@@ -6773,6 +6785,17 @@ int main( int argc, char *argv[] )
                 if (G.active_scan_sim <= 0)
                     G.active_scan_sim = 0;
                 break;
+
+            case '1':
+
+            	G.noinput_option = 1;
+            	G.usleep_option = DEFAULT_USLEEP;
+            	break;
+
+            case '2':
+
+            	G.usleep_option = atoi(optarg);
+            	break;
 
             default : goto usage;
         }
