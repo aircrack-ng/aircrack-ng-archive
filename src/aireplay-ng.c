@@ -829,7 +829,7 @@ int getnet( unsigned char* capa, int filter, int force)
     {
         if(memcmp(bssid, NULL_MAC, 6))
         {
-            if( strlen(opt.r_essid) == 0 || opt.r_essid[0] < 32)
+            if( strlen(opt.r_essid) == 0 || (opt.r_essid[0] < 32 && opt.r_essid[0] > 0) )
             {
                 printf( "Please specify an ESSID (-e).\n" );
             }
