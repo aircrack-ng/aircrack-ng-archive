@@ -649,7 +649,7 @@ int wait_for_beacon(unsigned char *bssid, unsigned char *capa, unsigned char *es
     int len = 0, chan = 0, taglen = 0, tagtype = 0, pos = 0;
     unsigned char pkt_sniff[4096];
     struct timeval tv,tv2;
-    char essid2[33];
+    unsigned char essid2[33];
 
     gettimeofday(&tv, NULL);
     while (1)
