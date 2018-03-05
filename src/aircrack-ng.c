@@ -792,7 +792,7 @@ int atomic_read( read_buf *rb, int fd, int len, void *buf )
 	}
 	else
 	{
-		n = read( fd, rb->buf1 + rb->off2, 65536 - rb->off2 );
+		n = read( fd, rb->buf1 + rb->off2, 65535 - rb->off2 );
 
 		if( n <= 0 )
 			return( 0 );
