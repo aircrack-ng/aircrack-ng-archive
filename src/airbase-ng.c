@@ -416,13 +416,23 @@ pMAC_t      rClient;
 pFrag_t     rFragment;
 pCF_t       rCF;
 
+char* essid_filename;
+int addESSIDfile( char* );
+int clearESSIDs();
 void sighandler( int signum )
 {
     if( signum == SIGINT )
         ctrl_c++;
 
-    if( signum == SIGALRM )
+	else if( signum == SIGALRM )
         alarmed++;
+	
+	else if( signum == SIGUSR1 )
+	{
+		printf("Reloading essid file...\n");
+		clearESSIDs();
+		addESSIDfile(essid_filename);
+	}
 }
 
 int addESSID(char* essid, int len, int expiration)
@@ -980,7 +990,23 @@ int delESSID(char* essid, int len)
     pthread_mutex_unlock(&rESSIDmutex);
     return -1;
 }
-
+int clearESSIDs()
+{	
+	pESSID_t _cur, _next;
+	pthread_mutex_lock(&rESSIDmutex);
+	_cur = rESSID;
+	do
+	{
+		_next = _cur->next;
+		free( _cur->essid );
+		free( _cur );
+		_cur = _next;
+	}while( _cur->next != NULL);
+	rESSID = (pESSID_t) malloc(sizeof(struct ESSID_list));
+	memset(rESSID, 0, sizeof(struct ESSID_list));
+	pthread_mutex_unlock(&rESSIDmutex);
+	return 0;
+}
 
 void flushESSID(void)
 {
@@ -1156,11 +1182,22 @@ int getNextESSID(char *essid)
     }
     len = 0;
 
-    if (cur != NULL) {
-        memcpy(essid, cur->essid, cur->len + 1);
-        len = cur->len;
+    //if (cur != NULL) {
+    //    memcpy(essid, cur->essid, cur->len + 1);
+    //   len = cur->len;
+	//}
+	
+	/* 
+	 * if cur == NULL, the current SSID does not exist in the linked list.
+	 * This may happen when we reload a new essid file which does not include the current SSID.
+	 * So, we will wrap it to the beginning of the list.
+	 */
+	if (cur == NULL && rESSID->next != NULL)
+		cur = rESSID->next;
 
-    }
+	memcpy(essid, cur->essid, cur->len + 1);
+	len = cur->len;
+	
     pthread_mutex_unlock(&rESSIDmutex);
 
     return len;
@@ -4046,6 +4083,7 @@ void cfrag_thread( void )
 
 int main( int argc, char *argv[] )
 {
+	signal(SIGUSR1, sighandler);
     int ret_val, len, i, n;
     struct pcap_pkthdr pkh;
     fd_set read_fds;
@@ -4259,6 +4297,8 @@ int main( int argc, char *argv[] )
                 break;
 
             case 'E' :
+				essid_filename = (char*)malloc(strlen(optarg));
+				strcpy(essid_filename, optarg);
 
                 if( addESSIDfile(optarg) != 0 )
                     return( 1 );
@@ -5044,7 +5084,13 @@ usage:
         else
             ret_val = select( MAX(ti_fd(dev.dv_ti), dev.fd_in) + 1, &read_fds, NULL, NULL, NULL );
         if( ret_val < 0 )
-            break;
+		{	
+			/* if select is interrupted by another signal, then it will return -15 EINTR, this is not an  fatal error */
+			if( errno == EINTR )
+				continue;
+			else
+				break;
+		}
         if( ret_val > 0 )
         {
             if( FD_ISSET(ti_fd(dev.dv_ti), &read_fds ) )
