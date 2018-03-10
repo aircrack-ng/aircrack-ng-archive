@@ -2811,14 +2811,24 @@ static int parse_hex(unsigned char *out, char *in, int l)
 
 static void resume_network(char *buf)
 {
-	char *p = buf, *p2;
-	int state = 0;
+	char *p, *p2;
+	int i, j=0, state = 0;
 	struct network *n;
 
 	if (buf[0] == '#')
 		return;
 
 	n = network_new();
+
+	/* get first pipe */
+	for (i=strlen(buf); i > 0; i--) {
+	    if (buf[i] == '|') {
+	        j++;
+	        if (j == 3)
+	            break;
+	    }
+	};
+	p = buf+i;
 
 	while (1) {
 		p2 = strchr(p, '|');
@@ -2836,7 +2846,7 @@ static void resume_network(char *buf)
 		switch (state) {
 		/* ssid */
 		case 0:
-			strncpy(n->n_ssid, p, sizeof(n->n_ssid));
+			strncpy(n->n_ssid, buf, sizeof(n->n_ssid));
 			(n->n_ssid)[sizeof(n->n_ssid) -1] = '\0';
 			break;
 
@@ -2851,7 +2861,6 @@ static void resume_network(char *buf)
 				n->n_key_len = parse_hex(n->n_key, p,
 							 sizeof(n->n_key));
 			}
-
 			if (n->n_crypto != CRYPTO_NONE) {
 				n->n_have_beacon = 1;
 				n->n_astate      = ASTATE_DONE;
@@ -2862,13 +2871,11 @@ static void resume_network(char *buf)
 		case 2:
 			parse_hex(n->n_bssid, p, sizeof(n->n_bssid));
 			break;
-
+        /* MAC filter */
 		case 3:
 			if (*p) {
 				struct client *c = xmalloc(sizeof(*c));
-
 				memset(c, 0, sizeof(*c));
-
 				parse_hex(c->c_mac, p, sizeof(c->c_mac));
 
 				n->n_client_mac = c;
