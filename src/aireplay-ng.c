@@ -247,7 +247,7 @@ struct options
     unsigned char r_smac[6];
     unsigned char r_dip[4];
     unsigned char r_sip[4];
-    char r_essid[33];
+    unsigned char r_essid[33];
     int r_fromdsinj;
     char r_smac_set;
 
@@ -644,12 +644,12 @@ int filter_packet( unsigned char *h80211, int caplen )
     return( 0 );
 }
 
-int wait_for_beacon(unsigned char *bssid, unsigned char *capa, char *essid)
+int wait_for_beacon(unsigned char *bssid, unsigned char *capa, unsigned char *essid)
 {
     int len = 0, chan = 0, taglen = 0, tagtype = 0, pos = 0;
     unsigned char pkt_sniff[4096];
     struct timeval tv,tv2;
-    char essid2[33];
+    unsigned char essid2[33];
 
     gettimeofday(&tv, NULL);
     while (1)
@@ -756,7 +756,7 @@ int wait_for_beacon(unsigned char *bssid, unsigned char *capa, char *essid)
 /**
     if bssid != NULL its looking for a beacon frame
 */
-int attack_check(unsigned char* bssid, char* essid, unsigned char* capa, struct wif *wi)
+int attack_check(unsigned char* bssid, unsigned char* essid, unsigned char* capa, struct wif *wi)
 {
     int ap_chan=0, iface_chan=0;
 
